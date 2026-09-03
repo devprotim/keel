@@ -1,0 +1,94 @@
+<div class="keel-board">
+  <header class="keel-board__header">
+    <div class="keel-board__brand">
+      <span class="keel-board__logo" aria-hidden="true"></span>
+      <strong>Keel</strong>
+      <span class="keel-board__room" [title]="'Room ' + roomId()">{{ roomId() }}</span>
+    </div>
+
+    <div class="keel-board__tools" role="toolbar" aria-label="Add components">
+      @for (kind of nodeKinds; track kind) {
+        <button
+          type="button"
+          class="keel-btn keel-btn--ghost keel-board__kind"
+          [class.keel-btn--active]="canvas().placingKind() === kind"
+          [attr.aria-pressed]="canvas().placingKind() === kind"
+          (click)="toggleKind(kind)"
+        >
+          <span class="keel-kind-dot" [style.background]="kindColor(kind)"></span>
+          {{ kind }}
+        </button>
+      }
+    </div>
+
+    <div class="keel-board__actions">
+      <button
+        type="button"
+        class="keel-btn keel-btn--ghost"
+        [disabled]="!collab.canUndo()"
+        (click)="canvas().undoFromToolbar()"
+        title="Undo (Cmd/Ctrl+Z)"
+      >
+        Undo
+      </button>
+      <button
+        type="button"
+        class="keel-btn keel-btn--ghost"
+        [disabled]="!collab.canRedo()"
+        (click)="canvas().redoFromToolbar()"
+        title="Redo (Shift+Cmd/Ctrl+Z)"
+      >
+        Redo
+      </button>
+      <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
+        Fit
+      </button>
+      @if (isEmpty()) {
+        <button type="button" class="keel-btn" (click)="loadExample()">Load example</button>
+      }
+
+      <div class="keel-board__peers" [attr.aria-label]="peerLabel()">
+        @for (peer of collab.peers(); track peer.clientId) {
+          <span
+            class="keel-board__peer"
+            [style.background]="peerColor(peer.clientId)"
+            [title]="peer.name"
+            >{{ initials(peer.name) }}</span
+          >
+        }
+        <span
+          class="keel-board__peer keel-board__peer--self"
+          [title]="collab.displayName() + ' (you)'"
+          >{{ initials(collab.displayName()) }}</span
+        >
+      </div>
+
+      <span class="keel-board__status" [class]="'keel-board__status--' + collab.status()">
+        {{ statusLabel() }}
+      </span>
+
+      <button
+        type="button"
+        class="keel-btn keel-btn--ghost keel-btn--icon"
+        [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'"
+        (click)="toggleTheme()"
+      >
+        {{ theme() === 'dark' ? '☀' : '☾' }}
+      </button>
+    </div>
+  </header>
+
+  <div class="keel-board__body">
+    <keel-findings (revealed)="canvas().revealNode($event)" />
+
+    <main class="keel-board__stage">
+      <keel-canvas />
+      <p class="keel-board__hint">
+        Alt-drag from a component to connect it. Space or middle-drag to pan. Pinch or
+        Ctrl-scroll to zoom.
+      </p>
+    </main>
+
+    <keel-inspector [selection]="canvas().selection()" />
+  </div>
+</div>

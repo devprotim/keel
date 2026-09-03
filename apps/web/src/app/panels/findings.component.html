@@ -1,0 +1,107 @@
+<section class="keel-panel keel-findings">
+  <header class="keel-panel__header">
+    <span>Review</span>
+    <span class="keel-findings__score" [class]="scoreClass()">{{ report().score }}</span>
+  </header>
+
+  <div class="keel-findings__summary">
+    @for (bucket of buckets(); track bucket.severity) {
+      <span class="keel-severity keel-severity--{{ bucket.severity }}">
+        {{ bucket.count }} {{ bucket.label }}
+      </span>
+    }
+    @if (totalCount() === 0 && !review.loading()) {
+      <span class="keel-findings__clean">No issues found.</span>
+    }
+  </div>
+
+  <div class="keel-panel__body">
+    <!--
+      AI findings come first, and in their own labelled section.
+      Appending them after the rule findings buried them below the fold of a
+      scrolling panel, so clicking "Run AI review" appeared to do nothing.
+    -->
+    @if (aiRows().length > 0) {
+      <h3 class="keel-findings__section">
+        AI review
+        <span class="keel-findings__count">{{ aiRows().length }}</span>
+      </h3>
+      @for (row of aiRows(); track row.finding.title) {
+        <button type="button" class="keel-finding keel-finding--model" (click)="reveal(row)">
+          <span class="keel-finding__head">
+            <span class="keel-severity keel-severity--{{ row.finding.severity }}">
+              {{ row.finding.severity }}
+            </span>
+            <span class="keel-finding__badge">AI</span>
+          </span>
+          <span class="keel-finding__title">{{ row.finding.title }}</span>
+          <span class="keel-finding__detail">{{ row.finding.detail }}</span>
+        </button>
+      }
+    }
+
+    @if (ruleRows().length > 0) {
+      <h3 class="keel-findings__section">
+        Rules
+        <span class="keel-findings__count">{{ ruleRows().length }}</span>
+      </h3>
+      @for (row of ruleRows(); track row.finding.ruleId + row.finding.title) {
+        <button type="button" class="keel-finding" (click)="reveal(row)">
+          <span class="keel-finding__head">
+            <span class="keel-severity keel-severity--{{ row.finding.severity }}">
+              {{ row.finding.severity }}
+            </span>
+          </span>
+          <span class="keel-finding__title">{{ row.finding.title }}</span>
+          <span class="keel-finding__detail">{{ row.finding.detail }}</span>
+        </button>
+      }
+    }
+
+    @if (totalCount() === 0) {
+      <p class="keel-panel__empty">
+        Rules run continuously as you edit. Run an AI review for the judgement calls a
+        rule cannot express.
+      </p>
+    }
+  </div>
+
+  <footer class="keel-findings__footer">
+    @if (review.error(); as message) {
+      <p class="keel-findings__error">{{ message }}</p>
+    }
+    @if (staleReview()) {
+      <p class="keel-findings__stale">The diagram changed since this review.</p>
+    }
+    @if (review.hasRun() && aiRows().length === 0 && !review.loading()) {
+      <p class="keel-findings__stale">
+        The reviewer found nothing beyond the rules above.
+      </p>
+    }
+
+    @if (review.models().length > 0) {
+      <label class="keel-field keel-findings__model">
+        <span class="keel-field__label">Model</span>
+        <select
+          class="keel-select"
+          [value]="review.selectedModel() ?? ''"
+          [disabled]="review.loading()"
+          (change)="pickModel($event)"
+        >
+          @for (model of review.models(); track model) {
+            <option [value]="model">{{ model }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    <button
+      type="button"
+      class="keel-btn keel-btn--primary keel-findings__run"
+      [disabled]="review.loading() || graphEmpty()"
+      (click)="runReview()"
+    >
+      {{ review.loading() ? 'Reviewing…' : 'Run AI review' }}
+    </button>
+  </footer>
+</section>

@@ -1,0 +1,157 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid var(--keel-border);
+}
+
+.keel-findings {
+  height: 100%;
+}
+
+.keel-findings__score {
+  min-width: 34px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+
+  &--good {
+    background: color-mix(in srgb, var(--keel-severity-ok) 16%, transparent);
+    color: var(--keel-severity-ok);
+  }
+  &--fair {
+    background: color-mix(in srgb, var(--keel-severity-warning) 18%, transparent);
+    color: var(--keel-severity-warning);
+  }
+  &--poor {
+    background: color-mix(in srgb, var(--keel-severity-error) 16%, transparent);
+    color: var(--keel-severity-error);
+  }
+}
+
+.keel-findings__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--keel-space-2);
+  padding: var(--keel-space-3) var(--keel-space-4);
+  border-bottom: 1px solid var(--keel-border);
+}
+
+.keel-findings__clean {
+  color: var(--keel-severity-ok);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.keel-panel__body {
+  padding: var(--keel-space-2);
+}
+
+.keel-finding {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  margin-bottom: var(--keel-space-2);
+  padding: var(--keel-space-3);
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius);
+  background: var(--keel-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+
+  &:hover {
+    border-color: var(--keel-accent);
+    background: var(--keel-accent-subtle);
+  }
+
+  // Model findings are visually distinct from rule findings, so the user always
+  // knows which kind of claim they are reading.
+  &--model {
+    border-style: dashed;
+  }
+}
+
+.keel-finding__head {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+}
+
+.keel-finding__badge {
+  padding: 1px 6px;
+  border: 1px solid var(--keel-border-strong);
+  border-radius: 100px;
+  color: var(--keel-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.keel-finding__title {
+  color: var(--keel-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.keel-finding__detail {
+  color: var(--keel-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.keel-findings__footer {
+  padding: var(--keel-space-3) var(--keel-space-4);
+  border-top: 1px solid var(--keel-border);
+}
+
+.keel-findings__run {
+  width: 100%;
+  justify-content: center;
+}
+
+.keel-findings__error {
+  margin: 0 0 var(--keel-space-2);
+  color: var(--keel-severity-error);
+  font-size: 12px;
+}
+
+.keel-findings__stale {
+  margin: 0 0 var(--keel-space-2);
+  color: var(--keel-text-muted);
+  font-size: 12px;
+}
+
+.keel-findings__section {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  margin: var(--keel-space-2) var(--keel-space-1) var(--keel-space-2);
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--keel-border);
+  }
+}
+
+.keel-findings__count {
+  padding: 1px 7px;
+  border-radius: 100px;
+  background: var(--keel-n-100);
+  font-size: 10px;
+}
+
+.keel-findings__model {
+  margin-bottom: var(--keel-space-2);
+}

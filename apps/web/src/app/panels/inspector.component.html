@@ -1,0 +1,187 @@
+<aside class="keel-panel keel-inspector">
+  <header class="keel-panel__header">
+    <span>{{ title() }}</span>
+  </header>
+
+  @if (node(); as selected) {
+    <div class="keel-panel__body">
+      <label class="keel-field">
+        <span class="keel-field__label">Name</span>
+        <input
+          class="keel-input"
+          type="text"
+          [value]="selected.label"
+          (input)="patchNode(selected.id, { label: value($event) })"
+        />
+      </label>
+
+      <label class="keel-field">
+        <span class="keel-field__label">Kind</span>
+        <select
+          class="keel-select"
+          [value]="selected.kind"
+          (change)="patchNode(selected.id, { kind: asNodeKind(value($event)) })"
+        >
+          @for (kind of nodeKinds; track kind) {
+            <option [value]="kind">{{ kind }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="keel-field">
+        <span class="keel-field__label">Technology</span>
+        <input
+          class="keel-input"
+          type="text"
+          placeholder="e.g. Postgres 16"
+          [value]="selected.tech ?? ''"
+          (input)="patchNode(selected.id, { tech: value($event) || undefined })"
+        />
+      </label>
+
+      <label class="keel-field">
+        <span class="keel-field__label">Instances</span>
+        <input
+          class="keel-input"
+          type="number"
+          min="0"
+          [value]="selected.replicas"
+          (input)="patchNode(selected.id, { replicas: numeric($event) ?? 1 })"
+        />
+        <span class="keel-field__hint">One instance is a single point of failure.</span>
+      </label>
+
+      <hr class="keel-divider" />
+
+      <label class="keel-check">
+        <input
+          type="checkbox"
+          [checked]="selected.critical ?? false"
+          (change)="patchNode(selected.id, { critical: checked($event) || undefined })"
+        />
+        <span>On the critical path</span>
+      </label>
+
+      @if (selected.kind === 'datastore') {
+        <label class="keel-check">
+          <input
+            type="checkbox"
+            [checked]="selected.hasReplica ?? false"
+            (change)="patchNode(selected.id, { hasReplica: checked($event) || undefined })"
+          />
+          <span>Has a replica or standby</span>
+        </label>
+        <label class="keel-check">
+          <input
+            type="checkbox"
+            [checked]="selected.hasBackup ?? false"
+            (change)="patchNode(selected.id, { hasBackup: checked($event) || undefined })"
+          />
+          <span>Has point-in-time backups</span>
+        </label>
+      }
+
+      @if (selected.kind === 'queue') {
+        <label class="keel-check">
+          <input
+            type="checkbox"
+            [checked]="selected.hasDlq ?? false"
+            (change)="patchNode(selected.id, { hasDlq: checked($event) || undefined })"
+          />
+          <span>Has a dead-letter queue</span>
+        </label>
+      }
+
+      <hr class="keel-divider" />
+
+      <label class="keel-field">
+        <span class="keel-field__label">Notes</span>
+        <textarea
+          class="keel-input"
+          rows="3"
+          [value]="selected.notes ?? ''"
+          (input)="patchNode(selected.id, { notes: value($event) || undefined })"
+        ></textarea>
+      </label>
+    </div>
+  } @else if (edge(); as selected) {
+    <div class="keel-panel__body">
+      <label class="keel-field">
+        <span class="keel-field__label">Label</span>
+        <input
+          class="keel-input"
+          type="text"
+          placeholder="e.g. place order"
+          [value]="selected.label ?? ''"
+          (input)="patchEdge(selected.id, { label: value($event) || undefined })"
+        />
+      </label>
+
+      <label class="keel-field">
+        <span class="keel-field__label">Call style</span>
+        <select
+          class="keel-select"
+          [value]="selected.kind"
+          (change)="patchEdge(selected.id, { kind: asEdgeKind(value($event)) })"
+        >
+          @for (kind of edgeKinds; track kind) {
+            <option [value]="kind">{{ kind }}</option>
+          }
+        </select>
+        <span class="keel-field__hint">{{ edgeKindHint(selected.kind) }}</span>
+      </label>
+
+      @if (selected.kind === 'sync') {
+        <label class="keel-field">
+          <span class="keel-field__label">Timeout (ms)</span>
+          <input
+            class="keel-input"
+            type="number"
+            min="0"
+            placeholder="none"
+            [value]="selected.timeoutMs ?? ''"
+            (input)="patchEdge(selected.id, { timeoutMs: numeric($event) })"
+          />
+          <span class="keel-field__hint">Leave empty to model an unbounded wait.</span>
+        </label>
+
+        <label class="keel-field">
+          <span class="keel-field__label">Retries</span>
+          <input
+            class="keel-input"
+            type="number"
+            min="0"
+            placeholder="0"
+            [value]="selected.retries ?? ''"
+            (input)="patchEdge(selected.id, { retries: numeric($event) })"
+          />
+        </label>
+
+        <label class="keel-check">
+          <input
+            type="checkbox"
+            [checked]="selected.circuitBreaker ?? false"
+            (change)="patchEdge(selected.id, { circuitBreaker: checked($event) || undefined })"
+          />
+          <span>Protected by a circuit breaker</span>
+        </label>
+      } @else {
+        <label class="keel-check">
+          <input
+            type="checkbox"
+            [checked]="selected.idempotent ?? false"
+            (change)="patchEdge(selected.id, { idempotent: checked($event) || undefined })"
+          />
+          <span>Consumer is idempotent</span>
+        </label>
+        <span class="keel-field__hint">
+          Brokers deliver at least once, so duplicates are normal operation.
+        </span>
+      }
+    </div>
+  } @else {
+    <p class="keel-panel__empty">
+      {{ emptyMessage() }}
+    </p>
+  }
+</aside>
