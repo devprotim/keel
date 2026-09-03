@@ -1,0 +1,15 @@
+{
+  "name": "keel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Real-time collaborative system architecture design canvas",
+  "engines": { "node": ">=22.22.3" },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "dev": "pnpm --parallel -r dev"
+  },
+  "packageManager": "pnpm@10.32.0"
+}
