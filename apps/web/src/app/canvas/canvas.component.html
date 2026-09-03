@@ -1,0 +1,31 @@
+<div
+  class="keel-canvas"
+  #host
+  role="application"
+  tabindex="0"
+  [attr.aria-label]="ariaLabel()"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerUp($event)"
+  (pointerleave)="onPointerLeave()"
+  (wheel)="onWheel($event)"
+  (keydown)="onKeyDown($event)"
+  (keyup)="onKeyUp($event)"
+  (contextmenu)="$event.preventDefault()"
+>
+  <canvas #content class="keel-canvas__layer" aria-hidden="true"></canvas>
+  <canvas #overlay class="keel-canvas__layer keel-canvas__layer--overlay" aria-hidden="true"></canvas>
+
+  <!--
+    A canvas is opaque to assistive technology. This mirrors the diagram as
+    real text so the structure is at least readable, and keyboard selection
+    below makes it navigable. Not a full substitute for an accessible
+    diagramming surface, but far better than an unlabelled rectangle.
+  -->
+  <ul class="keel-visually-hidden" aria-live="polite">
+    @for (item of accessibleNodes(); track item.id) {
+      <li>{{ item.description }}</li>
+    }
+  </ul>
+</div>

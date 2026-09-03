@@ -1,0 +1,202 @@
+// The in-house component layer.
+//
+// Built on the tokens rather than on Bootstrap's component styles, so a change
+// to a token propagates everywhere including the canvas.
+
+.keel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  padding: 6px 12px;
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius-sm);
+  background: var(--keel-surface);
+  color: var(--keel-text);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--keel-n-50);
+    border-color: var(--keel-border-strong);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background: var(--keel-accent);
+    border-color: var(--keel-accent);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: var(--keel-accent-hover);
+      border-color: var(--keel-accent-hover);
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    border-color: transparent;
+
+    &:hover:not(:disabled) {
+      background: var(--keel-n-100);
+      border-color: transparent;
+    }
+  }
+
+  &--active {
+    background: var(--keel-accent-subtle);
+    border-color: var(--keel-accent);
+    color: var(--keel-accent);
+  }
+
+  &--icon {
+    padding: 6px;
+  }
+}
+
+.keel-field {
+  display: block;
+  margin-bottom: var(--keel-space-3);
+
+  &__label {
+    display: block;
+    margin-bottom: var(--keel-space-1);
+    color: var(--keel-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__hint {
+    margin-top: var(--keel-space-1);
+    color: var(--keel-text-muted);
+    font-size: 11px;
+  }
+}
+
+.keel-input,
+.keel-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius-sm);
+  background: var(--keel-surface);
+  color: var(--keel-text);
+  font: inherit;
+  font-size: 13px;
+
+  &:focus {
+    border-color: var(--keel-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--keel-accent-subtle);
+  }
+}
+
+.keel-check {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  margin-bottom: var(--keel-space-2);
+  font-size: 13px;
+  cursor: pointer;
+
+  input {
+    accent-color: var(--keel-accent);
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.keel-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--keel-surface);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--keel-space-2);
+    padding: var(--keel-space-3) var(--keel-space-4);
+    border-bottom: 1px solid var(--keel-border);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--keel-text-muted);
+  }
+
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--keel-space-4);
+  }
+
+  &__empty {
+    padding: var(--keel-space-6) var(--keel-space-4);
+    color: var(--keel-text-muted);
+    font-size: 13px;
+    text-align: center;
+  }
+}
+
+.keel-kind-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+// Severity is expressed as colour *and* a text label everywhere it appears.
+// Colour alone would be unreadable for anyone with a colour vision deficiency.
+.keel-severity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &--error {
+    background: color-mix(in srgb, var(--keel-severity-error) 14%, transparent);
+    color: var(--keel-severity-error);
+  }
+
+  &--warning {
+    background: color-mix(in srgb, var(--keel-severity-warning) 16%, transparent);
+    color: var(--keel-severity-warning);
+  }
+
+  &--info {
+    background: color-mix(in srgb, var(--keel-severity-info) 14%, transparent);
+    color: var(--keel-severity-info);
+  }
+}
+
+.keel-divider {
+  height: 1px;
+  margin: var(--keel-space-4) 0;
+  background: var(--keel-border);
+  border: 0;
+}
+
+.keel-section-title {
+  margin: 0 0 var(--keel-space-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--keel-text-muted);
+}

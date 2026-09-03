@@ -1,0 +1,153 @@
+// Design tokens.
+//
+// One source of truth for the whole product, exposed as CSS custom properties so
+// that both the DOM and the canvas can read them. The canvas cannot use CSS, so
+// it reads these same properties at runtime (see core/theme.ts) rather than
+// keeping a second palette in TypeScript that would inevitably drift.
+//
+// Everything is defined here in the light theme first, and only the values that
+// actually change are redefined for dark. A token whose sole definition lives
+// inside a media query is a token that disappears in the other theme.
+
+:root {
+  color-scheme: light;
+
+  // Neutrals. A single ramp, so borders, text and surfaces stay related.
+  --keel-n-0: #ffffff;
+  --keel-n-25: #fbfbfd;
+  --keel-n-50: #f5f6f9;
+  --keel-n-100: #eceef3;
+  --keel-n-200: #dfe3ea;
+  --keel-n-300: #c8cedb;
+  --keel-n-500: #6b7280;
+  --keel-n-700: #3d4451;
+  --keel-n-900: #1c2028;
+
+  --keel-accent: #4f6bed;
+  --keel-accent-hover: #3f58d4;
+  --keel-accent-subtle: rgba(79, 107, 237, 0.1);
+
+  // Surfaces
+  --keel-bg: var(--keel-n-50);
+  --keel-surface: var(--keel-n-0);
+  --keel-surface-sunken: var(--keel-n-25);
+  --keel-border: var(--keel-n-200);
+  --keel-border-strong: var(--keel-n-300);
+
+  // Text
+  --keel-text: var(--keel-n-900);
+  --keel-text-muted: var(--keel-n-500);
+  --keel-text-inverse: var(--keel-n-0);
+
+  // Severity. Shared by the findings panel and the canvas badges.
+  --keel-severity-error: #dc2626;
+  --keel-severity-warning: #d97706;
+  --keel-severity-info: #2563eb;
+  --keel-severity-ok: #059669;
+
+  // Component kinds. These are identity colours, not decoration: the same hue
+  // marks a datastore in the toolbar, on the canvas and in the inspector.
+  --keel-kind-service: #4f6bed;
+  --keel-kind-datastore: #8b5cf6;
+  --keel-kind-queue: #e8890c;
+  --keel-kind-cache: #0ea5e9;
+  --keel-kind-gateway: #059669;
+  --keel-kind-job: #64748b;
+  --keel-kind-external: #94a3b8;
+
+  // Canvas-specific tokens, read by the renderer.
+  --keel-canvas-bg: var(--keel-n-25);
+  --keel-canvas-grid: var(--keel-n-100);
+  --keel-canvas-grid-strong: var(--keel-n-200);
+  --keel-node-fill: var(--keel-n-0);
+  --keel-node-stroke: var(--keel-n-200);
+  --keel-node-text: var(--keel-n-900);
+  --keel-node-muted: var(--keel-n-500);
+  --keel-node-shadow: rgba(16, 24, 40, 0.08);
+  --keel-edge: #98a2b3;
+  --keel-edge-text: var(--keel-n-500);
+  --keel-arrow: #98a2b3;
+  --keel-selection: var(--keel-accent);
+  --keel-selection-fill: var(--keel-accent-subtle);
+  --keel-marquee: var(--keel-accent);
+  --keel-marquee-fill: rgba(79, 107, 237, 0.1);
+
+  // Spacing scale. A 4px base keeps everything on a common rhythm.
+  --keel-space-1: 4px;
+  --keel-space-2: 8px;
+  --keel-space-3: 12px;
+  --keel-space-4: 16px;
+  --keel-space-5: 24px;
+  --keel-space-6: 32px;
+
+  --keel-radius-sm: 6px;
+  --keel-radius: 10px;
+  --keel-radius-lg: 14px;
+
+  --keel-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --keel-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --keel-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  --keel-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --keel-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+
+  --keel-panel-width: 320px;
+  --keel-header-height: 52px;
+}
+
+// Dark theme. Only the values that differ are restated; structure, spacing and
+// radii are theme-independent by design.
+@mixin dark-tokens {
+  color-scheme: dark;
+
+  --keel-n-0: #171a21;
+  --keel-n-25: #12151b;
+  --keel-n-50: #0e1116;
+  --keel-n-100: #232833;
+  --keel-n-200: #2f3542;
+  --keel-n-300: #3d4553;
+  --keel-n-500: #949cad;
+  --keel-n-700: #c6ccd8;
+  --keel-n-900: #eef1f6;
+
+  --keel-accent: #7b91f5;
+  --keel-accent-hover: #93a5f8;
+  --keel-accent-subtle: rgba(123, 145, 245, 0.16);
+
+  --keel-bg: var(--keel-n-50);
+  --keel-surface: var(--keel-n-0);
+  --keel-surface-sunken: var(--keel-n-25);
+
+  --keel-severity-error: #f87171;
+  --keel-severity-warning: #fbbf24;
+  --keel-severity-info: #60a5fa;
+  --keel-severity-ok: #34d399;
+
+  --keel-kind-service: #7b91f5;
+  --keel-kind-datastore: #a78bfa;
+  --keel-kind-queue: #fb923c;
+  --keel-kind-cache: #38bdf8;
+  --keel-kind-gateway: #34d399;
+  --keel-kind-job: #94a3b8;
+  --keel-kind-external: #64748b;
+
+  --keel-node-shadow: rgba(0, 0, 0, 0.45);
+  --keel-edge: #6b7484;
+  --keel-arrow: #6b7484;
+
+  --keel-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --keel-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --keel-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+// Explicit choice wins in both directions; the system default applies only when
+// the user has not chosen.
+:root[data-theme='dark'] {
+  @include dark-tokens;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark-tokens;
+  }
+}

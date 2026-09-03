@@ -1,0 +1,67 @@
+// Bootstrap provides the reset and the layout primitives. Everything visual is
+// ours, driven by the token layer, which is why only reboot and the grid are
+// pulled in rather than the whole framework: importing all of Bootstrap would
+// ship a second, competing set of component styles that the tokens do not reach.
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/variables-dark';
+// 5.3 moved the generated colour maps out of _variables; _root reads them, so it
+// has to come after.
+@import 'bootstrap/scss/maps';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/root';
+@import 'bootstrap/scss/reboot';
+@import 'bootstrap/scss/grid';
+@import 'bootstrap/scss/utilities';
+@import 'bootstrap/scss/utilities/api';
+
+@import './styles/tokens';
+@import './styles/components';
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--keel-bg);
+  color: var(--keel-text);
+  font-family: var(--keel-font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+// Screen-reader-only content that stays focusable. `display: none` would remove
+// it from the accessibility tree entirely, which defeats the purpose.
+.keel-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--keel-accent);
+  outline-offset: 2px;
+}
+
+// Respect a user's reduced-motion preference across every transition at once,
+// rather than remembering to guard each one individually.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

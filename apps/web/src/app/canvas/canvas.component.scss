@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.keel-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--keel-canvas-bg);
+  // The canvas handles its own panning and zooming, so browser gestures on top
+  // of that produce two competing scrolls.
+  touch-action: none;
+  cursor: default;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--keel-accent);
+    outline-offset: -2px;
+  }
+}
+
+.keel-canvas__layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+
+  // Only the host div receives pointer events. Without this the overlay canvas
+  // would swallow every click before it reached the handlers.
+  &--overlay {
+    pointer-events: none;
+  }
+}
