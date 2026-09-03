@@ -1,0 +1,31 @@
+{
+  "name": "@keel/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env --experimental-strip-types src/index.ts",
+    "start": "node --env-file-if-exists=.env --experimental-strip-types src/index.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/websocket": "^11.3.0",
+    "@google/genai": "^2.19.0",
+    "@keel/shared": "workspace:*",
+    "fastify": "^5.12.1",
+    "lib0": "^0.2.117",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.32",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}
