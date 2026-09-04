@@ -47,11 +47,11 @@
 
   // Component kinds. These are identity colours, not decoration: the same hue
   // marks a datastore in the toolbar, on the canvas and in the inspector.
-  --keel-kind-service: #4f6bed;
+  --keel-kind-service: #db2777;
   --keel-kind-datastore: #8b5cf6;
   --keel-kind-queue: #e8890c;
   --keel-kind-cache: #0ea5e9;
-  --keel-kind-gateway: #059669;
+  --keel-kind-gateway: #0d9488;
   --keel-kind-job: #64748b;
   --keel-kind-external: #94a3b8;
 
@@ -88,8 +88,9 @@
   --keel-shadow: 0 4px 12px rgba(16, 24, 40, 0.08);
   --keel-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
 
-  --keel-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --keel-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --keel-font-display: 'Cabinet Grotesk', 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --keel-font: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --keel-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
 
   --keel-panel-width: 320px;
   --keel-header-height: 52px;
@@ -123,11 +124,11 @@
   --keel-severity-info: #60a5fa;
   --keel-severity-ok: #34d399;
 
-  --keel-kind-service: #7b91f5;
+  --keel-kind-service: #f472b6;
   --keel-kind-datastore: #a78bfa;
   --keel-kind-queue: #fb923c;
   --keel-kind-cache: #38bdf8;
-  --keel-kind-gateway: #34d399;
+  --keel-kind-gateway: #2dd4bf;
   --keel-kind-job: #94a3b8;
   --keel-kind-external: #64748b;
 

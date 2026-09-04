@@ -215,7 +215,7 @@ function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: Content
 function drawEdgeLabel(ctx: CanvasRenderingContext2D, edge: SceneEdge, theme: CanvasTheme): void {
   const label = edge.edge.label ?? '';
   ctx.save();
-  ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '11px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
@@ -341,19 +341,19 @@ function drawNodeText(
   ctx.textAlign = 'left';
 
   ctx.fillStyle = theme.nodeMutedText;
-  ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '10px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textBaseline = 'top';
   ctx.fillText(node.kind.toUpperCase(), left, rect.y + 10);
 
   ctx.fillStyle = theme.nodeText;
-  ctx.font = '600 14px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '600 14px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   ctx.fillText(truncate(ctx, node.label, available), left, rect.y + rect.h / 2 + 2);
 
   const subtitle = subtitleFor(node.kind, node.replicas, node.tech);
   if (subtitle) {
     ctx.fillStyle = theme.nodeMutedText;
-    ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+    ctx.font = '11px Geist, ui-sans-serif, system-ui, sans-serif';
     ctx.textBaseline = 'bottom';
     ctx.fillText(truncate(ctx, subtitle, available), left, rect.y + rect.h - 9);
   }
@@ -399,7 +399,7 @@ function drawSeverityBadge(ctx: CanvasRenderingContext2D, rect: Rect, color: str
   ctx.fill();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+  ctx.font = '700 10px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('!', cx, cy + 0.5);
@@ -490,7 +490,7 @@ function drawCursor(
   ctx.fill();
 
   if (cursor.name) {
-    ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+    ctx.font = '600 11px Geist, ui-sans-serif, system-ui, sans-serif';
     const width = ctx.measureText(cursor.name).width + 12;
 
     ctx.fillStyle = color;

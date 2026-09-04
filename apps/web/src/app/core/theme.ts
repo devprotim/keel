@@ -45,11 +45,11 @@ const FALLBACK: CanvasTheme = {
   nodeMutedText: '#6b7280',
   nodeShadow: 'rgba(16, 24, 40, 0.08)',
   kindAccent: {
-    service: '#4f6bed',
+    service: '#db2777',
     datastore: '#8b5cf6',
     queue: '#e8890c',
     cache: '#0ea5e9',
-    gateway: '#059669',
+    gateway: '#0d9488',
     job: '#64748b',
     external: '#94a3b8',
   },
