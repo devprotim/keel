@@ -1,0 +1,17 @@
+services:
+  - type: web
+    runtime: node
+    name: keel
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @keel/shared build && pnpm --filter @keel/web build
+    startCommand: pnpm --filter @keel/server start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.3
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

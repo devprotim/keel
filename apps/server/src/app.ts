@@ -1,4 +1,7 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
+import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { validate } from '@keel/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -213,6 +216,29 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
       });
     });
   });
+
+  /**
+   * Serve the built Angular app from the same origin as the API and socket.
+   *
+   * app-config.ts assumes exactly this in production: it points the client at
+   * `location.origin` rather than a configured URL. Absent in dev and in tests,
+   * where apps/web isn't built, so this degrades to "API only" rather than
+   * failing to boot.
+   */
+  const webDist = fileURLToPath(new URL('../../web/dist/web/browser', import.meta.url));
+  if (existsSync(webDist)) {
+    await app.register(staticPlugin, { root: webDist });
+
+    // Angular's router owns any path that isn't ours, so unmatched GETs get
+    // index.html and the client-side router takes it from there. A miss under
+    // /api or /ws is a real 404, not a route the SPA should try to render.
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method !== 'GET' || request.url.startsWith('/api') || request.url.startsWith('/ws')) {
+        return reply.status(404).send({ error: 'not found' });
+      }
+      return reply.sendFile('index.html');
+    });
+  }
 
   // Rooms hold unflushed edits, so shutdown must wait for them rather than
   // letting the process exit with work still in memory.
