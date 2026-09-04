@@ -1,6 +1,6 @@
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
-import { validate, type ArchGraph } from '@keel/shared';
+import { validate } from '@keel/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
@@ -106,7 +106,7 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
     if (!parsed.success) {
       return reply.status(400).send({ error: 'invalid graph', issues: parsed.error.issues });
     }
-    return validate(parsed.data as ArchGraph);
+    return validate(parsed.data);
   });
 
   /** Models the configured provider can serve, for the client's picker. */
@@ -133,7 +133,7 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
       return reply.status(400).send({ error: 'invalid graph', issues: parsed.error.issues });
     }
 
-    const graph = parsed.data as ArchGraph;
+    const graph = parsed.data;
     if (graph.nodes.length === 0) {
       return reply.status(400).send({ error: 'nothing to review', detail: 'The diagram is empty.' });
     }

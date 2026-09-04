@@ -45,6 +45,7 @@ export class TestClient {
     // `self` rather than `this`: the getter below lives in an object literal, so
     // its own `this` is the socket, not the client. Private-field access is
     // lexically scoped to the class body, so `self.#open` is still legal here.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     this.socket = {
       send: (data) => this.#receive(data),
@@ -69,7 +70,7 @@ export class TestClient {
     const states = new Map<number, Record<string, unknown>>();
     for (const [clientId, state] of this.awareness.getStates()) {
       if (clientId === this.doc.clientID) continue;
-      states.set(clientId, state as Record<string, unknown>);
+      states.set(clientId, state);
     }
     return states;
   }
