@@ -1,5 +1,6 @@
 <div
   class="keel-canvas"
+  [class.keel-canvas--connect-ready]="connectHover()"
   #host
   role="application"
   tabindex="0"
@@ -12,6 +13,7 @@
   (wheel)="onWheel($event)"
   (keydown)="onKeyDown($event)"
   (keyup)="onKeyUp($event)"
+  (window:blur)="onWindowBlur()"
   (contextmenu)="$event.preventDefault()"
 >
   <canvas #content class="keel-canvas__layer" aria-hidden="true"></canvas>

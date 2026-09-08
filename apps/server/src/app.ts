@@ -10,6 +10,7 @@ import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
 import { GeminiReviewProvider } from './ai/gemini-provider.ts';
 import type { ReviewProvider } from './ai/provider.ts';
 import { ArchitectureReviewer } from './ai/review.ts';
+import { registerAuth } from './auth/routes.ts';
 import { RoomManager } from './collab/room-manager.ts';
 import type { Socket } from './collab/room.ts';
 import type { Config } from './config.ts';
@@ -85,17 +86,24 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
   const provider = selectProvider(config);
   const reviewer = provider ? new ArchitectureReviewer({ provider }) : null;
 
-  await app.register(cors, { origin: [...config.corsOrigins] });
+  // credentials: true so the session cookie rides cross-origin in dev, where
+  // the Angular dev server (:4200) and this API (:8787) are different origins.
+  await app.register(cors, { origin: [...config.corsOrigins], credentials: true });
   await app.register(websocket);
+
+  const auth = await registerAuth(app, config);
 
   app.get('/health', async () => ({
     status: 'ok',
     rooms: rooms.residentCount,
     review: reviewer ? 'enabled' : 'disabled',
     reviewProvider: reviewer?.providerName ?? null,
+    oauth: { github: auth.github ? 'enabled' : 'disabled', google: auth.google ? 'enabled' : 'disabled' },
   }));
 
-  app.get('/api/diagrams', async () => ({ diagrams: await store.list() }));
+  // Disabled: leaked every room id with no auth check, defeating the
+  // "room id is the shared secret" access model. Unused by the client.
+  // app.get('/api/diagrams', async () => ({ diagrams: await store.list() }));
 
   /**
    * Deterministic validation over HTTP.
@@ -221,21 +229,40 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
    * Serve the built Angular app from the same origin as the API and socket.
    *
    * app-config.ts assumes exactly this in production: it points the client at
-   * `location.origin` rather than a configured URL. Absent in dev and in tests,
-   * where apps/web isn't built, so this degrades to "API only" rather than
-   * failing to boot.
+   * `location.origin` rather than a configured URL. Gated on NODE_ENV rather
+   * than "does the build directory happen to exist", so a production boot with
+   * a missing or empty build fails loudly instead of quietly 404ing every UI
+   * request while /health still reports ok. Dev and test never take this path,
+   * since apps/web isn't built there.
    */
-  const webDist = fileURLToPath(new URL('../../web/dist/web/browser', import.meta.url));
-  if (existsSync(webDist)) {
+  if (config.NODE_ENV === 'production') {
+    const webDist = fileURLToPath(new URL('../../web/dist/web/browser', import.meta.url));
+    if (!existsSync(webDist)) {
+      throw new Error(`Expected the built web app at ${webDist}; refusing to boot without it.`);
+    }
     await app.register(staticPlugin, { root: webDist });
 
     // Angular's router owns any path that isn't ours, so unmatched GETs get
-    // index.html and the client-side router takes it from there. A miss under
-    // /api or /ws is a real 404, not a route the SPA should try to render.
+    // index.html and the client-side router takes it from there. Room ids live
+    // at the URL root (see app.routes.ts) and are unconstrained beyond
+    // [a-zA-Z0-9_-], so a prefix check without a slash boundary would wrongly
+    // claim room ids like "apiteam" or "wsdesign" as API/WS space.
     app.setNotFoundHandler((request, reply) => {
-      if (request.method !== 'GET' || request.url.startsWith('/api') || request.url.startsWith('/ws')) {
+      const isApiRoute = request.url === '/api' || request.url.startsWith('/api/');
+      const isWsRoute = request.url === '/ws' || request.url.startsWith('/ws/');
+      if (request.method !== 'GET' || isApiRoute || isWsRoute) {
         return reply.status(404).send({ error: 'not found' });
       }
+
+      // A dotted last segment (e.g. a hashed JS chunk or an image) is a missing
+      // static asset, not a client route - room ids never contain a dot - so it
+      // should be a real 404 instead of a masked 200 of index.html.
+      const path = request.url.split('?')[0] ?? '';
+      const lastSegment = path.slice(path.lastIndexOf('/') + 1);
+      if (lastSegment.includes('.')) {
+        return reply.status(404).send({ error: 'not found' });
+      }
+
       return reply.sendFile('index.html');
     });
   }

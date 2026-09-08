@@ -21,6 +21,22 @@
       }
     </div>
 
+    <div class="keel-board__tools keel-board__tools--edge" role="toolbar" aria-label="Connection type">
+      <span class="keel-board__tools-label">Connect</span>
+      @for (kind of edgeKinds; track kind) {
+        <button
+          type="button"
+          class="keel-btn keel-btn--ghost keel-board__kind"
+          [class.keel-btn--active]="canvas().edgeKind() === kind"
+          [attr.aria-pressed]="canvas().edgeKind() === kind"
+          [title]="'Alt-drag draws new connections as ' + kind"
+          (click)="setEdgeKind(kind)"
+        >
+          {{ kind }}
+        </button>
+      }
+    </div>
+
     <div class="keel-board__actions">
       <button
         type="button"
@@ -66,6 +82,24 @@
       <span class="keel-board__status" [class]="'keel-board__status--' + collab.status()">
         {{ statusLabel() }}
       </span>
+
+      @if (auth.user(); as user) {
+        <div class="keel-board__identity" [title]="user.name">
+          @if (user.avatarUrl) {
+            <img class="keel-board__avatar" [src]="user.avatarUrl" [alt]="user.name" />
+          }
+          <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()">Sign out</button>
+        </div>
+      } @else {
+        <div class="keel-board__identity">
+          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
+            Sign in with GitHub
+          </button>
+          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
+            Sign in with Google
+          </button>
+        </div>
+      }
 
       <button
         type="button"

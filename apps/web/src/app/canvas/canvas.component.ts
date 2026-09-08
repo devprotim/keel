@@ -57,6 +57,8 @@ export class CanvasComponent {
   /** Kind placed by the next click, or null when the pointer tool is active. */
   readonly placingKind = signal<NodeKind | null>(null);
   readonly edgeKind = signal<EdgeKind>('sync');
+  /** True while Alt/Cmd is held, so the cursor can preview the connect gesture. */
+  readonly connectModifierHeld = signal(false);
 
   private readonly size = signal({ width: 0, height: 0 });
   private readonly theme = signal<CanvasTheme>(FALLBACK_THEME);
@@ -86,6 +88,9 @@ export class CanvasComponent {
       description: `${node.label}, ${node.kind}, ${node.replicas} ${node.replicas === 1 ? 'instance' : 'instances'}`,
     })),
   );
+
+  /** Whether the pointer is over a node it could connect from right now. */
+  readonly connectHover = computed(() => this.hoveredId() !== null && this.connectModifierHeld());
 
   readonly ariaLabel = computed(() => {
     const graph = this.collab.graph();
@@ -422,6 +427,10 @@ export class CanvasComponent {
   onKeyDown(event: KeyboardEvent): void {
     const mod = event.metaKey || event.ctrlKey;
 
+    if (event.key === 'Alt' || event.key === 'Meta') {
+      this.connectModifierHeld.set(true);
+    }
+
     if (event.code === 'Space') {
       this.spaceHeld = true;
       event.preventDefault();
@@ -469,6 +478,15 @@ export class CanvasComponent {
 
   onKeyUp(event: KeyboardEvent): void {
     if (event.code === 'Space') this.spaceHeld = false;
+    if (event.key === 'Alt' || event.key === 'Meta') this.connectModifierHeld.set(false);
+  }
+
+  /**
+   * Alt+Tab and similar OS-level switches steal focus without ever firing
+   * keyup, so the held-modifier signal would otherwise stick on indefinitely.
+   */
+  onWindowBlur(): void {
+    this.connectModifierHeld.set(false);
   }
 
   // --- Commands -----------------------------------------------------------

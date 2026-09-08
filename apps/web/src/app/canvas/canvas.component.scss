@@ -24,6 +24,11 @@
     outline: 2px solid var(--keel-accent);
     outline-offset: -2px;
   }
+
+  // Alt/Cmd held over a node: the click that follows will start a connection.
+  &--connect-ready {
+    cursor: alias;
+  }
 }
 
 .keel-canvas__layer {

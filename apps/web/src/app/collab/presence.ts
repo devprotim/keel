@@ -1,6 +1,8 @@
 /** Identity a peer publishes over awareness. */
 export interface PeerState {
   name: string;
+  /** Set once a peer has signed in with GitHub/Google; null for a guest. */
+  avatarUrl: string | null;
   /** World-space pointer position, or null when the pointer left the canvas. */
   cursor: { x: number; y: number } | null;
   selection: string[];
@@ -58,6 +60,8 @@ export function readPeerState(clientId: number, raw: unknown): Peer | null {
   const name = typeof value['name'] === 'string' ? value['name'] : null;
   if (name === null) return null;
 
+  const avatarUrl = typeof value['avatarUrl'] === 'string' ? value['avatarUrl'] : null;
+
   const rawCursor = value['cursor'];
   let cursor: { x: number; y: number } | null = null;
   if (typeof rawCursor === 'object' && rawCursor !== null) {
@@ -72,5 +76,5 @@ export function readPeerState(clientId: number, raw: unknown): Peer | null {
     ? rawSelection.filter((id): id is string => typeof id === 'string')
     : [];
 
-  return { clientId, name, cursor, selection };
+  return { clientId, name, avatarUrl, cursor, selection };
 }

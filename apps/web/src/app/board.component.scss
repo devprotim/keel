@@ -60,6 +60,20 @@
   white-space: nowrap;
 }
 
+.keel-board__tools--edge {
+  flex: 0 0 auto;
+  align-items: center;
+  padding-left: var(--keel-space-2);
+  border-left: 1px solid var(--keel-border);
+}
+
+.keel-board__tools-label {
+  padding-right: var(--keel-space-1);
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .keel-board__actions {
   display: flex;
   align-items: center;
@@ -88,6 +102,19 @@
   &--self {
     background: var(--keel-n-500);
   }
+}
+
+.keel-board__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+}
+
+.keel-board__avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .keel-board__status {
@@ -145,6 +172,7 @@
   font-size: 11px;
   white-space: nowrap;
   pointer-events: none;
+  max-width: calc(100% - var(--keel-space-4) * 2);
 }
 
 // Below this the three-column layout stops working; the panels stack under the
@@ -152,11 +180,31 @@
 @media (max-width: 1100px) {
   .keel-board__body {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(320px, 1fr) auto;
+    grid-template-rows: minmax(320px, 1fr) auto auto;
     overflow-y: auto;
   }
 
+  // Grid order otherwise follows DOM order (findings, stage, inspector), which
+  // would give the findings panel the tall flexible row and squeeze the canvas
+  // into a track sized to its absolutely-positioned (so height:0) children.
+  // Explicit placement puts the canvas first, matching the comment above.
+  .keel-board__stage {
+    grid-row: 1;
+  }
+
+  keel-findings {
+    grid-row: 2;
+  }
+
+  keel-inspector {
+    grid-row: 3;
+  }
+
+  // Full sentence no longer fits a single pill at this width; wrap it instead
+  // of hiding it, since it's the only thing that tells you connections exist.
   .keel-board__hint {
-    display: none;
+    white-space: normal;
+    text-align: center;
+    border-radius: var(--keel-radius);
   }
 }

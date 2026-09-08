@@ -8,7 +8,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { NODE_KINDS, type NodeKind } from '@keel/shared';
+import { EDGE_KINDS, NODE_KINDS, type EdgeKind, type NodeKind } from '@keel/shared';
+import { AuthService } from './auth/auth.service';
 import { CanvasComponent } from './canvas/canvas.component';
 import { CollabService } from './collab/collab.service';
 import { presenceColor } from './core/theme';
@@ -32,12 +33,14 @@ import { InspectorComponent } from './panels/inspector.component';
 })
 export class BoardComponent {
   protected readonly collab = inject(CollabService);
+  protected readonly auth = inject(AuthService);
 
   /** Bound from the route by withComponentInputBinding. */
   readonly roomId = input.required<string>();
 
   private readonly canvasRef = viewChild.required(CanvasComponent);
   readonly nodeKinds = NODE_KINDS;
+  readonly edgeKinds = EDGE_KINDS;
 
   readonly theme = signal<'light' | 'dark'>(readStoredTheme());
   readonly isEmpty = computed(() => this.collab.graph().nodes.length === 0);
@@ -71,6 +74,15 @@ export class BoardComponent {
         // Storage unavailable; the choice simply will not persist.
       }
     });
+
+    // Real identity overwrites the generated guest name/avatar once a session
+    // resolves; a signed-out visitor is untouched and keeps the guest name.
+    effect(() => {
+      const user = this.auth.user();
+      if (user) this.collab.setIdentity(user.name, user.avatarUrl);
+    });
+
+    void this.auth.refresh();
   }
 
   canvas(): CanvasComponent {
@@ -80,6 +92,10 @@ export class BoardComponent {
   toggleKind(kind: NodeKind): void {
     const canvas = this.canvas();
     canvas.placingKind.set(canvas.placingKind() === kind ? null : kind);
+  }
+
+  setEdgeKind(kind: EdgeKind): void {
+    this.canvas().edgeKind.set(kind);
   }
 
   kindColor(kind: NodeKind): string {
@@ -100,6 +116,18 @@ export class BoardComponent {
 
   toggleTheme(): void {
     this.theme.update((current) => (current === 'dark' ? 'light' : 'dark'));
+  }
+
+  loginWithGithub(): void {
+    this.auth.loginWithGithub(`/${this.roomId()}`);
+  }
+
+  loginWithGoogle(): void {
+    this.auth.loginWithGoogle(`/${this.roomId()}`);
+  }
+
+  logout(): void {
+    void this.auth.logout();
   }
 
   /** Seed the room, as one undo step so it can be cleared with a single Ctrl+Z. */

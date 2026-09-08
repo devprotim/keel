@@ -42,6 +42,7 @@ export class CollabService {
   readonly #canUndo = signal(false);
   readonly #canRedo = signal(false);
   readonly #displayName = signal(loadDisplayName());
+  readonly #avatarUrl = signal<string | null>(null);
   readonly #roomId = signal<string | null>(null);
 
   readonly graph = this.#graph.asReadonly();
@@ -70,6 +71,7 @@ export class CollabService {
   readonly canUndo = this.#canUndo.asReadonly();
   readonly canRedo = this.#canRedo.asReadonly();
   readonly displayName = this.#displayName.asReadonly();
+  readonly avatarUrl = this.#avatarUrl.asReadonly();
   readonly roomId = this.#roomId.asReadonly();
 
   /**
@@ -122,6 +124,7 @@ export class CollabService {
 
     this.#provider.awareness.setLocalState({
       name: this.#displayName(),
+      avatarUrl: this.#avatarUrl(),
       cursor: null,
       selection: [],
     });
@@ -169,10 +172,16 @@ export class CollabService {
   }
 
   setDisplayName(name: string): void {
+    this.setIdentity(name, this.#avatarUrl());
+  }
+
+  /** Overwrites the generated guest name once a GitHub/Google sign-in resolves. */
+  setIdentity(name: string, avatarUrl: string | null): void {
     const trimmed = name.trim() || 'Anonymous';
     this.#displayName.set(trimmed);
+    this.#avatarUrl.set(avatarUrl);
     saveDisplayName(trimmed);
-    this.#patchAwareness({ name: trimmed });
+    this.#patchAwareness({ name: trimmed, avatarUrl });
   }
 
   // --- Mutations ----------------------------------------------------------
@@ -252,7 +261,9 @@ export class CollabService {
    * so writing only the cursor would wipe the name and selection. Reading the
    * current state and spreading it is what keeps the three independent.
    */
-  #patchAwareness(patch: Partial<{ name: string; cursor: { x: number; y: number } | null; selection: string[] }>): void {
+  #patchAwareness(
+    patch: Partial<{ name: string; avatarUrl: string | null; cursor: { x: number; y: number } | null; selection: string[] }>,
+  ): void {
     const awareness = this.#provider?.awareness;
     if (!awareness) return;
 

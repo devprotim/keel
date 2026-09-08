@@ -13,9 +13,15 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.122.0
         version: 0.122.0(zod@4.5.4)
+      '@fastify/cookie':
+        specifier: ^11.1.2
+        version: 11.1.2
       '@fastify/cors':
         specifier: ^11.3.0
         version: 11.3.0
+      '@fastify/oauth2':
+        specifier: ^8.3.0
+        version: 8.3.0
       '@fastify/static':
         specifier: ^10.1.3
         version: 10.1.3
@@ -31,6 +37,9 @@ importers:
       fastify:
         specifier: ^5.12.1
         version: 5.12.1
+      jose:
+        specifier: ^6.2.12
+        version: 6.2.12
       lib0:
         specifier: ^0.2.117
         version: 0.2.117
@@ -86,6 +95,9 @@ importers:
       '@angular/router':
         specifier: ^22.1.0
         version: 22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(@angular/platform-browser@22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)))(rxjs@7.8.2)
+      '@angular/service-worker':
+        specifier: ^22.1.0
+        version: 22.1.5(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2)
       '@keel/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -116,7 +128,7 @@ importers:
     devDependencies:
       '@angular/build':
         specifier: ^22.1.6
-        version: 22.1.6(@angular/compiler-cli@22.1.4(@angular/compiler@22.1.4)(typescript@6.0.3))(@angular/compiler@22.1.4)(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(@angular/platform-browser@22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)))(@types/node@26.4.0)(chokidar@5.0.0)(postcss@8.5.26)(tslib@2.8.1)(typescript@6.0.3)(vitest@4.1.11(@types/node@26.4.0)(jsdom@28.1.0)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(sass@1.101.0)))
+        version: 22.1.6(@angular/compiler-cli@22.1.4(@angular/compiler@22.1.4)(typescript@6.0.3))(@angular/compiler@22.1.4)(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(@angular/platform-browser@22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)))(@angular/service-worker@22.1.5(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@types/node@26.4.0)(chokidar@5.0.0)(postcss@8.5.26)(tslib@2.8.1)(typescript@6.0.3)(vitest@4.1.11(@types/node@26.4.0)(jsdom@28.1.0)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(sass@1.101.0)))
       '@angular/cli':
         specifier: ^22.1.6
         version: 22.1.6(@types/node@26.4.0)(chokidar@5.0.0)
@@ -356,6 +368,14 @@ packages:
       '@angular/common': 22.1.4
       '@angular/core': 22.1.4
       '@angular/platform-browser': 22.1.4
+      rxjs: ^6.5.3 || ^7.4.0
+
+  '@angular/service-worker@22.1.5':
+    resolution: {integrity: sha512-xNxUVoc5CRUeWj59LC0qBwmWen6qcmx5pbBzXjz8k3GCo42s8a6RDNSzZFAvqqxZmtvUGsogyUepEnng0yqglQ==}
+    engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0}
+    hasBin: true
+    peerDependencies:
+      '@angular/core': 22.1.5
       rxjs: ^6.5.3 || ^7.4.0
 
   '@anthropic-ai/sdk@0.122.0':
@@ -727,6 +747,9 @@ packages:
   '@fastify/ajv-compiler@4.0.6':
     resolution: {integrity: sha512-NtuzM0SfaMJbGlnjr9LWQUN5LzgSrbB8tf/wRZNas+4E1O/Nmzl53e7ruT61HDZyRCJGC6FxIogmNZO1c5ETBA==}
 
+  '@fastify/cookie@11.1.2':
+    resolution: {integrity: sha512-Dtrpk/YOGUsbRMvP/8ZqPpwnMRv0qSqodFdoQ2B589Obc7jw4s4Qla+cV72Bsm7WsZJnqlYFX/i7uSBq0xzg6g==}
+
   '@fastify/cors@11.3.0':
     resolution: {integrity: sha512-ggQGua+xHv1MvePbPr0v//xLYEsCXbWspquXCJS9Ot5YoRXq8J8ZWzHnxDBVnbtXosvistXo6LtNzOJswf64Fw==}
 
@@ -741,6 +764,9 @@ packages:
 
   '@fastify/merge-json-schemas@0.2.1':
     resolution: {integrity: sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==}
+
+  '@fastify/oauth2@8.3.0':
+    resolution: {integrity: sha512-ZVjoOkBeWRBYPRIL3XiWzd30DqYMkRaoyxBxIUE0ciICtXpFLX0YpM4JiUwauF3vObqsqntF2b8GDXJ9/Gpr5A==}
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
@@ -762,6 +788,24 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@hapi/boom@10.0.1':
+    resolution: {integrity: sha512-ERcCZaEjdH3OgSJlyjVk8pHIFeus91CjKP3v+MpgBNp5IvGzP2l/bRiD78nqYcKPaZdbKkK5vDBVPd2ohHBlsA==}
+
+  '@hapi/bourne@3.0.0':
+    resolution: {integrity: sha512-Waj1cwPXJDucOib4a3bAISsKJVb15MKi9IvmTI/7ssVEm6sywXGjVJDhl6/umt1pK1ZS7PacXU3A1PmFKHEZ2w==}
+
+  '@hapi/hoek@11.0.7':
+    resolution: {integrity: sha512-HV5undWkKzcB4RZUusqOpcgxOaq6VOAH7zhhIr2g3G8NF/MlFO75SjOr2NfuSx0Mh40+1FqCkagKLJRykUWoFQ==}
+
+  '@hapi/hoek@9.3.0':
+    resolution: {integrity: sha512-/c6rf4UJlmHlC9b5BaNvzAcFv7HZ2QHaV0D4/HNlBdvFnvQq8RI4kYdhyPCl7Xj+oWvTWQ8ujhqS53LIgAe6KQ==}
+
+  '@hapi/topo@5.1.0':
+    resolution: {integrity: sha512-foQZKJig7Ob0BMAYBfcJk8d77QtOe7Wo4ox7ff1lQYoNNAb6jwcY1ncdoy2e9wQZzvNy7ODZCYJkK8kzmcAnAg==}
+
+  '@hapi/wreck@18.1.2':
+    resolution: {integrity: sha512-3dMnV2pfhQiyEqu8DL3VBmxkdLiRDiiUDuG79Dp+UK1gL9ZxAfDOUhB6k3D5MLqcgJJ1IARyGFhwoc1NITr/pg==}
 
   '@harperfast/extended-iterable@1.0.3':
     resolution: {integrity: sha512-sSAYhQca3rDWtQUHSAPeO7axFIUJOI6hn1gjRC5APVE1a90tuyT8f5WIgRsFhhWA7htNkju2veB9eWL6YHi/Lw==}
@@ -1710,6 +1754,15 @@ packages:
     resolution: {integrity: sha512-RiD4OZJ4yuaM1aXb3pt1gjDSWwkP0jrgiCuoaBls1eabcrDmlsNuQv0ekxbcGgCRPdSJvmHRZIHHmFPzei8w3Q==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
 
+  '@sideway/address@4.1.5':
+    resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
+
+  '@sideway/formula@3.0.1':
+    resolution: {integrity: sha512-/poHZJJVjx3L+zVD6g9KgHfYnb443oi7wLu/XKojDviHy6HOEOA6z1Trk5aR1dGcmPenJEgb2sK2I80LeS3MIg==}
+
+  '@sideway/pinpoint@2.0.0':
+    resolution: {integrity: sha512-RNiOoTPkptFtSVzQevY/yWtZwf/RxyVnPy/OcA9HBM3MlGDnBEYL5B41H0MTn0Uec8Hi+2qUtTfG2WWZBmMejQ==}
+
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
 
@@ -2052,6 +2105,10 @@ packages:
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
+
+  cookie@2.0.1:
+    resolution: {integrity: sha512-yuToqVvRrj6pfDXREyQAAv8SkAEk/8GS3jQRTiUMm66TVtBYmqQeoEjL2Lmq8Rpo6271vH76InTChTitEAm65w==}
+    engines: {node: '>=22'}
 
   cors@2.8.6:
     resolution: {integrity: sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==}
@@ -2539,8 +2596,11 @@ packages:
   isomorphic.js@0.2.5:
     resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
 
-  jose@6.2.10:
-    resolution: {integrity: sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==}
+  joi@17.13.7:
+    resolution: {integrity: sha512-MF80Dm5Y2veNy8QWVx9Bj3ui4mo7+VPSPsR1M+oaHXV0Gx6zGX9a2F+OZG3Blby9tOlzU9Rs5FUimlEhbKtfnQ==}
+
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -3141,6 +3201,9 @@ packages:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
 
+  simple-oauth2@5.1.0:
+    resolution: {integrity: sha512-gWDa38Ccm4MwlG5U7AlcJxPv3lvr80dU7ARJWrGdgvOKyzSj1gr3GBPN1rABTedAYvC/LsGYoFuFxwDBPtGEbw==}
+
   slice-ansi@9.0.0:
     resolution: {integrity: sha512-SO/3iYL5S3W57LLEniscOGPZgOqZUPCx6d3dB+52B80yJ0XstzsC/eV8gnA4tM3MHDrKz+OCFSLNjswdSC+/bA==}
     engines: {node: '>=22'}
@@ -3670,7 +3733,7 @@ snapshots:
       eslint: 10.9.1
       typescript: 6.0.3
 
-  '@angular/build@22.1.6(@angular/compiler-cli@22.1.4(@angular/compiler@22.1.4)(typescript@6.0.3))(@angular/compiler@22.1.4)(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(@angular/platform-browser@22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)))(@types/node@26.4.0)(chokidar@5.0.0)(postcss@8.5.26)(tslib@2.8.1)(typescript@6.0.3)(vitest@4.1.11(@types/node@26.4.0)(jsdom@28.1.0)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(sass@1.101.0)))':
+  '@angular/build@22.1.6(@angular/compiler-cli@22.1.4(@angular/compiler@22.1.4)(typescript@6.0.3))(@angular/compiler@22.1.4)(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(@angular/platform-browser@22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)))(@angular/service-worker@22.1.5(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@types/node@26.4.0)(chokidar@5.0.0)(postcss@8.5.26)(tslib@2.8.1)(typescript@6.0.3)(vitest@4.1.11(@types/node@26.4.0)(jsdom@28.1.0)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(sass@1.101.0)))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@angular-devkit/architect': 0.2201.6(chokidar@5.0.0)
@@ -3705,6 +3768,7 @@ snapshots:
     optionalDependencies:
       '@angular/core': 22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)
       '@angular/platform-browser': 22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))
+      '@angular/service-worker': 22.1.5(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2)
       lmdb: 3.5.6
       postcss: 8.5.26
       vitest: 4.1.11(@types/node@26.4.0)(jsdom@28.1.0)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(sass@1.101.0))
@@ -3796,6 +3860,12 @@ snapshots:
       '@angular/common': 22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2)
       '@angular/core': 22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)
       '@angular/platform-browser': 22.1.4(@angular/common@22.1.4(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))
+      rxjs: 7.8.2
+      tslib: 2.8.1
+
+  '@angular/service-worker@22.1.5(@angular/core@22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2))(rxjs@7.8.2)':
+    dependencies:
+      '@angular/core': 22.1.4(@angular/compiler@22.1.4)(rxjs@7.8.2)
       rxjs: 7.8.2
       tslib: 2.8.1
 
@@ -4103,6 +4173,11 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.20.0)
       fast-uri: 4.1.3
 
+  '@fastify/cookie@11.1.2':
+    dependencies:
+      cookie: 2.0.1
+      fastify-plugin: 6.0.0
+
   '@fastify/cors@11.3.0':
     dependencies:
       fastify-plugin: 6.0.0
@@ -4119,6 +4194,14 @@ snapshots:
   '@fastify/merge-json-schemas@0.2.1':
     dependencies:
       dequal: 2.0.3
+
+  '@fastify/oauth2@8.3.0':
+    dependencies:
+      '@fastify/cookie': 11.1.2
+      fastify-plugin: 6.0.0
+      simple-oauth2: 5.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@fastify/proxy-addr@5.1.0':
     dependencies:
@@ -4164,6 +4247,26 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  '@hapi/boom@10.0.1':
+    dependencies:
+      '@hapi/hoek': 11.0.7
+
+  '@hapi/bourne@3.0.0': {}
+
+  '@hapi/hoek@11.0.7': {}
+
+  '@hapi/hoek@9.3.0': {}
+
+  '@hapi/topo@5.1.0':
+    dependencies:
+      '@hapi/hoek': 9.3.0
+
+  '@hapi/wreck@18.1.2':
+    dependencies:
+      '@hapi/boom': 10.0.1
+      '@hapi/bourne': 3.0.0
+      '@hapi/hoek': 11.0.7
 
   '@harperfast/extended-iterable@1.0.3':
     optional: true
@@ -4384,7 +4487,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.7.0(express@5.2.1)
       hono: 4.13.5
-      jose: 6.2.10
+      jose: 6.2.12
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -4406,7 +4509,7 @@ snapshots:
       express: 5.2.1
       express-rate-limit: 8.7.0(express@5.2.1)
       hono: 4.13.5
-      jose: 6.2.10
+      jose: 6.2.12
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
@@ -4826,6 +4929,14 @@ snapshots:
       typescript: 6.0.3
     transitivePeerDependencies:
       - chokidar
+
+  '@sideway/address@4.1.5':
+    dependencies:
+      '@hapi/hoek': 9.3.0
+
+  '@sideway/formula@3.0.1': {}
+
+  '@sideway/pinpoint@2.0.0': {}
 
   '@stablelib/base64@1.0.1': {}
 
@@ -5272,6 +5383,8 @@ snapshots:
   cookie@0.7.2: {}
 
   cookie@1.1.1: {}
+
+  cookie@2.0.1: {}
 
   cors@2.8.6:
     dependencies:
@@ -5837,7 +5950,15 @@ snapshots:
 
   isomorphic.js@0.2.5: {}
 
-  jose@6.2.10: {}
+  joi@17.13.7:
+    dependencies:
+      '@hapi/hoek': 9.3.0
+      '@hapi/topo': 5.1.0
+      '@sideway/address': 4.1.5
+      '@sideway/formula': 3.0.1
+      '@sideway/pinpoint': 2.0.0
+
+  jose@6.2.12: {}
 
   js-tokens@10.0.0: {}
 
@@ -6518,6 +6639,15 @@ snapshots:
   siginfo@2.0.0: {}
 
   signal-exit@4.1.0: {}
+
+  simple-oauth2@5.1.0:
+    dependencies:
+      '@hapi/hoek': 11.0.7
+      '@hapi/wreck': 18.1.2
+      debug: 4.4.3
+      joi: 17.13.7
+    transitivePeerDependencies:
+      - supports-color
 
   slice-ansi@9.0.0:
     dependencies:

@@ -35,6 +35,22 @@ const schema = z.object({
 
   /** Update count after which the room is compacted into a fresh snapshot. */
   COMPACT_AFTER_UPDATES: z.coerce.number().int().positive().default(200),
+
+  /**
+   * OAuth login. Each provider is enabled independently by setting both of its
+   * vars; leaving a pair unset disables only that provider's login route. This
+   * is identity-only: rooms stay open to anyone with the link either way.
+   */
+  GITHUB_CLIENT_ID: z.string().min(1).optional(),
+  GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+
+  /** Signs the session cookie. Required once any OAuth provider is enabled. */
+  SESSION_SECRET: z.string().min(32).optional(),
+
+  /** Base URL used to build OAuth callback URIs; can't be derived from a request behind a proxy. */
+  PUBLIC_URL: z.string().url().default('http://localhost:8787'),
 });
 
 export type Config = Readonly<z.infer<typeof schema>> & { corsOrigins: readonly string[] };
@@ -44,6 +60,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.') || '(root)'}: ${i.message}`);
     throw new Error(`Invalid environment configuration:\n${issues.join('\n')}`);
+  }
+
+  const data = parsed.data;
+  const oauthIssues: string[] = [];
+  if (data.GITHUB_CLIENT_ID && !data.GITHUB_CLIENT_SECRET) oauthIssues.push('GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set');
+  if (data.GITHUB_CLIENT_SECRET && !data.GITHUB_CLIENT_ID) oauthIssues.push('GITHUB_CLIENT_ID is required when GITHUB_CLIENT_SECRET is set');
+  if (data.GOOGLE_CLIENT_ID && !data.GOOGLE_CLIENT_SECRET) oauthIssues.push('GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set');
+  if (data.GOOGLE_CLIENT_SECRET && !data.GOOGLE_CLIENT_ID) oauthIssues.push('GOOGLE_CLIENT_ID is required when GOOGLE_CLIENT_SECRET is set');
+  const anyOAuthProvider =
+    (data.GITHUB_CLIENT_ID && data.GITHUB_CLIENT_SECRET) || (data.GOOGLE_CLIENT_ID && data.GOOGLE_CLIENT_SECRET);
+  if (anyOAuthProvider && !data.SESSION_SECRET) oauthIssues.push('SESSION_SECRET is required once a login provider is enabled');
+  if (oauthIssues.length > 0) {
+    throw new Error(`Invalid environment configuration:\n${oauthIssues.map((m) => `  ${m}`).join('\n')}`);
   }
 
   return {

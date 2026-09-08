@@ -288,6 +288,8 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
     traceNodeShape(ctx, rect, node.kind);
     ctx.stroke();
     ctx.globalAlpha = 1;
+
+    drawConnectHandles(ctx, rect, theme);
   }
 
   drawNodeText(ctx, sceneNode, theme);
@@ -325,6 +327,35 @@ function drawAccentBar(
   ctx.clip();
   ctx.fillStyle = color;
   ctx.fillRect(rect.x, rect.y, ACCENT_BAR_WIDTH, rect.h);
+  ctx.restore();
+}
+
+/**
+ * Small dots at the midpoint of each side of a hovered node.
+ *
+ * Alt/Cmd-drag from anywhere on a node starts a connection, but nothing about
+ * a plain rectangle says so. These mark the node as a link source the moment
+ * the pointer arrives, before the modifier key is even pressed.
+ */
+function drawConnectHandles(ctx: CanvasRenderingContext2D, rect: Rect, theme: CanvasTheme): void {
+  const radius = 3.5;
+  const points: Point[] = [
+    { x: rect.x + rect.w / 2, y: rect.y },
+    { x: rect.x + rect.w, y: rect.y + rect.h / 2 },
+    { x: rect.x + rect.w / 2, y: rect.y + rect.h },
+    { x: rect.x, y: rect.y + rect.h / 2 },
+  ];
+
+  ctx.save();
+  ctx.fillStyle = theme.selectionFill;
+  ctx.strokeStyle = theme.selection;
+  ctx.lineWidth = 1.5;
+  for (const point of points) {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
