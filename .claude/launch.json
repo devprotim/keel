@@ -1,0 +1,37 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "keel-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@keel/web",
+        "dev"
+      ],
+      "port": 4200
+    },
+    {
+      "name": "keel-server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@keel/server",
+        "dev"
+      ],
+      "port": 8787
+    },
+    {
+      "name": "mock-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4311",
+        "--directory",
+        "/private/tmp/claude-501/-Users-devprotimsikdar-Projects-resume-update/9269a1bf-c2a1-4bfa-bfda-67b8d60899da/scratchpad/keel-mocks"
+      ],
+      "port": 4311
+    }
+  ]
+}

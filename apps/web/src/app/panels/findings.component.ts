@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import type { Finding, Severity } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
 import { ReviewService } from './review.service';
@@ -19,6 +19,14 @@ export class FindingsComponent {
   protected readonly review = inject(ReviewService);
 
   readonly revealed = output<string>();
+
+  /**
+   * Collapsed by default: a dock permanently open over the canvas is the same
+   * chrome-tax the old docked panel was, just relocated. Collapsed, it is one
+   * pill with the counts that matter; expanding is one click away whenever
+   * there is something to actually read.
+   */
+  readonly expanded = signal(false);
 
   readonly report = computed(() => this.collab.report());
   readonly graphEmpty = computed(() => this.collab.graph().nodes.length === 0);
@@ -56,6 +64,10 @@ export class FindingsComponent {
 
   reveal(row: FindingRow): void {
     if (row.targetId) this.revealed.emit(row.targetId);
+  }
+
+  toggleExpanded(): void {
+    this.expanded.update((current) => !current);
   }
 
   pickModel(event: Event): void {

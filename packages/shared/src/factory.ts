@@ -1,15 +1,16 @@
 import type { ArchEdge, ArchGraph, ArchNode, EdgeKind, NodeKind } from './types.js';
 
-/** Default box size per kind, in world units. */
-const DEFAULT_SIZE: Record<NodeKind, { w: number; h: number }> = {
-  service: { w: 180, h: 80 },
-  datastore: { w: 160, h: 90 },
-  queue: { w: 170, h: 70 },
-  cache: { w: 150, h: 70 },
-  gateway: { w: 180, h: 70 },
-  job: { w: 170, h: 70 },
-  external: { w: 170, h: 80 },
-};
+/**
+ * Default box size, in world units. One size for every kind.
+ *
+ * Kind identity used to be carried partly by silhouette (a cylinder for a
+ * datastore, a hexagon for a gateway) and partly by per-kind dimensions. Both
+ * made the canvas read as uneven rather than typed. Identity now lives entirely
+ * in the kind chip drawn inside the node (see `renderer.ts`), so every node gets
+ * the same generous interior instead of some being visibly more cramped than
+ * others.
+ */
+export const DEFAULT_NODE_SIZE = { w: 184, h: 84 };
 
 /** Human-readable default label per kind. */
 const DEFAULT_LABEL: Record<NodeKind, string> = {
@@ -34,15 +35,14 @@ export function newId(prefix: string): string {
 }
 
 export function createNode(kind: NodeKind, x: number, y: number, overrides: Partial<ArchNode> = {}): ArchNode {
-  const size = DEFAULT_SIZE[kind];
   return {
     id: newId('n'),
     kind,
     label: DEFAULT_LABEL[kind],
     x,
     y,
-    w: size.w,
-    h: size.h,
+    w: DEFAULT_NODE_SIZE.w,
+    h: DEFAULT_NODE_SIZE.h,
     // Defaulting to 1 is deliberate. Starting at 2 would silently suppress the
     // single-point-of-failure rule and let the author believe the design is
     // redundant when they never said so.

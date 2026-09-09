@@ -150,6 +150,17 @@
   }
 }
 
+// Floating chrome over the canvas: the brand/presence bars, the kind rail, the
+// view-tools bar, and the base every panel-turned-card (findings, inspector)
+// sits on. One shadow/border/radius definition so every island reads as part
+// of the same system instead of drifting toward its own weight.
+.keel-island {
+  background: var(--keel-surface);
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius);
+  box-shadow: var(--keel-shadow-lg);
+}
+
 .keel-kind-dot {
   width: 9px;
   height: 9px;

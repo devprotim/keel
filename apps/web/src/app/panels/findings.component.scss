@@ -1,12 +1,31 @@
 :host {
   display: block;
-  height: 100%;
-  min-height: 0;
-  border-right: 1px solid var(--keel-border);
 }
 
-.keel-findings {
-  height: 100%;
+// The expanded dock. A fixed width and a viewport-relative height cap: the
+// host is an absolutely-positioned, auto-height island, so it has no definite
+// height of its own for a percentage on this child to resolve against.
+.keel-findings--expanded {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-height: min(75vh, 640px);
+  overflow: hidden;
+}
+
+// Board.component.scss switches this host's positioning to a full-width
+// left/right span below this breakpoint; the fixed width here has to relax
+// to match, or the host would stretch around a card that does not.
+@media (max-width: 720px) {
+  .keel-findings--expanded {
+    width: 100%;
+  }
+}
+
+.keel-findings__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
 }
 
 .keel-findings__score {
@@ -154,4 +173,72 @@
 
 .keel-findings__model {
   margin-bottom: var(--keel-space-2);
+}
+
+// --- Collapsed pill --------------------------------------------------------
+
+.keel-findings-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-3);
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--keel-border);
+  color: var(--keel-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+
+  &:hover {
+    border-color: var(--keel-border-strong);
+    background: var(--keel-n-50);
+  }
+}
+
+.keel-findings-pill__bucket {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--keel-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.keel-findings-pill__clean {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--keel-severity-ok);
+  font-weight: 600;
+}
+
+.keel-findings-pill__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+
+  &--error {
+    background: var(--keel-severity-error);
+  }
+  &--warning {
+    background: var(--keel-severity-warning);
+  }
+  &--info {
+    background: var(--keel-severity-info);
+  }
+  &--ok {
+    background: var(--keel-severity-ok);
+  }
+}
+
+.keel-findings-pill__divider {
+  width: 1px;
+  height: 18px;
+  background: var(--keel-border);
+}
+
+.keel-findings-pill__chevron {
+  color: var(--keel-text-muted);
+  font-size: 11px;
 }

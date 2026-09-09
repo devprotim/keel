@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
   inject,
@@ -10,7 +11,7 @@ import {
 } from '@angular/core';
 import { EDGE_KINDS, NODE_KINDS, type EdgeKind, type NodeKind } from '@keel/shared';
 import { AuthService } from './auth/auth.service';
-import { CanvasComponent } from './canvas/canvas.component';
+import { CanvasComponent, NODE_DRAG_MIME } from './canvas/canvas.component';
 import { CollabService } from './collab/collab.service';
 import { presenceColor } from './core/theme';
 import { exampleGraph } from './core/example-graph';
@@ -18,11 +19,15 @@ import { FindingsComponent } from './panels/findings.component';
 import { InspectorComponent } from './panels/inspector.component';
 
 /**
- * The board: one room, one diagram, three panels around a canvas.
+ * The board: one room, one diagram, chrome floating over a full-bleed canvas.
  *
- * Layout is deliberately fixed rather than dockable. Everything on screen earns
- * its place, and a resizable panel system would be a lot of machinery in service
- * of a preference nobody asked for.
+ * Chrome used to be a fixed three-column frame (a toolbar header plus two
+ * docked side panels) that permanently claimed most of the window for controls
+ * that are idle most of the time. It is islands now — brand/room, presence,
+ * the kind rail, view tools, the review dock and the inspector card all float
+ * over the canvas and claim space only while they have something to say, so
+ * the diagram — the actual product — gets the screen instead of the chrome
+ * around it.
  */
 @Component({
   selector: 'keel-board',
@@ -63,6 +68,10 @@ export class BoardComponent {
     return count === 0 ? 'You are the only person here' : `${count + 1} people editing`;
   });
 
+  /** Brief "Copied" confirmation after the room chip is clicked. */
+  readonly roomIdCopied = signal(false);
+  private copyResetHandle: ReturnType<typeof setTimeout> | null = null;
+
   constructor() {
     effect(() => this.collab.connect(this.roomId()));
 
@@ -83,6 +92,10 @@ export class BoardComponent {
     });
 
     void this.auth.refresh();
+
+    inject(DestroyRef).onDestroy(() => {
+      if (this.copyResetHandle !== null) clearTimeout(this.copyResetHandle);
+    });
   }
 
   canvas(): CanvasComponent {
@@ -96,6 +109,41 @@ export class BoardComponent {
 
   setEdgeKind(kind: EdgeKind): void {
     this.canvas().edgeKind.set(kind);
+  }
+
+  /**
+   * Arm the rail tile for the whole drag, reusing `placingKind` — the same
+   * signal the click-to-arm fallback uses. The two gesture systems (native
+   * drag events here, pointer events on the canvas) never overlap, so one
+   * piece of state can serve both without them stepping on each other.
+   */
+  onKindDragStart(event: DragEvent, kind: NodeKind): void {
+    if (!event.dataTransfer) return;
+    event.dataTransfer.setData(NODE_DRAG_MIME, kind);
+    event.dataTransfer.effectAllowed = 'copy';
+    this.canvas().placingKind.set(kind);
+  }
+
+  onKindDragEnd(): void {
+    this.canvas().placingKind.set(null);
+  }
+
+  deselectAll(): void {
+    this.canvas().selection.set(new Set());
+  }
+
+  async copyRoomId(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.roomId());
+    } catch {
+      // Clipboard access can be denied by permissions policy; the room id is
+      // still visible in the chip and in the URL, so nothing is lost.
+      return;
+    }
+
+    this.roomIdCopied.set(true);
+    if (this.copyResetHandle !== null) clearTimeout(this.copyResetHandle);
+    this.copyResetHandle = setTimeout(() => this.roomIdCopied.set(false), 1500);
   }
 
   kindColor(kind: NodeKind): string {

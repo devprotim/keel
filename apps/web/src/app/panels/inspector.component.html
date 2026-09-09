@@ -1,7 +1,31 @@
-<aside class="keel-panel keel-inspector">
+<aside class="keel-panel keel-island keel-inspector">
   <header class="keel-panel__header">
     <span>{{ title() }}</span>
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon keel-inspector__close"
+      aria-label="Close"
+      (click)="closed.emit()"
+    >
+      ✕
+    </button>
   </header>
+
+  @if (selectionFindings().length > 0) {
+    <div
+      class="keel-inspector__findings keel-inspector__findings--{{ worstFindingSeverity() }}"
+    >
+      <span class="keel-severity keel-severity--{{ worstFindingSeverity() }}">
+        {{ selectionFindings().length }}
+        {{ selectionFindings().length === 1 ? 'issue' : 'issues' }} here
+      </span>
+      <ul class="keel-inspector__findings-list">
+        @for (finding of selectionFindings(); track finding.ruleId + finding.title) {
+          <li>{{ finding.title }}</li>
+        }
+      </ul>
+    </div>
+  }
 
   @if (node(); as selected) {
     <div class="keel-panel__body">

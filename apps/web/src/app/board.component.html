@@ -1,128 +1,188 @@
 <div class="keel-board">
-  <header class="keel-board__header">
-    <div class="keel-board__brand">
-      <span class="keel-board__logo" aria-hidden="true"></span>
-      <strong>Keel</strong>
-      <span class="keel-board__room" [title]="'Room ' + roomId()">{{ roomId() }}</span>
-    </div>
+  <keel-canvas class="keel-board__canvas" />
 
-    <div class="keel-board__tools" role="toolbar" aria-label="Add components">
-      @for (kind of nodeKinds; track kind) {
-        <button
-          type="button"
-          class="keel-btn keel-btn--ghost keel-board__kind"
-          [class.keel-btn--active]="canvas().placingKind() === kind"
-          [attr.aria-pressed]="canvas().placingKind() === kind"
-          (click)="toggleKind(kind)"
-        >
-          <span class="keel-kind-dot" [style.background]="kindColor(kind)"></span>
-          {{ kind }}
-        </button>
-      }
-    </div>
-
-    <div class="keel-board__tools keel-board__tools--edge" role="toolbar" aria-label="Connection type">
-      <span class="keel-board__tools-label">Connect</span>
-      @for (kind of edgeKinds; track kind) {
-        <button
-          type="button"
-          class="keel-btn keel-btn--ghost keel-board__kind"
-          [class.keel-btn--active]="canvas().edgeKind() === kind"
-          [attr.aria-pressed]="canvas().edgeKind() === kind"
-          [title]="'Alt-drag draws new connections as ' + kind"
-          (click)="setEdgeKind(kind)"
-        >
-          {{ kind }}
-        </button>
-      }
-    </div>
-
-    <div class="keel-board__actions">
-      <button
-        type="button"
-        class="keel-btn keel-btn--ghost"
-        [disabled]="!collab.canUndo()"
-        (click)="canvas().undoFromToolbar()"
-        title="Undo (Cmd/Ctrl+Z)"
-      >
-        Undo
-      </button>
-      <button
-        type="button"
-        class="keel-btn keel-btn--ghost"
-        [disabled]="!collab.canRedo()"
-        (click)="canvas().redoFromToolbar()"
-        title="Redo (Shift+Cmd/Ctrl+Z)"
-      >
-        Redo
-      </button>
-      <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
-        Fit
-      </button>
-      @if (isEmpty()) {
-        <button type="button" class="keel-btn" (click)="loadExample()">Load example</button>
-      }
-
-      <div class="keel-board__peers" [attr.aria-label]="peerLabel()">
-        @for (peer of collab.peers(); track peer.clientId) {
-          <span
-            class="keel-board__peer"
-            [style.background]="peerColor(peer.clientId)"
-            [title]="peer.name"
-            >{{ initials(peer.name) }}</span
-          >
-        }
-        <span
-          class="keel-board__peer keel-board__peer--self"
-          [title]="collab.displayName() + ' (you)'"
-          >{{ initials(collab.displayName()) }}</span
-        >
-      </div>
-
-      <span class="keel-board__status" [class]="'keel-board__status--' + collab.status()">
-        {{ statusLabel() }}
-      </span>
-
-      @if (auth.user(); as user) {
-        <div class="keel-board__identity" [title]="user.name">
-          @if (user.avatarUrl) {
-            <img class="keel-board__avatar" [src]="user.avatarUrl" [alt]="user.name" />
-          }
-          <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()">Sign out</button>
-        </div>
-      } @else {
-        <div class="keel-board__identity">
-          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
-            Sign in with GitHub
-          </button>
-          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
-            Sign in with Google
-          </button>
-        </div>
-      }
-
-      <button
-        type="button"
-        class="keel-btn keel-btn--ghost keel-btn--icon"
-        [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'"
-        (click)="toggleTheme()"
-      >
-        {{ theme() === 'dark' ? '☀' : '☾' }}
-      </button>
-    </div>
-  </header>
-
-  <div class="keel-board__body">
-    <keel-findings (revealed)="canvas().revealNode($event)" />
-
-    <main class="keel-board__stage">
-      <keel-canvas />
-      <p class="keel-board__hint">
-        Alt-drag from a component to connect it. Space or middle-drag to pan. Pinch or
-        Ctrl-scroll to zoom.
-      </p>
-    </main>
-
-    <keel-inspector [selection]="canvas().selection()" />
+  <!-- Identity: brand, room id. Top-left, first thing the eye lands on. -->
+  <div class="keel-island keel-board__brand">
+    <span class="keel-board__logo" aria-hidden="true"></span>
+    <strong>Keel</strong>
+    <span class="keel-board__divider" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="keel-board__room"
+      [title]="roomIdCopied() ? 'Copied' : 'Copy room id — ' + roomId()"
+      (click)="copyRoomId()"
+    >
+      {{ roomId() }}
+      <span class="keel-board__room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
+    </button>
   </div>
+
+  <!-- Presence: peers, connection status, account, theme. Top-right. -->
+  <div class="keel-island keel-board__presence">
+    <div class="keel-board__peers" [attr.aria-label]="peerLabel()">
+      @for (peer of collab.peers(); track peer.clientId) {
+        <span
+          class="keel-board__peer"
+          [style.background]="peerColor(peer.clientId)"
+          [title]="peer.name"
+          >{{ initials(peer.name) }}</span
+        >
+      }
+      <span
+        class="keel-board__peer keel-board__peer--self"
+        [title]="collab.displayName() + ' (you)'"
+        >{{ initials(collab.displayName()) }}</span
+      >
+    </div>
+
+    <span class="keel-board__status" [class]="'keel-board__status--' + collab.status()">
+      {{ statusLabel() }}
+    </span>
+
+    <span class="keel-board__divider" aria-hidden="true"></span>
+
+    @if (auth.user(); as user) {
+      <div class="keel-board__identity" [title]="user.name">
+        @if (user.avatarUrl) {
+          <img class="keel-board__avatar" [src]="user.avatarUrl" [alt]="user.name" />
+        }
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()">Sign out</button>
+      </div>
+    } @else {
+      <div class="keel-board__identity">
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
+          GitHub
+        </button>
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
+          Google
+        </button>
+      </div>
+    }
+
+    <span class="keel-board__divider" aria-hidden="true"></span>
+
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon"
+      [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'"
+      (click)="toggleTheme()"
+    >
+      {{ theme() === 'dark' ? '☀' : '☾' }}
+    </button>
+  </div>
+
+  <!--
+    The kind rail. Drag a tile onto the canvas to place it there directly
+    (canvas.component.ts's onDragOver/onDrop); click a tile to arm placement
+    for a plain click instead, which is what keyboard and switch-access users
+    reach for since a native drag needs a pointer. Both write the same
+    `placingKind` signal, so the tile shows armed either way.
+  -->
+  <div class="keel-island keel-board__rail" role="toolbar" aria-label="Add a component">
+    @for (kind of nodeKinds; track kind) {
+      <button
+        type="button"
+        class="keel-rail__tile"
+        [class.keel-rail__tile--active]="canvas().placingKind() === kind"
+        [attr.aria-pressed]="canvas().placingKind() === kind"
+        [attr.aria-label]="kind"
+        [title]="kind + ' — drag onto the canvas, or click then click the canvas'"
+        draggable="true"
+        (dragstart)="onKindDragStart($event, kind)"
+        (dragend)="onKindDragEnd()"
+        (click)="toggleKind(kind)"
+      >
+        <span class="keel-kind-dot" [style.background]="kindColor(kind)"></span>
+      </button>
+    }
+
+    <span class="keel-rail__divider" aria-hidden="true"></span>
+
+    @for (kind of edgeKinds; track kind) {
+      <button
+        type="button"
+        class="keel-rail__tile keel-rail__tile--edge"
+        [class.keel-rail__tile--active]="canvas().edgeKind() === kind"
+        [attr.aria-pressed]="canvas().edgeKind() === kind"
+        [attr.aria-label]="kind + ' connection'"
+        [title]="'Alt-drag from a component draws a new connection as ' + kind"
+        (click)="setEdgeKind(kind)"
+      >
+        {{ kind.charAt(0).toUpperCase() }}
+      </button>
+    }
+  </div>
+
+  <!-- View tools: undo/redo, zoom, fit. Bottom-center. -->
+  <div class="keel-island keel-board__view-tools">
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon"
+      [disabled]="!collab.canUndo()"
+      (click)="canvas().undoFromToolbar()"
+      title="Undo (Cmd/Ctrl+Z)"
+    >
+      ↶
+    </button>
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon"
+      [disabled]="!collab.canRedo()"
+      (click)="canvas().redoFromToolbar()"
+      title="Redo (Shift+Cmd/Ctrl+Z)"
+    >
+      ↷
+    </button>
+
+    <span class="keel-board__divider" aria-hidden="true"></span>
+
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon"
+      (click)="canvas().zoomStep(0.8)"
+      title="Zoom out"
+    >
+      −
+    </button>
+    <span class="keel-board__zoom-readout">{{ canvas().zoomPercent() }}%</span>
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost keel-btn--icon"
+      (click)="canvas().zoomStep(1.25)"
+      title="Zoom in"
+    >
+      +
+    </button>
+
+    <span class="keel-board__divider" aria-hidden="true"></span>
+
+    <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
+      Fit
+    </button>
+  </div>
+
+  <!-- The review dock: a collapsed pill by default, expands over the canvas. -->
+  <keel-findings class="keel-board__findings" (revealed)="canvas().revealNode($event)" />
+
+  <!-- The inspector: a floating card that exists only while something is
+       selected, instead of a permanently-docked panel saying nothing. -->
+  @if (canvas().selection().size > 0) {
+    <keel-inspector
+      class="keel-board__inspector"
+      [selection]="canvas().selection()"
+      (closed)="deselectAll()"
+    />
+  }
+
+  @if (isEmpty()) {
+    <div class="keel-island keel-board__empty">
+      <p class="keel-board__empty-title">Nothing on the canvas yet</p>
+      <p class="keel-board__empty-body">
+        Drag a component from the rail, or start from a worked example and edit it.
+      </p>
+      <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()">
+        Load example
+      </button>
+    </div>
+  }
 </div>

@@ -1,12 +1,66 @@
+// Floating card now, not a docked full-height panel: it exists only while
+// something is selected (see board.component.html), so it sizes to its own
+// content and caps its height rather than stretching to fill a column.
 :host {
   display: block;
-  height: 100%;
-  min-height: 0;
-  border-left: 1px solid var(--keel-border);
+  width: var(--keel-panel-width);
 }
+
+// Board.component.scss switches this host's positioning to a full-width
+// left/right span below this breakpoint; the fixed width here has to relax
+// to match, or the host would stretch around a card that does not.
+@media (max-width: 720px) {
+  :host {
+    width: 100%;
+  }
+}
+
 .keel-inspector {
-  height: 100%;
+  // A viewport-relative cap rather than a percentage: the host is an
+  // absolutely-positioned, auto-height island (it sizes to its own content),
+  // so it has no definite height of its own for a percentage on this child to
+  // resolve against.
+  max-height: min(78vh, 640px);
+  overflow: hidden;
 }
+
+.keel-panel__body {
+  overflow-y: auto;
+}
+
+.keel-inspector__close {
+  flex: 0 0 auto;
+}
+
+// Leads with the findings on the selected thing, so the card and the review
+// dock stop being two unrelated places: click a node with an error, see why
+// it is red before you even reach the property that fixes it.
+.keel-inspector__findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--keel-space-2);
+  padding: var(--keel-space-3) var(--keel-space-4);
+  border-bottom: 1px solid var(--keel-border);
+
+  &--error {
+    background: color-mix(in srgb, var(--keel-severity-error) 7%, transparent);
+  }
+  &--warning {
+    background: color-mix(in srgb, var(--keel-severity-warning) 8%, transparent);
+  }
+  &--info {
+    background: color-mix(in srgb, var(--keel-severity-info) 7%, transparent);
+  }
+}
+
+.keel-inspector__findings-list {
+  margin: 0;
+  padding: 0 0 0 var(--keel-space-4);
+  color: var(--keel-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 textarea.keel-input {
   resize: vertical;
   font-family: inherit;

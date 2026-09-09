@@ -55,8 +55,18 @@ export interface OverlayFrame {
 const GRID_SIZE = 24;
 /** Below this zoom the grid becomes visual noise, so it is dropped. */
 const GRID_MIN_ZOOM = 0.45;
-const NODE_RADIUS = 10;
-const ACCENT_BAR_WIDTH = 4;
+const NODE_RADIUS = 12;
+
+/** Kind chip: the small tile inside every node that carries kind identity. */
+const CHIP_SIZE = 24;
+const CHIP_RADIUS = 7;
+/** Chip's left edge, offset from the node's own left edge. */
+const CHIP_INSET_X = 14;
+/** Chip's top edge, offset from the node's own top edge. */
+const CHIP_INSET_Y = 12;
+/** Glyph padding within the chip, and the glyph's own rendered size. */
+const GLYPH_INSET = 4.5;
+const GLYPH_SIZE = 15;
 
 /**
  * Size the backing store for the device pixel ratio.
@@ -256,17 +266,16 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
   const { rect, node } = sceneNode;
   const selected = frame.selection.has(node.id);
   const hovered = frame.hoveredId === node.id;
-  const accent = theme.kindAccent[node.kind];
 
   ctx.save();
 
   // Shadow is applied to the fill only. Leaving it on would smear the border
-  // stroke and the accent bar as well, which looks blurry rather than raised.
+  // stroke as well, which looks blurry rather than raised.
   ctx.shadowColor = theme.nodeShadow;
   ctx.shadowBlur = selected ? 16 : 8;
   ctx.shadowOffsetY = 2;
   ctx.fillStyle = theme.nodeFill;
-  traceNodeShape(ctx, rect, node.kind);
+  traceNodeShape(ctx, rect);
   ctx.fill();
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
@@ -275,24 +284,22 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
   ctx.strokeStyle = severityOrDefault(sceneNode.severity, selected, theme);
   ctx.lineWidth = selected || sceneNode.severity ? 2 : 1;
   if (node.kind === 'external') ctx.setLineDash([6, 4]);
-  traceNodeShape(ctx, rect, node.kind);
+  traceNodeShape(ctx, rect);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  drawAccentBar(ctx, rect, node.kind, accent);
 
   if (hovered && !selected) {
     ctx.strokeStyle = theme.selection;
     ctx.globalAlpha = 0.4;
     ctx.lineWidth = 2;
-    traceNodeShape(ctx, rect, node.kind);
+    traceNodeShape(ctx, rect);
     ctx.stroke();
     ctx.globalAlpha = 1;
 
     drawConnectHandles(ctx, rect, theme);
   }
 
-  drawNodeText(ctx, sceneNode, theme);
+  drawNodeContent(ctx, sceneNode, theme);
 
   if (sceneNode.severity) {
     drawSeverityBadge(ctx, rect, theme.severity[sceneNode.severity]);
@@ -308,26 +315,6 @@ function severityOrDefault(
 ): string {
   if (severity) return theme.severity[severity];
   return selected ? theme.selection : theme.nodeStroke;
-}
-
-/**
- * A coloured spine down the left edge, clipped to the node's own silhouette.
- *
- * Clipping is what lets one accent routine serve every shape: without it the bar
- * would square off the rounded corners it sits inside.
- */
-function drawAccentBar(
-  ctx: CanvasRenderingContext2D,
-  rect: Rect,
-  kind: NodeKind,
-  color: string,
-): void {
-  ctx.save();
-  traceNodeShape(ctx, rect, kind);
-  ctx.clip();
-  ctx.fillStyle = color;
-  ctx.fillRect(rect.x, rect.y, ACCENT_BAR_WIDTH, rect.h);
-  ctx.restore();
 }
 
 /**
@@ -359,45 +346,212 @@ function drawConnectHandles(ctx: CanvasRenderingContext2D, rect: Rect, theme: Ca
   ctx.restore();
 }
 
-function drawNodeText(
+/**
+ * Kind chip, glyph, title and the tech/instance meta line.
+ *
+ * Kind identity used to live in a 4px accent bar plus a 10px muted label —
+ * both too quiet to register at a glance. It now lives in one chip: a 24px
+ * tile in the kind hue with a glyph inside it, plus the kind name set in that
+ * same hue rather than in muted grey.
+ */
+function drawNodeContent(
   ctx: CanvasRenderingContext2D,
   sceneNode: SceneNode,
   theme: CanvasTheme,
 ): void {
   const { rect, node } = sceneNode;
-  const left = rect.x + ACCENT_BAR_WIDTH + 12;
-  const available = rect.w - (ACCENT_BAR_WIDTH + 12) - 12;
+  const accent = theme.kindAccent[node.kind];
+  const chipX = rect.x + CHIP_INSET_X;
+  const chipY = rect.y + CHIP_INSET_Y;
+  const textLeft = chipX;
+  const available = rect.x + rect.w - 12 - textLeft;
 
   ctx.save();
   ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 
-  ctx.fillStyle = theme.nodeMutedText;
-  ctx.font = '10px Geist, ui-sans-serif, system-ui, sans-serif';
-  ctx.textBaseline = 'top';
-  ctx.fillText(node.kind.toUpperCase(), left, rect.y + 10);
+  // Chip fill: the kind hue at reduced opacity, not a separate lighter token.
+  // globalAlpha does the same job `fill-opacity` does in the design mock, and
+  // keeps this working automatically if a kind colour is ever retuned.
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = accent;
+  ctx.beginPath();
+  ctx.roundRect(chipX, chipY, CHIP_SIZE, CHIP_SIZE, CHIP_RADIUS);
+  ctx.fill();
+  ctx.restore();
+
+  drawKindGlyph(ctx, node.kind, chipX + GLYPH_INSET, chipY + GLYPH_INSET, GLYPH_SIZE, accent);
+
+  ctx.fillStyle = accent;
+  ctx.font = '600 9px Geist, ui-sans-serif, system-ui, sans-serif';
+  ctx.fillText(node.kind.toUpperCase(), chipX + CHIP_SIZE + 7, chipY + 14.5);
 
   ctx.fillStyle = theme.nodeText;
   ctx.font = '600 14px Geist, ui-sans-serif, system-ui, sans-serif';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(truncate(ctx, node.label, available), left, rect.y + rect.h / 2 + 2);
+  ctx.fillText(truncate(ctx, node.label, available), textLeft, rect.y + rect.h * 0.62);
 
-  const subtitle = subtitleFor(node.kind, node.replicas, node.tech);
-  if (subtitle) {
-    ctx.fillStyle = theme.nodeMutedText;
-    ctx.font = '11px Geist, ui-sans-serif, system-ui, sans-serif';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(truncate(ctx, subtitle, available), left, rect.y + rect.h - 9);
-  }
+  drawNodeMeta(ctx, node.kind, node.tech, node.replicas, textLeft, rect.y + rect.h - 11, available, theme);
 
   ctx.restore();
 }
 
-function subtitleFor(kind: NodeKind, replicas: number, tech: string | undefined): string {
-  const parts: string[] = [];
-  if (tech) parts.push(tech);
-  // Replica count is only meaningful for things we run ourselves.
-  if (kind !== 'external') parts.push(replicas === 1 ? '1 instance' : `${replicas} instances`);
-  return parts.join('  ·  ');
+/**
+ * Tech string plus instance count, in Geist Mono. The count turns amber when
+ * it is 1 — the single-point-of-failure flag the rule engine also raises.
+ *
+ * `external` is excluded from that flag deliberately: `spof-single-instance`
+ * skips external nodes too ("not ours to scale"), so amber-flagging an
+ * external's instance count would show a warning the review panel never
+ * actually raises.
+ */
+function drawNodeMeta(
+  ctx: CanvasRenderingContext2D,
+  kind: NodeKind,
+  tech: string | undefined,
+  replicas: number,
+  left: number,
+  baseline: number,
+  available: number,
+  theme: CanvasTheme,
+): void {
+  ctx.font = '10.5px Geist Mono, ui-monospace, SFMono-Regular, monospace';
+  ctx.fillStyle = theme.nodeMutedText;
+  const techText = tech ? truncate(ctx, tech, available) : '';
+  if (techText) ctx.fillText(techText, left, baseline);
+
+  const countLeft = techText ? left + ctx.measureText(techText).width + 8 : left;
+  const isSpof = replicas === 1 && kind !== 'external';
+
+  ctx.font = '600 10.5px Geist Mono, ui-monospace, SFMono-Regular, monospace';
+  ctx.fillStyle = isSpof ? theme.severity.warning : theme.nodeMutedText;
+  ctx.fillText(`×${replicas}`, countLeft, baseline);
+}
+
+/**
+ * Kind glyphs, one per `NodeKind`, drawn in a local 16x16 coordinate space.
+ *
+ * Hand-drawn with canvas path calls rather than loaded as image assets: there
+ * are only seven of them, they need to recolour with the theme and the kind
+ * palette, and an SVG-to-canvas asset pipeline would be a lot of machinery for
+ * seven small icons.
+ */
+function drawKindGlyph(
+  ctx: CanvasRenderingContext2D,
+  kind: NodeKind,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size / 16, size / 16);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.7;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  switch (kind) {
+    case 'service':
+      // A module: a rounded square with a cross through its centre.
+      ctx.beginPath();
+      ctx.roundRect(2.5, 2.5, 11, 11, 2.5);
+      ctx.moveTo(5.5, 8);
+      ctx.lineTo(10.5, 8);
+      ctx.moveTo(8, 5.5);
+      ctx.lineTo(8, 10.5);
+      ctx.stroke();
+      break;
+
+    case 'datastore':
+      // A database drum: an ellipse cap, straight sides, a curved base and a
+      // belt line showing the drum is hollow.
+      ctx.beginPath();
+      ctx.ellipse(8, 4.2, 5.5, 2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(2.5, 4.2);
+      ctx.lineTo(2.5, 11.8);
+      ctx.bezierCurveTo(2.5, 12.9, 5, 13.8, 8, 13.8);
+      ctx.bezierCurveTo(11, 13.8, 13.5, 12.9, 13.5, 11.8);
+      ctx.lineTo(13.5, 4.2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(2.5, 8);
+      ctx.bezierCurveTo(2.5, 9.1, 5, 10, 8, 10);
+      ctx.bezierCurveTo(11, 10, 13.5, 9.1, 13.5, 8);
+      ctx.stroke();
+      break;
+
+    case 'queue':
+      // A stadium with two dividers: stacked messages.
+      ctx.beginPath();
+      ctx.roundRect(1.5, 5, 13, 6, 3);
+      ctx.moveTo(5.5, 5);
+      ctx.lineTo(5.5, 11);
+      ctx.moveTo(9, 5);
+      ctx.lineTo(9, 11);
+      ctx.stroke();
+      break;
+
+    case 'cache':
+      // A lightning bolt.
+      ctx.beginPath();
+      ctx.moveTo(8, 1.5);
+      ctx.lineTo(3, 8);
+      ctx.lineTo(6.5, 8);
+      ctx.lineTo(5.5, 14.5);
+      ctx.lineTo(11, 8);
+      ctx.lineTo(7.5, 8);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+
+    case 'gateway':
+      // A hexagon with a vertical spine, echoing the shape gateways used to
+      // have as their whole silhouette.
+      ctx.beginPath();
+      ctx.moveTo(8, 1.8);
+      ctx.lineTo(13.6, 5);
+      ctx.lineTo(13.6, 11);
+      ctx.lineTo(8, 14.2);
+      ctx.lineTo(2.4, 11);
+      ctx.lineTo(2.4, 5);
+      ctx.closePath();
+      ctx.moveTo(8, 5.5);
+      ctx.lineTo(8, 10.5);
+      ctx.stroke();
+      break;
+
+    case 'job':
+      // A clock face.
+      ctx.beginPath();
+      ctx.arc(8, 8, 5.8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(8, 5);
+      ctx.lineTo(8, 8.2);
+      ctx.lineTo(10.4, 9.6);
+      ctx.stroke();
+      break;
+
+    case 'external':
+      // An external-link icon: a frame with an arrow escaping its corner.
+      ctx.beginPath();
+      ctx.roundRect(2.5, 5.7, 9, 7.8, 1.2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(9.5, 2.5);
+      ctx.lineTo(13.5, 2.5);
+      ctx.lineTo(13.5, 6.5);
+      ctx.moveTo(13.5, 2.5);
+      ctx.lineTo(7.8, 8.2);
+      ctx.stroke();
+      break;
+  }
+
+  ctx.restore();
 }
 
 /** Clip a string to the available width, with an ellipsis. */
@@ -438,56 +592,17 @@ function drawSeverityBadge(ctx: CanvasRenderingContext2D, rect: Rect, color: str
 }
 
 /**
- * Trace the silhouette for a node kind without filling or stroking it.
+ * Trace a node's outline without filling or stroking it.
  *
- * Separated from painting so fill, stroke and clip all share one definition. Two
- * copies of the path maths would eventually disagree, and the bug would show up
- * as a border that does not match its own fill.
+ * Separated from painting so fill, stroke and the hover ring all share one
+ * definition. Every kind is the same rounded rect now — kind identity lives in
+ * the chip drawn inside the node (`drawNodeContent`), not in the silhouette —
+ * so unlike the fill/stroke/clip split this used to serve, there is no
+ * per-kind branch left to keep in sync.
  */
-function traceNodeShape(ctx: CanvasRenderingContext2D, rect: Rect, kind: NodeKind): void {
+function traceNodeShape(ctx: CanvasRenderingContext2D, rect: Rect): void {
   ctx.beginPath();
-
-  switch (kind) {
-    case 'datastore':
-      traceCylinder(ctx, rect);
-      break;
-    case 'gateway':
-      traceHexagon(ctx, rect);
-      break;
-    case 'queue':
-      traceStadium(ctx, rect);
-      break;
-    default:
-      ctx.roundRect(rect.x, rect.y, rect.w, rect.h, NODE_RADIUS);
-  }
-}
-
-/** A database drum: an ellipse cap on top, straight sides, curved base. */
-function traceCylinder(ctx: CanvasRenderingContext2D, rect: Rect): void {
-  const capHeight = Math.min(14, rect.h / 4);
-  const radiusX = rect.w / 2;
-  const cx = rect.x + radiusX;
-
-  ctx.ellipse(cx, rect.y + capHeight, radiusX, capHeight, 0, Math.PI, 0);
-  ctx.lineTo(rect.x + rect.w, rect.y + rect.h - capHeight);
-  ctx.ellipse(cx, rect.y + rect.h - capHeight, radiusX, capHeight, 0, 0, Math.PI);
-  ctx.closePath();
-}
-
-function traceHexagon(ctx: CanvasRenderingContext2D, rect: Rect): void {
-  const inset = Math.min(16, rect.w / 5);
-  ctx.moveTo(rect.x + inset, rect.y);
-  ctx.lineTo(rect.x + rect.w - inset, rect.y);
-  ctx.lineTo(rect.x + rect.w, rect.y + rect.h / 2);
-  ctx.lineTo(rect.x + rect.w - inset, rect.y + rect.h);
-  ctx.lineTo(rect.x + inset, rect.y + rect.h);
-  ctx.lineTo(rect.x, rect.y + rect.h / 2);
-  ctx.closePath();
-}
-
-/** Fully rounded ends, evoking a pipe. */
-function traceStadium(ctx: CanvasRenderingContext2D, rect: Rect): void {
-  ctx.roundRect(rect.x, rect.y, rect.w, rect.h, rect.h / 2);
+  ctx.roundRect(rect.x, rect.y, rect.w, rect.h, NODE_RADIUS);
 }
 
 /**

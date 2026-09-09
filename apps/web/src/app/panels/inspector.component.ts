@@ -1,5 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { EDGE_KINDS, NODE_KINDS, type ArchEdge, type ArchNode, type EdgeKind, type NodeKind } from '@keel/shared';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  EDGE_KINDS,
+  findingsForEdge,
+  findingsForNode,
+  NODE_KINDS,
+  type ArchEdge,
+  type ArchNode,
+  type EdgeKind,
+  type Finding,
+  type NodeKind,
+} from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
 
 /**
@@ -20,6 +30,8 @@ export class InspectorComponent {
   private readonly collab = inject(CollabService);
 
   readonly selection = input.required<ReadonlySet<string>>();
+  /** The card is a floating overlay now, so it needs its own close affordance. */
+  readonly closed = output<void>();
 
   readonly nodeKinds = NODE_KINDS;
   readonly edgeKinds = EDGE_KINDS;
@@ -43,6 +55,32 @@ export class InspectorComponent {
     if (this.node()) return 'Component';
     if (this.edge()) return 'Dependency';
     return 'Inspector';
+  });
+
+  /**
+   * Rule findings that cite the selected node or edge, leading with the same
+   * severity the review dock shows. The card and the review used to be two
+   * unrelated places; this is what connects "here's a problem" to "here's the
+   * field that fixes it" without a trip through the dock first.
+   *
+   * AI findings are excluded here deliberately: they are not keyed to a rule
+   * id the way `report.findings` are, and surfacing only rule findings keeps
+   * this callout answering a question the rule engine can actually back up.
+   */
+  readonly selectionFindings = computed<Finding[]>(() => {
+    const report = this.collab.report();
+    const node = this.node();
+    if (node) return findingsForNode(report, node.id);
+    const edge = this.edge();
+    if (edge) return findingsForEdge(report, edge.id);
+    return [];
+  });
+
+  readonly worstFindingSeverity = computed(() => {
+    const findings = this.selectionFindings();
+    if (findings.some((f) => f.severity === 'error')) return 'error' as const;
+    if (findings.some((f) => f.severity === 'warning')) return 'warning' as const;
+    return findings.length > 0 ? ('info' as const) : null;
   });
 
   readonly emptyMessage = computed(() =>

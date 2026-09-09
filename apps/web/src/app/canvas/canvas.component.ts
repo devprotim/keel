@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { createEdge, createNode, type EdgeKind, type NodeKind } from '@keel/shared';
+import { createEdge, createNode, DEFAULT_NODE_SIZE, NODE_KINDS, type EdgeKind, type NodeKind } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
 import {
   boundingBox,
@@ -37,6 +37,12 @@ type Gesture =
 
 const GRID = 8;
 const ZOOM_SENSITIVITY = 0.0015;
+
+/**
+ * Drag payload MIME type for dragging a kind off the rail onto the canvas.
+ * Also read by `board.component.ts`, which is where the drag starts.
+ */
+export const NODE_DRAG_MIME = 'application/x-keel-node-kind';
 
 @Component({
   selector: 'keel-canvas',
@@ -252,15 +258,11 @@ export class CanvasComponent {
     return hitTest(this.scene(), world, EDGE_HIT_TOLERANCE / this.viewport().zoom);
   }
 
-  private toWorld(event: PointerEvent | WheelEvent): Point {
-    const rect = this.hostRef().nativeElement.getBoundingClientRect();
-    return screenToWorld(
-      { x: event.clientX - rect.left, y: event.clientY - rect.top },
-      this.viewport(),
-    );
+  private toWorld(event: PointerEvent | WheelEvent | DragEvent): Point {
+    return screenToWorld(this.toScreen(event), this.viewport());
   }
 
-  private toScreen(event: PointerEvent | WheelEvent): Point {
+  private toScreen(event: PointerEvent | WheelEvent | DragEvent): Point {
     const rect = this.hostRef().nativeElement.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
@@ -420,6 +422,29 @@ export class CanvasComponent {
     this.viewport.update((vp) => panBy(vp, -event.deltaX, -event.deltaY));
   }
 
+  // --- Drag-and-drop placement ---------------------------------------------
+  //
+  // A second path to the same `placeNode` the click-to-arm toolbar flow uses
+  // (`onPointerDown` above): dragging a kind off the rail is the discoverable
+  // way in, arming-then-clicking is the keyboard- and accessibility-reachable
+  // fallback. HTML5 drag events are their own gesture sequence, dispatched
+  // independently of the pointer events above, so the two never conflict.
+
+  onDragOver(event: DragEvent): void {
+    if (!event.dataTransfer?.types.includes(NODE_DRAG_MIME)) return;
+    // Required for the browser to permit a drop at all; omitting it silently
+    // rejects every drop on this element.
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }
+
+  onDrop(event: DragEvent): void {
+    const kind = event.dataTransfer?.getData(NODE_DRAG_MIME);
+    if (!kind || !NODE_KINDS.includes(kind as NodeKind)) return;
+    event.preventDefault();
+    this.placeNode(kind as NodeKind, this.toWorld(event));
+  }
+
   // --- Keyboard -----------------------------------------------------------
 
   private spaceHeld = false;
@@ -491,8 +516,11 @@ export class CanvasComponent {
 
   // --- Commands -----------------------------------------------------------
 
+  /** `world` is where the node's centre should land, not its top-left corner. */
   placeNode(kind: NodeKind, world: Point): void {
-    const node = createNode(kind, snapToGrid(world.x, GRID), snapToGrid(world.y, GRID));
+    const x = snapToGrid(world.x - DEFAULT_NODE_SIZE.w / 2, GRID);
+    const y = snapToGrid(world.y - DEFAULT_NODE_SIZE.h / 2, GRID);
+    const node = createNode(kind, x, y);
     this.collab.addNode(node);
     this.selection.set(new Set([node.id]));
     this.placingKind.set(null);
@@ -502,7 +530,7 @@ export class CanvasComponent {
   placeNodeAtCentre(kind: NodeKind): void {
     const { width, height } = this.size();
     const centre = screenToWorld({ x: width / 2, y: height / 2 }, this.viewport());
-    this.placeNode(kind, { x: centre.x - 90, y: centre.y - 40 });
+    this.placeNode(kind, centre);
   }
 
   zoomToFit(): void {
@@ -514,6 +542,21 @@ export class CanvasComponent {
 
   resetZoom(): void {
     this.viewport.update((vp) => zoomAt(vp, { x: this.size().width / 2, y: this.size().height / 2 }, 1));
+  }
+
+  /** Rounded zoom percentage, for the view-tools readout. */
+  readonly zoomPercent = computed(() => Math.round(this.viewport().zoom * 100));
+
+  /**
+   * Step the zoom by a multiplicative factor, anchored on the canvas centre.
+   *
+   * Multiplicative rather than additive so repeated clicks feel consistent at
+   * every zoom level: +25% of 400% is a much bigger jump than +25% of 50%,
+   * which is exactly the mismatch a fixed-percent step would produce.
+   */
+  zoomStep(factor: number): void {
+    const { width, height } = this.size();
+    this.viewport.update((vp) => zoomAt(vp, { x: width / 2, y: height / 2 }, vp.zoom * factor));
   }
 
   /** Toolbar entry points, so the header does not need the service injected. */
