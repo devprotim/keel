@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { validate } from '@keel/shared';
@@ -90,6 +91,35 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
   // the Angular dev server (:4200) and this API (:8787) are different origins.
   await app.register(cors, { origin: [...config.corsOrigins], credentials: true });
   await app.register(websocket);
+
+  // CSP is scoped to this app's actual external dependencies: Google Fonts +
+  // Fontshare for the type system (DESIGN.md), and GitHub/Google's avatar CDNs
+  // for signed-in identity (auth/providers.ts). Angular's emulated view
+  // encapsulation injects <style> tags per component, and the client's
+  // [style.x] bindings set inline style attributes, so styleSrc needs
+  // 'unsafe-inline' - there is no nonce wired through Angular's build here.
+  //
+  // scriptSrcAttr must allow inline handlers: `ng build` runs Critters, which
+  // inlines critical CSS and defers the main stylesheet as
+  // `media="print" onload="this.media='all'"`. Blocking that attribute leaves
+  // the stylesheet print-only forever, so the production app renders with
+  // browser-default styling while every file still loads and parses fine.
+  // scriptSrc itself stays 'self', so this permits handler attributes only,
+  // not inline <script>.
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        scriptSrcAttr: ["'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'fonts.googleapis.com', 'api.fontshare.com'],
+        fontSrc: ["'self'", 'fonts.gstatic.com', 'cdn.fontshare.com'],
+        imgSrc: ["'self'", 'data:', 'avatars.githubusercontent.com', 'lh3.googleusercontent.com'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        frameAncestors: ["'none'"],
+      },
+    },
+  });
 
   const auth = await registerAuth(app, config);
 

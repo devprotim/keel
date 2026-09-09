@@ -9,7 +9,8 @@
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "dev": "pnpm --parallel -r dev"
+    "dev": "pnpm --parallel -r dev",
+    "prod:local": "pnpm --filter @keel/shared build && pnpm --filter @keel/web build && NODE_ENV=production pnpm --filter @keel/server start"
   },
   "packageManager": "pnpm@10.32.0"
 }
