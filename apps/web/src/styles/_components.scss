@@ -58,6 +58,11 @@
   &--icon {
     padding: 6px;
   }
+
+  &--lg {
+    padding: var(--keel-space-3) var(--keel-space-5);
+    font-size: 15px;
+  }
 }
 
 .keel-field {

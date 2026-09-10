@@ -51,6 +51,7 @@
 }
 
 .keel-board__room {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -72,6 +73,26 @@
 
 .keel-board__room-icon {
   font-size: 11px;
+}
+
+// A brief confirmation next to the chip. The native `title` tooltip only
+// shows on hover, which is useless right after a click, so the click needs
+// its own feedback.
+.keel-board__copy-toast {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius-sm);
+  background: var(--keel-surface);
+  color: var(--keel-severity-ok);
+  box-shadow: var(--keel-shadow-sm);
+  font-family: var(--keel-font);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .keel-board__presence {

@@ -1,0 +1,71 @@
+<div class="keel-landing">
+  <header class="keel-landing__nav">
+    <div class="keel-landing__brand">
+      <span class="keel-landing__logo" aria-hidden="true"></span>
+      <strong>Keel</strong>
+    </div>
+
+    @if (auth.user(); as user) {
+      <div class="keel-landing__identity" [title]="user.name">
+        @if (user.avatarUrl) {
+          <img class="keel-landing__avatar" [src]="user.avatarUrl" [alt]="user.name" />
+        }
+        <span class="keel-landing__identity-name">{{ user.name }}</span>
+      </div>
+    } @else {
+      <div class="keel-landing__identity">
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
+          Sign in with GitHub
+        </button>
+        <!-- Hidden until the Google OAuth app is registered. -->
+        <!--
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
+          Sign in with Google
+        </button>
+        -->
+      </div>
+    }
+  </header>
+
+  <main class="keel-landing__hero">
+    <h1 class="keel-landing__headline">
+      Design system architecture that flags its own outages
+    </h1>
+    <p class="keel-landing__subhead">
+      A real-time multiplayer canvas for system diagrams. Shapes are typed, edges carry
+      runtime semantics like timeouts and retries, and the diagram validates itself as you
+      and your team draw it together.
+    </p>
+
+    <div class="keel-landing__cta-row">
+      <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
+        Start a new diagram
+      </button>
+      <span class="keel-landing__cta-hint">No account needed. The link is the invite.</span>
+    </div>
+  </main>
+
+  <section class="keel-landing__features" aria-label="What Keel does">
+    <div class="keel-landing__feature">
+      <span class="keel-kind-dot" style="background: var(--keel-kind-service)"></span>
+      <h2>Real-time, together</h2>
+      <p>Every edit syncs instantly over a CRDT. Undo only ever touches your own changes.</p>
+    </div>
+    <div class="keel-landing__feature">
+      <span class="keel-kind-dot" style="background: var(--keel-kind-datastore)"></span>
+      <h2>A structured graph, not a drawing</h2>
+      <p>
+        Nodes are typed and edges carry sync/async, timeouts, retries, and idempotency, so the
+        canvas can reason about the design, not just render it.
+      </p>
+    </div>
+    <div class="keel-landing__feature">
+      <span class="keel-kind-dot" style="background: var(--keel-kind-gateway)"></span>
+      <h2>Caught before it ships</h2>
+      <p>
+        13 rules flag single points of failure, missing timeouts, retry storms, and more on
+        every keystroke, plus an AI second opinion for judgment calls a rule can't express.
+      </p>
+    </div>
+  </section>
+</div>

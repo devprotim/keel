@@ -132,9 +132,9 @@ export class BoardComponent {
     this.canvas().selection.set(new Set());
   }
 
-  async copyRoomId(): Promise<void> {
+  async copyRoomLink(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.roomId());
+      await navigator.clipboard.writeText(globalThis.location.href);
     } catch {
       // Clipboard access can be denied by permissions policy; the room id is
       // still visible in the chip and in the URL, so nothing is lost.

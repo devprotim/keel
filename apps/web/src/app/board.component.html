@@ -9,11 +9,14 @@
     <button
       type="button"
       class="keel-board__room"
-      [title]="roomIdCopied() ? 'Copied' : 'Copy room id — ' + roomId()"
-      (click)="copyRoomId()"
+      [title]="roomIdCopied() ? 'Copied' : 'Copy the link to this room'"
+      (click)="copyRoomLink()"
     >
       {{ roomId() }}
       <span class="keel-board__room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
+      @if (roomIdCopied()) {
+        <span class="keel-board__copy-toast" role="status">Link copied</span>
+      }
     </button>
   </div>
 
@@ -53,9 +56,12 @@
         <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
           GitHub
         </button>
+        <!-- Hidden until the Google OAuth app is registered. -->
+        <!--
         <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
           Google
         </button>
+        -->
       </div>
     }
 
