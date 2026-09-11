@@ -98,7 +98,50 @@
         (dragend)="onKindDragEnd()"
         (click)="toggleKind(kind)"
       >
-        <span class="keel-kind-dot" [style.background]="kindColor(kind)"></span>
+        <svg
+          class="keel-rail__icon"
+          width="18"
+          height="18"
+          viewBox="0 0 16 16"
+          fill="none"
+          [attr.stroke]="kindColor(kind)"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          @switch (kind) {
+            @case ('service') {
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
+              <path d="M5.5 8h5M8 5.5v5" />
+            }
+            @case ('datastore') {
+              <ellipse cx="8" cy="4.2" rx="5.5" ry="2" />
+              <path d="M2.5 4.2v7.6c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4.2" />
+              <path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2" />
+            }
+            @case ('queue') {
+              <rect x="1.5" y="5" width="13" height="6" rx="3" />
+              <path d="M5.5 5v6M9 5v6" />
+            }
+            @case ('cache') {
+              <path d="M8 1.5 3 8h3.5l-1 6.5L11 8H7.5z" />
+            }
+            @case ('gateway') {
+              <path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z" />
+              <path d="M8 5.5v5" />
+            }
+            @case ('job') {
+              <circle cx="8" cy="8" r="5.8" />
+              <path d="M8 5v3.2l2.2 1.4" />
+            }
+            @case ('external') {
+              <path d="M9.5 2.5h4v4" />
+              <path d="M13.5 2.5 7.8 8.2" />
+              <path d="M11.5 9.5v2.8a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2V5.7a1.2 1.2 0 0 1 1.2-1.2h2.8" />
+            }
+          }
+        </svg>
       </button>
     }
 
