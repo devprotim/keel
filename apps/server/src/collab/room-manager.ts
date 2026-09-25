@@ -1,3 +1,4 @@
+import type * as Y from 'yjs';
 import type { DocStore } from '../store/store.ts';
 import { Room, type Socket } from './room.ts';
 
@@ -17,6 +18,9 @@ export interface RoomManagerOptions {
  * indistinguishable from a departure, and reloading the whole document from
  * storage a half-second later is pure waste.
  */
+/** Marks changes the server makes itself, such as ingested observations. */
+const SERVER_ORIGIN = Symbol('keel:server');
+
 /** Bound on re-opening a room that is evicted mid-join. */
 const MAX_JOIN_ATTEMPTS = 3;
 
@@ -83,6 +87,21 @@ export class RoomManager {
 
     room.addConnection(socket);
     return room;
+  }
+
+  /**
+   * Apply a server-originated change to a room's document.
+   *
+   * The change reaches connected peers through the room's normal update relay
+   * and is flushed before this resolves, so a 2xx means it is durable. A room
+   * opened only for this, with nobody connected, is scheduled for eviction
+   * like any room its last client left, rather than staying resident forever.
+   */
+  async mutate(roomId: string, change: (doc: Y.Doc) => void): Promise<void> {
+    const room = await this.get(roomId);
+    room.doc.transact(() => change(room.doc), SERVER_ORIGIN);
+    await room.flush();
+    if (room.isEmpty) this.#scheduleEviction(roomId);
   }
 
   /** Detach a socket, scheduling eviction if it was the last one. */

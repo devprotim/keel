@@ -43,6 +43,7 @@ const ArchNodeSchema = z.object({
   hasReplica: z.boolean().optional(),
   hasBackup: z.boolean().optional(),
   hasDlq: z.boolean().optional(),
+  ref: z.string().max(200).optional(),
 });
 
 const ArchEdgeSchema = z.object({
@@ -64,6 +65,82 @@ const ArchEdgeSchema = z.object({
 const ArchGraphSchema = z.object({
   nodes: z.array(ArchNodeSchema).max(500),
   edges: z.array(ArchEdgeSchema).max(1500),
+});
+
+const RefSchema = z.string().min(1).max(200);
+const Rate = z.number().nonnegative().finite();
+
+/**
+ * What a running system reports about itself.
+ *
+ * Bounded the same way as the graph: this is written into a shared document
+ * that every collaborator downloads, so an unbounded payload is an unbounded
+ * room.
+ */
+const ObservationSetSchema = z.object({
+  source: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_.:-]+$/, 'source may contain only letters, numbers and _ . : -'),
+  observedAt: z.iso.datetime({ offset: true }),
+  nodes: z
+    .array(
+      z.object({
+        ref: RefSchema,
+        replicas: z.number().int().nonnegative().optional(),
+        hasReplica: z.boolean().optional(),
+        hasBackup: z.boolean().optional(),
+        hasDlq: z.boolean().optional(),
+        rps: Rate.optional(),
+      }),
+    )
+    .max(500)
+    .optional(),
+  edges: z
+    .array(
+      z.object({
+        source: RefSchema,
+        target: RefSchema,
+        timeoutMs: z.number().nonnegative().finite().nullable().optional(),
+        retries: z.number().int().nonnegative().optional(),
+        circuitBreaker: z.boolean().optional(),
+        p99Ms: z.number().nonnegative().finite().optional(),
+        rps: Rate.optional(),
+      }),
+    )
+    .max(1500)
+    .optional(),
+});
+
+const FieldValueSchema = z.union([z.string().max(200), z.number(), z.boolean(), z.null()]);
+
+const IntentSchema = z
+  .record(
+    z.string().max(64),
+    z.object({
+      kind: z.enum(['node', 'edge']),
+      label: z.string().max(200),
+      fields: z.record(
+        z.string().max(32),
+        z.object({
+          value: FieldValueSchema,
+          previous: FieldValueSchema.optional(),
+          by: z.string().max(200),
+          at: z.string().max(64),
+        }),
+      ),
+    }),
+  )
+  .refine((intent) => Object.keys(intent).length <= 2000, 'too many approved elements');
+
+/**
+ * A plain graph, optionally with evidence and a baseline. A bare graph is
+ * still valid, so existing callers of /api/validate keep working.
+ */
+const ValidateRequestSchema = ArchGraphSchema.extend({
+  observations: z.array(ObservationSetSchema).max(20).optional(),
+  intent: IntentSchema.optional(),
 });
 
 export interface AppDeps {
@@ -143,11 +220,50 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
    * and anything that wants a trustworthy answer rather than a convenient one.
    */
   app.post('/api/validate', async (request, reply) => {
-    const parsed = ArchGraphSchema.safeParse(request.body);
+    const parsed = ValidateRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'invalid graph', issues: parsed.error.issues });
     }
-    return validate(parsed.data);
+    const { observations, intent, ...graph } = parsed.data;
+    return validate(graph, {
+      ...(observations ? { observations } : {}),
+      ...(intent ? { intent } : {}),
+    });
+  });
+
+  /**
+   * Push what the running system reports into a room.
+   *
+   * This is what keeps a diagram honest after the day it was drawn: a CI job, a
+   * cron, or a cluster controller posts one set per source, and every open
+   * canvas re-validates against it live. Each push replaces that source's
+   * previous set rather than accumulating, so a source that stops reporting a
+   * component stops vouching for it.
+   *
+   * Same access model as the socket: the room id is the capability. Anyone who
+   * can open the room can already edit every number in it by hand.
+   */
+  app.post('/api/rooms/:roomId/observations', async (request, reply) => {
+    const roomId = RoomIdSchema.safeParse((request.params as { roomId?: string }).roomId);
+    if (!roomId.success) return reply.status(400).send({ error: 'invalid room id' });
+
+    const parsed = ObservationSetSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'invalid observations', issues: parsed.error.issues });
+    }
+
+    await rooms.mutate(roomId.data, (doc) => {
+      doc.getMap(OBSERVATIONS_MAP).set(parsed.data.source, parsed.data);
+    });
+
+    return reply.status(202).send({
+      accepted: {
+        source: parsed.data.source,
+        observedAt: parsed.data.observedAt,
+        nodes: parsed.data.nodes?.length ?? 0,
+        edges: parsed.data.edges?.length ?? 0,
+      },
+    });
   });
 
   /** Models the configured provider can serve, for the client's picker. */
@@ -306,6 +422,9 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
 
   return app;
 }
+
+/** Must match `GraphDoc.observations` on the client. */
+const OBSERVATIONS_MAP = 'observations';
 
 /**
  * Pick the review provider from whichever credential is present.

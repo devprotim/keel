@@ -1,6 +1,15 @@
+import {
+  applyEvidence,
+  DEFAULT_EVIDENCE_MAX_AGE_MS,
+  resolveEvidence,
+  type Evidence,
+  type ObservationSet,
+} from './evidence.js';
 import { graphFingerprint, indexGraph } from './graph.js';
+import type { DesignIntent } from './intent.js';
+import { realityFindings } from './reality.js';
 import { RULES } from './rules.js';
-import type { ArchGraph, Finding, Rule, Severity } from './types.js';
+import type { ArchGraph, Finding, GraphIndex, Rule, Severity } from './types.js';
 
 export interface ValidationReport {
   findings: Finding[];
@@ -13,6 +22,8 @@ export interface ValidationReport {
   score: number;
   /** Fingerprint of the graph this report describes, for caching. */
   fingerprint: string;
+  /** Resolved observations, present when any were supplied. */
+  evidence?: Evidence;
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
@@ -23,6 +34,14 @@ export interface ValidateOptions {
   disabledRuleIds?: readonly string[];
   /** Override the rule set. Used by tests to isolate a single rule. */
   rules?: readonly Rule[];
+  /** What the running system reports. Rules run against these values where present. */
+  observations?: readonly ObservationSet[];
+  /** The approved baseline, which separates intended changes from accidents. */
+  intent?: DesignIntent;
+  /** Current time, for evidence freshness. Injected so reports are reproducible. */
+  now?: number;
+  /** Freshness window for observations. */
+  evidenceMaxAgeMs?: number;
 }
 
 /**
@@ -38,7 +57,62 @@ export function validate(graph: ArchGraph, options: ValidateOptions = {}): Valid
   const disabled = new Set(options.disabledRuleIds ?? []);
   const rules = (options.rules ?? RULES).filter((rule) => !disabled.has(rule.id));
   const index = indexGraph(graph);
+  const maxAgeMs = options.evidenceMaxAgeMs ?? DEFAULT_EVIDENCE_MAX_AGE_MS;
 
+  const evidence =
+    options.observations && options.observations.length > 0
+      ? resolveEvidence(graph, options.observations, { now: options.now ?? Date.now(), maxAgeMs })
+      : null;
+
+  // Rules judge the system as it runs, not as it was typed. A replica count
+  // that went stale six months ago would otherwise keep the retry-storm and
+  // single-point-of-failure rules quiet about a problem that exists today.
+  const effective = evidence ? applyEvidence(graph, evidence) : graph;
+  const findings = runRules(rules, effective, evidence ? indexGraph(effective) : index);
+
+  if (evidence && effective !== graph) {
+    // Flag what only the evidence revealed, so a finding the author cannot see
+    // in their own numbers explains itself rather than looking like a bug.
+    const declaredKeys = new Set(runRules(rules, graph, index).map(findingKey));
+    for (const finding of findings) {
+      if (!declaredKeys.has(findingKey(finding))) finding.observed = true;
+    }
+  }
+
+  findings.push(
+    ...realityFindings({
+      declared: graph,
+      effective,
+      index,
+      evidence,
+      intent: options.intent ?? {},
+      maxAgeMs,
+    }).filter((finding) => !disabled.has(finding.ruleId)),
+  );
+
+  if (evidence) weighByTraffic(findings, graph, evidence);
+
+  findings.sort((a, b) => {
+    const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+    if (bySeverity !== 0) return bySeverity;
+    const byTraffic = compareTraffic(a.trafficRps, b.trafficRps);
+    if (byTraffic !== 0) return byTraffic;
+    return a.ruleId.localeCompare(b.ruleId) || a.title.localeCompare(b.title);
+  });
+
+  const counts: Record<Severity, number> = { error: 0, warning: 0, info: 0 };
+  for (const finding of findings) counts[finding.severity] += 1;
+
+  return {
+    findings,
+    counts,
+    score: score(graph, findings),
+    fingerprint: graphFingerprint(graph),
+    ...(evidence ? { evidence } : {}),
+  };
+}
+
+function runRules(rules: readonly Rule[], graph: ArchGraph, index: GraphIndex): Finding[] {
   const findings: Finding[] = [];
   for (const rule of rules) {
     try {
@@ -54,17 +128,48 @@ export function validate(graph: ArchGraph, options: ValidateOptions = {}): Valid
       });
     }
   }
+  return findings;
+}
 
-  findings.sort((a, b) => {
-    const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-    if (bySeverity !== 0) return bySeverity;
-    return a.ruleId.localeCompare(b.ruleId) || a.title.localeCompare(b.title);
-  });
+/** Identity of a finding independent of its wording, which embeds values that differ between runs. */
+const findingKey = (finding: Finding): string =>
+  `${finding.ruleId}|${[...finding.nodeIds].sort().join(',')}|${[...finding.edgeIds].sort().join(',')}`;
 
-  const counts: Record<Severity, number> = { error: 0, warning: 0, info: 0 };
-  for (const finding of findings) counts[finding.severity] += 1;
+const SEVERITY_DOWN: Record<Severity, Severity> = { error: 'warning', warning: 'info', info: 'info' };
 
-  return { findings, counts, score: score(graph, findings), fingerprint: graphFingerprint(graph) };
+/**
+ * Attach observed throughput to each finding and demote findings on dead paths.
+ *
+ * A finding counts as dead only when every cited element with traffic data
+ * reports zero. A cited component the author ticked as critical is exempt: a
+ * failover path carries nothing until the day it carries everything, and that
+ * is exactly what the checkbox is for.
+ */
+function weighByTraffic(findings: Finding[], graph: ArchGraph, evidence: Evidence): void {
+  const declaredCritical = new Set(graph.nodes.filter((n) => n.critical).map((n) => n.id));
+
+  for (const finding of findings) {
+    const samples = [...finding.nodeIds, ...finding.edgeIds]
+      .map((id) => evidence.traffic[id])
+      .filter((rps): rps is number => rps !== undefined);
+    if (samples.length === 0) continue;
+
+    const peak = Math.max(finding.trafficRps ?? 0, ...samples);
+    finding.trafficRps = peak;
+
+    if (peak === 0 && finding.severity !== 'info' && !finding.nodeIds.some((id) => declaredCritical.has(id))) {
+      finding.severity = SEVERITY_DOWN[finding.severity];
+      finding.detail += ' Downgraded because no traffic was observed here.';
+    }
+  }
+}
+
+/** Busy paths first, then unknown, then paths observed to carry nothing. */
+function compareTraffic(a: number | undefined, b: number | undefined): number {
+  const tier = (rps: number | undefined): number => (rps === undefined ? 1 : rps > 0 ? 0 : 2);
+  const byTier = tier(a) - tier(b);
+  if (byTier !== 0) return byTier;
+  return (b ?? 0) - (a ?? 0);
 }
 
 /**

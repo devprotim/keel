@@ -1,9 +1,9 @@
-<aside class="keel-panel keel-island keel-inspector">
+<aside class="keel-panel keel-island inspector">
   <header class="keel-panel__header">
     <span>{{ title() }}</span>
     <button
       type="button"
-      class="keel-btn keel-btn--ghost keel-btn--icon keel-inspector__close"
+      class="keel-btn keel-btn--ghost keel-btn--icon close"
       aria-label="Close"
       (click)="closed.emit()"
     >
@@ -12,18 +12,41 @@
   </header>
 
   @if (selectionFindings().length > 0) {
-    <div
-      class="keel-inspector__findings keel-inspector__findings--{{ worstFindingSeverity() }}"
-    >
+    <div class="findings {{ worstFindingSeverity() }}">
       <span class="keel-severity keel-severity--{{ worstFindingSeverity() }}">
         {{ selectionFindings().length }}
         {{ selectionFindings().length === 1 ? 'issue' : 'issues' }} here
       </span>
-      <ul class="keel-inspector__findings-list">
+      <ul class="findings-list">
         @for (finding of selectionFindings(); track finding.ruleId + finding.title) {
           <li>{{ finding.title }}</li>
         }
       </ul>
+    </div>
+  }
+
+  @if (traffic() || approval()) {
+    <div class="evidence">
+      @if (traffic(); as t) {
+        <div class="evidence-row">
+          <span class="evidence-label">Traffic</span>
+          <span class="evidence-value" [class.dead]="t.dead">{{ t.label }}</span>
+          @if (t.hot) {
+            <span class="evidence-tag">hot path</span>
+          }
+        </div>
+      }
+      @if (approval(); as a) {
+        <div class="evidence-row">
+          <span class="evidence-label">Intent</span>
+          <span class="evidence-value" [class.changed]="a.state !== 'approved'">{{ a.label }}</span>
+          @if (a.state !== 'approved' && selectedId(); as id) {
+            <button type="button" class="keel-btn keel-btn--ghost evidence-action" (click)="approve(id)">
+              Approve
+            </button>
+          }
+        </div>
+      }
     </div>
   }
 
@@ -64,6 +87,20 @@
       </label>
 
       <label class="keel-field">
+        <span class="keel-field__label">Runtime name</span>
+        <input
+          class="keel-input mono"
+          type="text"
+          placeholder="e.g. orders-svc"
+          [value]="selected.ref ?? ''"
+          (input)="patchNode(selected.id, { ref: value($event).trim() || undefined })"
+        />
+        <span class="keel-field__hint">
+          What telemetry calls it. Observations are matched to this component by it.
+        </span>
+      </label>
+
+      <label class="keel-field">
         <span class="keel-field__label">Instances</span>
         <input
           class="keel-input"
@@ -74,6 +111,9 @@
         />
         <span class="keel-field__hint">One instance is a single point of failure.</span>
       </label>
+      @if (runningNote('replicas', selected.replicas); as running) {
+        <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'replicas', running }" />
+      }
 
       <hr class="keel-divider" />
 
@@ -85,6 +125,9 @@
         />
         <span>On the critical path</span>
       </label>
+      <span class="keel-field__hint check-hint">
+        Observed traffic marks hot paths on its own. Tick this for what traffic cannot show, such as a failover path.
+      </span>
 
       @if (selected.kind === 'datastore') {
         <label class="keel-check">
@@ -95,6 +138,9 @@
           />
           <span>Has a replica or standby</span>
         </label>
+        @if (runningFlag('hasReplica', selected.hasReplica) !== null) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasReplica', running: runningFlag('hasReplica', selected.hasReplica) ? 'yes' : 'no' }" />
+        }
         <label class="keel-check">
           <input
             type="checkbox"
@@ -103,6 +149,9 @@
           />
           <span>Has point-in-time backups</span>
         </label>
+        @if (runningFlag('hasBackup', selected.hasBackup) !== null) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasBackup', running: runningFlag('hasBackup', selected.hasBackup) ? 'yes' : 'no' }" />
+        }
       }
 
       @if (selected.kind === 'queue') {
@@ -114,6 +163,9 @@
           />
           <span>Has a dead-letter queue</span>
         </label>
+        @if (runningFlag('hasDlq', selected.hasDlq) !== null) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasDlq', running: runningFlag('hasDlq', selected.hasDlq) ? 'yes' : 'no' }" />
+        }
       }
 
       <hr class="keel-divider" />
@@ -168,6 +220,12 @@
           />
           <span class="keel-field__hint">Leave empty to model an unbounded wait.</span>
         </label>
+        @if (runningNote('timeoutMs', selected.timeoutMs); as running) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'timeoutMs', running }" />
+        }
+        @if (observedEdge()?.p99Ms; as p99) {
+          <span class="keel-field__hint observed-latency">Observed p99 latency: {{ formatMs(p99) }}</span>
+        }
 
         <label class="keel-field">
           <span class="keel-field__label">Retries</span>
@@ -180,6 +238,9 @@
             (input)="patchEdge(selected.id, { retries: numeric($event) })"
           />
         </label>
+        @if (runningNote('retries', selected.retries); as running) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'retries', running }" />
+        }
 
         <label class="keel-check">
           <input
@@ -189,6 +250,9 @@
           />
           <span>Protected by a circuit breaker</span>
         </label>
+        @if (runningFlag('circuitBreaker', selected.circuitBreaker) !== null) {
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'circuitBreaker', running: runningFlag('circuitBreaker', selected.circuitBreaker) ? 'yes' : 'no' }" />
+        }
       } @else {
         <label class="keel-check">
           <input
@@ -209,3 +273,13 @@
     </p>
   }
 </aside>
+
+<!-- The running value under a field that disagrees with it, with the fix one click away. -->
+<ng-template #observedNote let-id="id" let-field="field" let-running="running">
+  <div class="observed">
+    <span>Running: <strong>{{ running }}</strong></span>
+    <button type="button" class="keel-btn keel-btn--ghost observed-use" (click)="useObserved(id, field)">
+      Use running value
+    </button>
+  </div>
+</ng-template>

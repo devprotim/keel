@@ -40,8 +40,21 @@ export interface ArchNode {
   /** Free-text implementation note, e.g. "Postgres 16" or "Node/Fastify". */
   tech?: string;
   notes?: string;
-  /** Author has marked this as on the critical user path. Escalates severities. */
+  /**
+   * Author has marked this as on the critical user path. Escalates severities.
+   *
+   * Observed traffic escalates hot components on its own (see evidence.ts), so
+   * this is for what traffic cannot show: a failover path or a nightly job that
+   * carries nothing until the day it carries everything. A ticked box also
+   * stops a zero-traffic observation from downgrading the component's findings.
+   */
   critical?: boolean;
+  /**
+   * The name this component goes by in the running system: the Kubernetes
+   * deployment, the service name in traces. Observations are matched to the
+   * node by this, falling back to the node id.
+   */
+  ref?: string;
   /** datastore: has a read replica or standby. */
   hasReplica?: boolean;
   /** datastore: has point-in-time backups. */
@@ -84,6 +97,34 @@ export interface Finding {
   detail: string;
   nodeIds: string[];
   edgeIds: string[];
+  /**
+   * The finding exists only because observed values differ from the declared
+   * ones. Running the same rules on the diagram as typed would not raise it.
+   */
+  observed?: boolean;
+  /**
+   * Peak observed throughput across the cited elements, in requests per second.
+   * Absent means there is no traffic data, which is not the same as zero.
+   */
+  trafficRps?: number;
+  /** Field-level differences behind a drift or approval finding, so the UI can offer the fix. */
+  deltas?: FieldDelta[];
+  /**
+   * The one-step resolution, when there is one: make the diagram match what is
+   * running (and approve that), or approve the diagram as drawn.
+   */
+  fix?: 'accept-observed' | 'approve';
+}
+
+/** One field, compared across what is drawn, what runs, and what was approved. */
+export interface FieldDelta {
+  elementId: string;
+  field: string;
+  declared: string | number | boolean | null;
+  /** Absent when nothing observed this field. */
+  observed?: string | number | boolean | null;
+  /** Absent when this field has never been approved. */
+  approved?: string | number | boolean | null;
 }
 
 export interface Rule {

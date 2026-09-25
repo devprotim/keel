@@ -5,7 +5,7 @@
 // The expanded dock. A fixed width and a viewport-relative height cap: the
 // host is an absolutely-positioned, auto-height island, so it has no definite
 // height of its own for a percentage on this child to resolve against.
-.keel-findings--expanded {
+.findings.expanded {
   display: flex;
   flex-direction: column;
   width: 360px;
@@ -17,18 +17,18 @@
 // left/right span below this breakpoint; the fixed width here has to relax
 // to match, or the host would stretch around a card that does not.
 @media (max-width: 720px) {
-  .keel-findings--expanded {
+  .findings.expanded {
     width: 100%;
   }
 }
 
-.keel-findings__header-actions {
+.header-actions {
   display: flex;
   align-items: center;
   gap: var(--keel-space-2);
 }
 
-.keel-findings__score {
+.score {
   min-width: 34px;
   padding: 2px 8px;
   border-radius: 100px;
@@ -36,21 +36,21 @@
   font-weight: 700;
   text-align: center;
 
-  &--good {
+  &.good {
     background: color-mix(in srgb, var(--keel-severity-ok) 16%, transparent);
     color: var(--keel-severity-ok);
   }
-  &--fair {
+  &.fair {
     background: color-mix(in srgb, var(--keel-severity-warning) 18%, transparent);
     color: var(--keel-severity-warning);
   }
-  &--poor {
+  &.poor {
     background: color-mix(in srgb, var(--keel-severity-error) 16%, transparent);
     color: var(--keel-severity-error);
   }
 }
 
-.keel-findings__summary {
+.summary {
   display: flex;
   flex-wrap: wrap;
   gap: var(--keel-space-2);
@@ -58,7 +58,7 @@
   border-bottom: 1px solid var(--keel-border);
 }
 
-.keel-findings__clean {
+.clean {
   color: var(--keel-severity-ok);
   font-size: 12px;
   font-weight: 600;
@@ -68,7 +68,7 @@
   padding: var(--keel-space-2);
 }
 
-.keel-finding {
+.finding {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -89,18 +89,18 @@
 
   // Model findings are visually distinct from rule findings, so the user always
   // knows which kind of claim they are reading.
-  &--model {
+  &.model {
     border-style: dashed;
   }
 }
 
-.keel-finding__head {
+.finding-head {
   display: flex;
   align-items: center;
   gap: var(--keel-space-2);
 }
 
-.keel-finding__badge {
+.finding-badge {
   padding: 1px 6px;
   border: 1px solid var(--keel-border-strong);
   border-radius: 100px;
@@ -110,42 +110,42 @@
   letter-spacing: 0.06em;
 }
 
-.keel-finding__title {
+.finding-title {
   color: var(--keel-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
 }
 
-.keel-finding__detail {
+.finding-detail {
   color: var(--keel-text-muted);
   font-size: 12px;
   line-height: 1.45;
 }
 
-.keel-findings__footer {
+.footer {
   padding: var(--keel-space-3) var(--keel-space-4);
   border-top: 1px solid var(--keel-border);
 }
 
-.keel-findings__run {
+.run {
   width: 100%;
   justify-content: center;
 }
 
-.keel-findings__error {
+.error {
   margin: 0 0 var(--keel-space-2);
   color: var(--keel-severity-error);
   font-size: 12px;
 }
 
-.keel-findings__stale {
+.stale {
   margin: 0 0 var(--keel-space-2);
   color: var(--keel-text-muted);
   font-size: 12px;
 }
 
-.keel-findings__section {
+.section {
   display: flex;
   align-items: center;
   gap: var(--keel-space-2);
@@ -164,20 +164,139 @@
   }
 }
 
-.keel-findings__count {
+.count {
   padding: 1px 7px;
   border-radius: 100px;
   background: var(--keel-n-100);
   font-size: 10px;
 }
 
-.keel-findings__model {
+.model-select {
   margin-bottom: var(--keel-space-2);
+}
+
+// --- Evidence and baseline ------------------------------------------------
+
+.reality {
+  display: flex;
+  flex-direction: column;
+  gap: var(--keel-space-1);
+  padding: var(--keel-space-2) var(--keel-space-4);
+  border-bottom: 1px solid var(--keel-border);
+  font-size: 12px;
+}
+
+.reality-row {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  min-height: 28px;
+}
+
+.reality-label {
+  flex: 0 0 64px;
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reality-note {
+  flex: 1;
+  color: var(--keel-text-muted);
+}
+
+.reality-action {
+  margin-left: auto;
+  padding: 3px 8px;
+  font-size: 12px;
+
+  // The file input inside is visually hidden but still takes focus; the
+  // label shows the ring for it.
+  &:focus-within {
+    box-shadow: 0 0 0 3px var(--keel-accent-subtle);
+  }
+}
+
+.source {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0 var(--keel-space-2);
+  padding-left: calc(64px + var(--keel-space-2));
+
+  &.stale .source-meta {
+    color: var(--keel-severity-warning);
+  }
+}
+
+.source-name {
+  font-family: var(--keel-font-mono);
+  font-weight: 500;
+}
+
+.source-meta {
+  color: var(--keel-text-muted);
+}
+
+.source-remove {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.source-unmatched {
+  grid-column: 1 / -1;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-mono);
+  font-size: 11px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.finding-group {
+  margin-bottom: var(--keel-space-2);
+
+  .finding {
+    margin-bottom: 0;
+  }
+
+  // A finding with a fix reads as one card: the action sits in the card's
+  // footer rather than floating as a separate control below it.
+  .finding.has-fix {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.finding-fix {
+  width: 100%;
+  justify-content: center;
+  padding: 5px 12px;
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  color: var(--keel-accent);
+  font-size: 12px;
+}
+
+.finding-traffic {
+  margin-left: auto;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-mono);
+  font-size: 11px;
 }
 
 // --- Collapsed pill --------------------------------------------------------
 
-.keel-findings-pill {
+.pill {
   display: flex;
   align-items: center;
   gap: var(--keel-space-3);
@@ -195,7 +314,7 @@
   }
 }
 
-.keel-findings-pill__bucket {
+.pill-bucket {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -204,7 +323,7 @@
   white-space: nowrap;
 }
 
-.keel-findings-pill__clean {
+.pill-clean {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -212,33 +331,33 @@
   font-weight: 600;
 }
 
-.keel-findings-pill__dot {
+.pill-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex: 0 0 auto;
 
-  &--error {
+  &.error {
     background: var(--keel-severity-error);
   }
-  &--warning {
+  &.warning {
     background: var(--keel-severity-warning);
   }
-  &--info {
+  &.info {
     background: var(--keel-severity-info);
   }
-  &--ok {
+  &.ok {
     background: var(--keel-severity-ok);
   }
 }
 
-.keel-findings-pill__divider {
+.pill-divider {
   width: 1px;
   height: 18px;
   background: var(--keel-border);
 }
 
-.keel-findings-pill__chevron {
+.pill-chevron {
   color: var(--keel-text-muted);
   font-size: 11px;
 }

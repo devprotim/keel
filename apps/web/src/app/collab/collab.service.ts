@@ -1,10 +1,15 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
+  applyEvidence,
   emptyGraph,
+  hasUnapprovedChanges,
   validate,
   type ArchEdge,
   type ArchGraph,
   type ArchNode,
+  type DesignIntent,
+  type FieldDelta,
+  type ObservationSet,
   type ValidationReport,
 } from '@keel/shared';
 import { IndexeddbPersistence } from 'y-indexeddb';
@@ -34,6 +39,13 @@ export class CollabService {
   #stopObserving: (() => void) | null = null;
 
   readonly #graph = signal<ArchGraph>(emptyGraph());
+  readonly #observations = signal<readonly ObservationSet[]>([]);
+  readonly #intent = signal<DesignIntent>({});
+  /**
+   * Coarse wall clock for evidence freshness. Observations go stale with time
+   * alone, with no edit to trigger revalidation, so the report needs a tick.
+   */
+  readonly #now = signal(Date.now());
   readonly #peers = signal<readonly Peer[]>([]);
   /** What the socket itself reports. */
   readonly #socketStatus = signal<'connected' | 'connecting' | 'disconnected'>('connecting');
@@ -46,6 +58,10 @@ export class CollabService {
   readonly #roomId = signal<string | null>(null);
 
   readonly graph = this.#graph.asReadonly();
+  readonly observations = this.#observations.asReadonly();
+  readonly intent = this.#intent.asReadonly();
+  readonly hasBaseline = computed(() => Object.keys(this.#intent()).length > 0);
+  readonly hasUnapprovedChanges = computed(() => hasUnapprovedChanges(this.#graph(), this.#intent()));
   readonly peers = this.#peers.asReadonly();
   /**
    * Connection state, derived from two independent signals.
@@ -80,7 +96,18 @@ export class CollabService {
    * A computed signal rather than a call inside the render loop: validation walks
    * the whole graph, and doing that per frame while panning would be pure waste.
    */
-  readonly report = computed<ValidationReport>(() => validate(this.#graph()));
+  readonly report = computed<ValidationReport>(() =>
+    validate(this.#graph(), { observations: this.#observations(), intent: this.#intent(), now: this.#now() }),
+  );
+
+  /**
+   * The diagram as it runs: observed values laid over declared ones. This is
+   * what the AI reviewer sees, so it critiques the real system, not the claim.
+   */
+  readonly effectiveGraph = computed<ArchGraph>(() => {
+    const evidence = this.report().evidence;
+    return evidence ? applyEvidence(this.#graph(), evidence) : this.#graph();
+  });
 
   constructor() {
     const goOnline = (): void => this.#browserOnline.set(true);
@@ -88,7 +115,10 @@ export class CollabService {
     globalThis.addEventListener('online', goOnline);
     globalThis.addEventListener('offline', goOffline);
 
+    const clock = setInterval(() => this.#now.set(Date.now()), 60_000);
+
     inject(DestroyRef).onDestroy(() => {
+      clearInterval(clock);
       globalThis.removeEventListener('online', goOnline);
       globalThis.removeEventListener('offline', goOffline);
       this.disconnect();
@@ -210,6 +240,31 @@ export class CollabService {
     this.#doc.removeSelection(ids);
   }
 
+  // --- Evidence and intent -----------------------------------------------
+
+  importObservations(set: ObservationSet): void {
+    this.#doc.setObservations(set);
+    this.#now.set(Date.now());
+  }
+
+  removeObservations(source: string): void {
+    this.#doc.removeObservations(source);
+  }
+
+  /** Approve these elements as they are drawn now, attributed to this user. */
+  approve(ids: readonly string[]): void {
+    this.#doc.approve(ids, this.#displayName());
+  }
+
+  approveAll(): void {
+    this.#doc.approveAll(this.#displayName());
+  }
+
+  /** Update the diagram to what the running system reports, and approve it. */
+  acceptObserved(deltas: readonly FieldDelta[]): void {
+    this.#doc.acceptObserved(deltas, this.#displayName());
+  }
+
   undo(): void {
     this.#undoManager?.undo();
   }
@@ -232,6 +287,8 @@ export class CollabService {
 
   readonly #syncGraph = (): void => {
     this.#graph.set(this.#doc.toGraph());
+    this.#observations.set(this.#doc.toObservations());
+    this.#intent.set(this.#doc.toIntent());
   };
 
   readonly #syncUndoState = (): void => {

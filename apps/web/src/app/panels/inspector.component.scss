@@ -15,7 +15,7 @@
   }
 }
 
-.keel-inspector {
+.inspector {
   // A viewport-relative cap rather than a percentage: the host is an
   // absolutely-positioned, auto-height island (it sizes to its own content),
   // so it has no definite height of its own for a percentage on this child to
@@ -28,32 +28,32 @@
   overflow-y: auto;
 }
 
-.keel-inspector__close {
+.close {
   flex: 0 0 auto;
 }
 
 // Leads with the findings on the selected thing, so the card and the review
 // dock stop being two unrelated places: click a node with an error, see why
 // it is red before you even reach the property that fixes it.
-.keel-inspector__findings {
+.findings {
   display: flex;
   flex-direction: column;
   gap: var(--keel-space-2);
   padding: var(--keel-space-3) var(--keel-space-4);
   border-bottom: 1px solid var(--keel-border);
 
-  &--error {
+  &.error {
     background: color-mix(in srgb, var(--keel-severity-error) 7%, transparent);
   }
-  &--warning {
+  &.warning {
     background: color-mix(in srgb, var(--keel-severity-warning) 8%, transparent);
   }
-  &--info {
+  &.info {
     background: color-mix(in srgb, var(--keel-severity-info) 7%, transparent);
   }
 }
 
-.keel-inspector__findings-list {
+.findings-list {
   margin: 0;
   padding: 0 0 0 var(--keel-space-4);
   color: var(--keel-text);
@@ -64,4 +64,102 @@
 textarea.keel-input {
   resize: vertical;
   font-family: inherit;
+}
+
+// What the running system says about the selection, and whether what is
+// drawn has been approved. Sits under the findings callout, above the fields.
+.evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--keel-space-1);
+  padding: var(--keel-space-2) var(--keel-space-4);
+  border-bottom: 1px solid var(--keel-border);
+  font-size: 12px;
+}
+
+.evidence-row {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  min-height: 26px;
+}
+
+.evidence-label {
+  flex: 0 0 56px;
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.evidence-value {
+  color: var(--keel-text);
+  font-family: var(--keel-font-mono);
+
+  &.dead,
+  &.changed {
+    color: var(--keel-text-muted);
+  }
+
+  &.changed {
+    font-family: inherit;
+  }
+}
+
+.evidence-tag {
+  padding: 1px 7px;
+  border-radius: 100px;
+  background: var(--keel-accent-subtle);
+  color: var(--keel-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.evidence-action {
+  margin-left: auto;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+// A running value that disagrees with the field above it.
+.observed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--keel-space-2);
+  margin: calc(-1 * var(--keel-space-2)) 0 var(--keel-space-3);
+  padding: var(--keel-space-1) var(--keel-space-2);
+  border-radius: var(--keel-radius-sm);
+  background: color-mix(in srgb, var(--keel-severity-warning) 10%, transparent);
+  color: var(--keel-text);
+  font-size: 12px;
+
+  strong {
+    font-family: var(--keel-font-mono);
+    font-weight: 600;
+  }
+}
+
+.observed-use {
+  padding: 2px 6px;
+  color: var(--keel-accent);
+  font-size: 12px;
+}
+
+.observed-latency {
+  display: block;
+  margin: calc(-1 * var(--keel-space-2)) 0 var(--keel-space-3);
+  font-family: var(--keel-font-mono);
+}
+
+.check-hint {
+  display: block;
+  margin: calc(-1 * var(--keel-space-1)) 0 var(--keel-space-2);
+}
+
+.mono {
+  font-family: var(--keel-font-mono);
 }

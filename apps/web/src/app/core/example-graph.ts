@@ -21,24 +21,27 @@ export function exampleGraph(): { nodes: ArchNode[]; edges: ArchEdge[] } {
   ): ArchNode => ({ ...createNode(kind, x, y), id, label, ...extra });
 
   const nodes: ArchNode[] = [
-    node('n_web', 'external', 'Web & mobile', 40, 240),
-    node('n_gateway', 'gateway', 'API gateway', 280, 240, { replicas: 3, tech: 'Envoy' }),
+    node('n_web', 'external', 'Web & mobile', 40, 240, { ref: 'web' }),
+    node('n_gateway', 'gateway', 'API gateway', 280, 240, { ref: 'api-gateway', replicas: 3, tech: 'Envoy' }),
 
     node('n_checkout', 'service', 'Checkout', 540, 140, {
+      ref: 'checkout',
       replicas: 4,
       tech: 'Node / Fastify',
       critical: true,
     }),
-    node('n_catalog', 'service', 'Catalog', 540, 360, { replicas: 3, tech: 'Node' }),
+    node('n_catalog', 'service', 'Catalog', 540, 360, { ref: 'catalog', replicas: 3, tech: 'Node' }),
 
     // One instance, on the critical path, called synchronously by two services.
     node('n_pricing', 'service', 'Pricing engine', 820, 240, {
+      ref: 'pricing',
       replicas: 1,
       tech: 'Python',
       critical: true,
     }),
 
     node('n_orders_db', 'datastore', 'Orders DB', 820, 60, {
+      ref: 'orders-db',
       replicas: 2,
       tech: 'Postgres 16',
       hasReplica: true,
@@ -46,13 +49,13 @@ export function exampleGraph(): { nodes: ArchNode[]; edges: ArchEdge[] } {
     }),
 
     // Written by two services, and protected by neither replication nor backups.
-    node('n_catalog_db', 'datastore', 'Catalog DB', 820, 440, { tech: 'Postgres 16' }),
+    node('n_catalog_db', 'datastore', 'Catalog DB', 820, 440, { ref: 'catalog-db', tech: 'Postgres 16' }),
 
-    node('n_events', 'queue', 'Order events', 1080, 140, { replicas: 3, tech: 'Kafka' }),
-    node('n_fulfilment', 'service', 'Fulfilment', 1320, 140, { replicas: 2 }),
-    node('n_search_indexer', 'job', 'Search indexer', 1320, 360, { replicas: 1 }),
+    node('n_events', 'queue', 'Order events', 1080, 140, { ref: 'order-events', replicas: 3, tech: 'Kafka' }),
+    node('n_fulfilment', 'service', 'Fulfilment', 1320, 140, { ref: 'fulfilment', replicas: 2 }),
+    node('n_search_indexer', 'job', 'Search indexer', 1320, 360, { ref: 'search-indexer', replicas: 1 }),
 
-    node('n_stripe', 'external', 'Stripe', 540, 20),
+    node('n_stripe', 'external', 'Stripe', 540, 20, { ref: 'stripe' }),
   ];
 
   const edge = (

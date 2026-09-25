@@ -1,9 +1,9 @@
 @if (expanded()) {
-  <section class="keel-panel keel-island keel-findings keel-findings--expanded">
+  <section class="keel-panel keel-island findings expanded">
     <header class="keel-panel__header">
       <span>Review</span>
-      <div class="keel-findings__header-actions">
-        <span class="keel-findings__score" [class]="scoreClass()">{{ report().score }}</span>
+      <div class="header-actions">
+        <span class="score" [class]="scoreClass()">{{ report().score }}</span>
         <button
           type="button"
           class="keel-btn keel-btn--ghost keel-btn--icon"
@@ -15,14 +15,79 @@
       </div>
     </header>
 
-    <div class="keel-findings__summary">
+    <div class="summary">
       @for (bucket of buckets(); track bucket.severity) {
         <span class="keel-severity keel-severity--{{ bucket.severity }}">
           {{ bucket.count }} {{ bucket.label }}
         </span>
       }
       @if (totalCount() === 0 && !review.loading()) {
-        <span class="keel-findings__clean">No issues found.</span>
+        <span class="clean">No issues found.</span>
+      }
+    </div>
+
+    <!--
+      What the findings are checked against. Without evidence every number is
+      taken on trust, and without a baseline drift cannot be told apart from an
+      approved change, so both are stated plainly rather than implied.
+    -->
+    <div class="reality">
+      <div class="reality-row">
+        <span class="reality-label">Live data</span>
+        @if (sources().length === 0) {
+          <span class="reality-note">None. Values are taken as typed.</span>
+        }
+        <label class="keel-btn keel-btn--ghost reality-action">
+          Import
+          <input class="visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
+        </label>
+      </div>
+      @for (source of sources(); track source.source) {
+        <div class="source" [class.stale]="source.stale">
+          <span class="source-name">{{ source.source }}</span>
+          <span class="source-meta">
+            {{ source.age }} · {{ source.matched }} matched
+            @if (source.stale) {
+              · stale
+            }
+          </span>
+          <button
+            type="button"
+            class="keel-btn keel-btn--ghost keel-btn--icon source-remove"
+            [attr.aria-label]="'Remove observations from ' + source.source"
+            (click)="removeSource(source.source)"
+          >
+            ✕
+          </button>
+          @if (source.unmatchedRefs.length > 0) {
+            <span class="source-unmatched">
+              Not on the diagram: {{ source.unmatchedRefs.join(', ') }}
+            </span>
+          }
+        </div>
+      }
+      @if (importError(); as message) {
+        <p class="error">{{ message }}</p>
+      }
+
+      @if (!graphEmpty()) {
+        <div class="reality-row">
+          <span class="reality-label">Baseline</span>
+          <span class="reality-note">
+            @if (!hasBaseline()) {
+              Nothing approved yet.
+            } @else if (hasUnapprovedChanges()) {
+              Changed since approval.
+            } @else {
+              Matches the approved design.
+            }
+          </span>
+          @if (hasUnapprovedChanges()) {
+            <button type="button" class="keel-btn keel-btn--ghost reality-action" (click)="approveAll()">
+              {{ hasBaseline() ? 'Approve all' : 'Approve design' }}
+            </button>
+          }
+        </div>
       }
     </div>
 
@@ -33,39 +98,52 @@
         scrolling panel, so clicking "Run AI review" appeared to do nothing.
       -->
       @if (aiRows().length > 0) {
-        <h3 class="keel-findings__section">
+        <h3 class="section">
           AI review
-          <span class="keel-findings__count">{{ aiRows().length }}</span>
+          <span class="count">{{ aiRows().length }}</span>
         </h3>
         @for (row of aiRows(); track row.finding.title) {
-          <button type="button" class="keel-finding keel-finding--model" (click)="reveal(row)">
-            <span class="keel-finding__head">
+          <button type="button" class="finding model" (click)="reveal(row)">
+            <span class="finding-head">
               <span class="keel-severity keel-severity--{{ row.finding.severity }}">
                 {{ row.finding.severity }}
               </span>
-              <span class="keel-finding__badge">AI</span>
+              <span class="finding-badge">AI</span>
             </span>
-            <span class="keel-finding__title">{{ row.finding.title }}</span>
-            <span class="keel-finding__detail">{{ row.finding.detail }}</span>
+            <span class="finding-title">{{ row.finding.title }}</span>
+            <span class="finding-detail">{{ row.finding.detail }}</span>
           </button>
         }
       }
 
       @if (ruleRows().length > 0) {
-        <h3 class="keel-findings__section">
+        <h3 class="section">
           Rules
-          <span class="keel-findings__count">{{ ruleRows().length }}</span>
+          <span class="count">{{ ruleRows().length }}</span>
         </h3>
         @for (row of ruleRows(); track row.finding.ruleId + row.finding.title) {
-          <button type="button" class="keel-finding" (click)="reveal(row)">
-            <span class="keel-finding__head">
-              <span class="keel-severity keel-severity--{{ row.finding.severity }}">
-                {{ row.finding.severity }}
+          <div class="finding-group">
+            <button type="button" class="finding" [class.has-fix]="fixLabel(row.finding)" (click)="reveal(row)">
+              <span class="finding-head">
+                <span class="keel-severity keel-severity--{{ row.finding.severity }}">
+                  {{ row.finding.severity }}
+                </span>
+                @if (row.finding.observed) {
+                  <span class="finding-badge" title="Raised by observed values, not by what the diagram declares">LIVE</span>
+                }
+                @if (trafficLabel(row.finding); as traffic) {
+                  <span class="finding-traffic">{{ traffic }}</span>
+                }
               </span>
-            </span>
-            <span class="keel-finding__title">{{ row.finding.title }}</span>
-            <span class="keel-finding__detail">{{ row.finding.detail }}</span>
-          </button>
+              <span class="finding-title">{{ row.finding.title }}</span>
+              <span class="finding-detail">{{ row.finding.detail }}</span>
+            </button>
+            @if (fixLabel(row.finding); as label) {
+              <button type="button" class="keel-btn finding-fix" (click)="applyFix(row.finding)">
+                {{ label }}
+              </button>
+            }
+          </div>
         }
       }
 
@@ -77,21 +155,21 @@
       }
     </div>
 
-    <footer class="keel-findings__footer">
+    <footer class="footer">
       @if (review.error(); as message) {
-        <p class="keel-findings__error">{{ message }}</p>
+        <p class="error">{{ message }}</p>
       }
       @if (staleReview()) {
-        <p class="keel-findings__stale">The diagram changed since this review.</p>
+        <p class="stale">The diagram changed since this review.</p>
       }
       @if (review.hasRun() && aiRows().length === 0 && !review.loading()) {
-        <p class="keel-findings__stale">
+        <p class="stale">
           The reviewer found nothing beyond the rules above.
         </p>
       }
 
       @if (review.models().length > 0) {
-        <label class="keel-field keel-findings__model">
+        <label class="keel-field model-select">
           <span class="keel-field__label">Model</span>
           <select
             class="keel-select"
@@ -108,7 +186,7 @@
 
       <button
         type="button"
-        class="keel-btn keel-btn--primary keel-findings__run"
+        class="keel-btn keel-btn--primary run"
         [disabled]="review.loading() || graphEmpty()"
         (click)="runReview()"
       >
@@ -119,29 +197,29 @@
 } @else {
   <button
     type="button"
-    class="keel-island keel-findings-pill"
+    class="keel-island pill"
     (click)="toggleExpanded()"
     [attr.aria-label]="'Review: ' + report().score + ' out of 100. ' + (totalCount() === 0 ? 'No issues found.' : totalCount() + ' issues. Expand to see them.')"
   >
     @if (totalCount() === 0) {
-      <span class="keel-findings-pill__clean">
-        <span class="keel-findings-pill__dot keel-findings-pill__dot--ok" aria-hidden="true"></span>
+      <span class="pill-clean">
+        <span class="pill-dot ok" aria-hidden="true"></span>
         Nothing to review
       </span>
     } @else {
       @for (bucket of buckets(); track bucket.severity) {
-        <span class="keel-findings-pill__bucket">
+        <span class="pill-bucket">
           <span
-            class="keel-findings-pill__dot"
-            [class]="'keel-findings-pill__dot--' + bucket.severity"
+            class="pill-dot"
+            [class]="bucket.severity"
             aria-hidden="true"
           ></span>
           {{ bucket.count }} {{ bucket.label }}
         </span>
       }
     }
-    <span class="keel-findings-pill__divider" aria-hidden="true"></span>
-    <span class="keel-findings__score" [class]="scoreClass()">{{ report().score }}</span>
-    <span class="keel-findings-pill__chevron" aria-hidden="true">▴</span>
+    <span class="pill-divider" aria-hidden="true"></span>
+    <span class="score" [class]="scoreClass()">{{ report().score }}</span>
+    <span class="pill-chevron" aria-hidden="true">▴</span>
   </button>
 }

@@ -394,3 +394,93 @@ describe('GraphDoc undo, faithful to the real network path', () => {
     expect(bob.toGraph().nodes[0]!.x).toBe(0);
   });
 });
+
+describe('GraphDoc evidence and intent', () => {
+  const at = '2026-09-25T12:00:00Z';
+
+  it('stores one observation set per source and replaces it on the next push', () => {
+    const doc = new GraphDoc();
+    doc.setObservations({ source: 'k8s', observedAt: at, nodes: [{ ref: 'a', replicas: 1 }] });
+    doc.setObservations({ source: 'k8s', observedAt: at, nodes: [{ ref: 'a', replicas: 2 }] });
+    doc.setObservations({ source: 'otel', observedAt: at, edges: [{ source: 'a', target: 'b', rps: 5 }] });
+
+    const sets = doc.toObservations();
+    expect(sets.map((s) => s.source)).toEqual(['k8s', 'otel']);
+    expect(sets[0]?.nodes).toEqual([{ ref: 'a', replicas: 2 }]);
+
+    doc.removeObservations('k8s');
+    expect(doc.toObservations().map((s) => s.source)).toEqual(['otel']);
+  });
+
+  it('skips a malformed observation set written by someone else', () => {
+    const doc = new GraphDoc();
+    doc.observations.set('junk', { nope: true });
+    doc.observations.set('half', { source: 'half', observedAt: at, nodes: [{ replicas: 1 }, { ref: 'ok' }] });
+    expect(doc.toObservations()).toEqual([{ source: 'half', observedAt: at, nodes: [{ ref: 'ok' }], edges: [] }]);
+  });
+
+  it('approves the diagram as a baseline, and a removal drops it from the baseline', () => {
+    const doc = new GraphDoc();
+    doc.addNode(node('a', { replicas: 3 }));
+    doc.addNode(node('b'));
+    doc.addEdge({ ...edge('e', 'a', 'b'), timeoutMs: 500 });
+    doc.approveAll('ada', at);
+
+    const intent = doc.toIntent();
+    expect(Object.keys(intent).sort()).toEqual(['a', 'b', 'e']);
+    expect(intent['a']?.fields['replicas']).toEqual({ value: 3, by: 'ada', at });
+    expect(intent['e']).toMatchObject({ kind: 'edge', label: 'a to b' });
+
+    doc.removeSelection(['b']);
+    doc.approveAll('grace', at);
+    expect(Object.keys(doc.toIntent()).sort()).toEqual(['a']);
+  });
+
+  it('merges two people approving different components concurrently', () => {
+    const alice = new GraphDoc();
+    alice.addNode(node('a'));
+    alice.addNode(node('b'));
+    const bob = new GraphDoc();
+    sync(alice, bob);
+
+    alice.approve(['a'], 'alice', at);
+    bob.approve(['b'], 'bob', at);
+    sync(alice, bob);
+
+    expect(alice.toIntent()['a']?.fields['kind']?.by).toBe('alice');
+    expect(alice.toIntent()['b']?.fields['kind']?.by).toBe('bob');
+  });
+
+  it('accepts an observed value into both the diagram and the baseline, as one undo step', () => {
+    const doc = new GraphDoc();
+    doc.addNode(node('a', { replicas: 3 }));
+    doc.addEdge({ ...edge('e', 'a', 'a'), timeoutMs: 500 });
+    doc.approveAll('ada', at);
+    const undo = doc.createUndoManager(0);
+
+    doc.acceptObserved(
+      [
+        { elementId: 'a', field: 'replicas', declared: 3, observed: 1 },
+        { elementId: 'e', field: 'timeoutMs', declared: 500, observed: null },
+      ],
+      'grace',
+      at,
+    );
+
+    const graph = doc.toGraph();
+    expect(graph.nodes[0]?.replicas).toBe(1);
+    expect(graph.edges[0]).not.toHaveProperty('timeoutMs');
+    expect(doc.toIntent()['a']?.fields['replicas']).toEqual({ value: 1, previous: 3, by: 'grace', at });
+    expect(doc.toIntent()['e']?.fields['timeoutMs']).toMatchObject({ value: null, previous: 500 });
+
+    undo.undo();
+    expect(doc.toGraph().nodes[0]?.replicas).toBe(3);
+    expect(doc.toIntent()['a']?.fields['replicas']).toEqual({ value: 3, by: 'ada', at });
+  });
+
+  it('round-trips a node ref', () => {
+    const doc = new GraphDoc();
+    doc.addNode(node('a', { ref: 'orders-svc' }));
+    expect(doc.toGraph().nodes[0]?.ref).toBe('orders-svc');
+  });
+});
