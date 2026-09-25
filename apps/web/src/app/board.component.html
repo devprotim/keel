@@ -1,58 +1,58 @@
-<div class="keel-board">
-  <keel-canvas class="keel-board__canvas" />
+<div class="board">
+  <keel-canvas class="canvas" />
 
   <!-- Identity: brand, room id. Top-left, first thing the eye lands on. -->
-  <div class="keel-island keel-board__brand">
-    <span class="keel-board__logo" aria-hidden="true"></span>
+  <div class="keel-island brand">
+    <span class="logo" aria-hidden="true"></span>
     <strong>Keel</strong>
-    <span class="keel-board__divider" aria-hidden="true"></span>
+    <span class="divider" aria-hidden="true"></span>
     <button
       type="button"
-      class="keel-board__room"
+      class="room"
       [title]="roomIdCopied() ? 'Copied' : 'Copy the link to this room'"
       (click)="copyRoomLink()"
     >
       {{ roomId() }}
-      <span class="keel-board__room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
+      <span class="room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
       @if (roomIdCopied()) {
-        <span class="keel-board__copy-toast" role="status">Link copied</span>
+        <span class="copy-toast" role="status">Link copied</span>
       }
     </button>
   </div>
 
   <!-- Presence: peers, connection status, account, theme. Top-right. -->
-  <div class="keel-island keel-board__presence">
-    <div class="keel-board__peers" [attr.aria-label]="peerLabel()">
+  <div class="keel-island presence">
+    <div class="peers" [attr.aria-label]="peerLabel()">
       @for (peer of collab.peers(); track peer.clientId) {
         <span
-          class="keel-board__peer"
+          class="peer"
           [style.background]="peerColor(peer.clientId)"
           [title]="peer.name"
           >{{ initials(peer.name) }}</span
         >
       }
       <span
-        class="keel-board__peer keel-board__peer--self"
+        class="peer self"
         [title]="collab.displayName() + ' (you)'"
         >{{ initials(collab.displayName()) }}</span
       >
     </div>
 
-    <span class="keel-board__status" [class]="'keel-board__status--' + collab.status()">
+    <span class="status" [class]="collab.status()">
       {{ statusLabel() }}
     </span>
 
-    <span class="keel-board__divider" aria-hidden="true"></span>
+    <span class="divider" aria-hidden="true"></span>
 
     @if (auth.user(); as user) {
-      <div class="keel-board__identity" [title]="user.name">
+      <div class="identity" [title]="user.name">
         @if (user.avatarUrl) {
-          <img class="keel-board__avatar" [src]="user.avatarUrl" [alt]="user.name" />
+          <img class="avatar" [src]="user.avatarUrl" [alt]="user.name" />
         }
         <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()">Sign out</button>
       </div>
     } @else {
-      <div class="keel-board__identity">
+      <div class="identity">
         <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
           GitHub
         </button>
@@ -65,7 +65,7 @@
       </div>
     }
 
-    <span class="keel-board__divider" aria-hidden="true"></span>
+    <span class="divider" aria-hidden="true"></span>
 
     <button
       type="button"
@@ -84,12 +84,12 @@
     reach for since a native drag needs a pointer. Both write the same
     `placingKind` signal, so the tile shows armed either way.
   -->
-  <div class="keel-island keel-board__rail" role="toolbar" aria-label="Add a component">
+  <div class="keel-island rail" role="toolbar" aria-label="Add a component">
     @for (kind of nodeKinds; track kind) {
       <button
         type="button"
-        class="keel-rail__tile"
-        [class.keel-rail__tile--active]="canvas().placingKind() === kind"
+        class="tile"
+        [class.active]="canvas().placingKind() === kind"
         [attr.aria-pressed]="canvas().placingKind() === kind"
         [attr.aria-label]="kind"
         [title]="kind + ' — drag onto the canvas, or click then click the canvas'"
@@ -99,7 +99,7 @@
         (click)="toggleKind(kind)"
       >
         <svg
-          class="keel-rail__icon"
+          class="icon"
           width="18"
           height="18"
           viewBox="0 0 16 16"
@@ -145,13 +145,13 @@
       </button>
     }
 
-    <span class="keel-rail__divider" aria-hidden="true"></span>
+    <span class="rail-divider" aria-hidden="true"></span>
 
     @for (kind of edgeKinds; track kind) {
       <button
         type="button"
-        class="keel-rail__tile keel-rail__tile--edge"
-        [class.keel-rail__tile--active]="canvas().edgeKind() === kind"
+        class="tile edge"
+        [class.active]="canvas().edgeKind() === kind"
         [attr.aria-pressed]="canvas().edgeKind() === kind"
         [attr.aria-label]="kind + ' connection'"
         [title]="'Alt-drag from a component draws a new connection as ' + kind"
@@ -163,7 +163,7 @@
   </div>
 
   <!-- View tools: undo/redo, zoom, fit. Bottom-center. -->
-  <div class="keel-island keel-board__view-tools">
+  <div class="keel-island view-tools">
     <button
       type="button"
       class="keel-btn keel-btn--ghost keel-btn--icon"
@@ -183,7 +183,7 @@
       ↷
     </button>
 
-    <span class="keel-board__divider" aria-hidden="true"></span>
+    <span class="divider" aria-hidden="true"></span>
 
     <button
       type="button"
@@ -193,7 +193,7 @@
     >
       −
     </button>
-    <span class="keel-board__zoom-readout">{{ canvas().zoomPercent() }}%</span>
+    <span class="zoom-readout">{{ canvas().zoomPercent() }}%</span>
     <button
       type="button"
       class="keel-btn keel-btn--ghost keel-btn--icon"
@@ -203,7 +203,7 @@
       +
     </button>
 
-    <span class="keel-board__divider" aria-hidden="true"></span>
+    <span class="divider" aria-hidden="true"></span>
 
     <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
       Fit
@@ -211,22 +211,22 @@
   </div>
 
   <!-- The review dock: a collapsed pill by default, expands over the canvas. -->
-  <keel-findings class="keel-board__findings" (revealed)="canvas().revealNode($event)" />
+  <keel-findings class="findings-slot" (revealed)="canvas().revealNode($event)" />
 
   <!-- The inspector: a floating card that exists only while something is
        selected, instead of a permanently-docked panel saying nothing. -->
   @if (canvas().selection().size > 0) {
     <keel-inspector
-      class="keel-board__inspector"
+      class="inspector-slot"
       [selection]="canvas().selection()"
       (closed)="deselectAll()"
     />
   }
 
   @if (isEmpty()) {
-    <div class="keel-island keel-board__empty">
-      <p class="keel-board__empty-title">Nothing on the canvas yet</p>
-      <p class="keel-board__empty-body">
+    <div class="keel-island empty">
+      <p class="empty-title">Nothing on the canvas yet</p>
+      <p class="empty-body">
         Drag a component from the rail, or start from a worked example and edit it.
       </p>
       <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()">

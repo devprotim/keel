@@ -6,7 +6,7 @@
   min-height: 0;
 }
 
-.keel-canvas {
+.canvas {
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -26,19 +26,19 @@
   }
 
   // Alt/Cmd held over a node: the click that follows will start a connection.
-  &--connect-ready {
+  &.connect-ready {
     cursor: alias;
   }
 }
 
-.keel-canvas__layer {
+.layer {
   position: absolute;
   inset: 0;
   display: block;
 
   // Only the host div receives pointer events. Without this the overlay canvas
   // would swallow every click before it reached the handlers.
-  &--overlay {
+  &.overlay {
     pointer-events: none;
   }
 }

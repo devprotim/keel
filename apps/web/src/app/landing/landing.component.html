@@ -1,19 +1,19 @@
-<div class="keel-landing">
-  <header class="keel-landing__nav">
-    <div class="keel-landing__brand">
-      <span class="keel-landing__logo" aria-hidden="true"></span>
+<div class="landing">
+  <header class="nav">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
       <strong>Keel</strong>
     </div>
 
     @if (auth.user(); as user) {
-      <div class="keel-landing__identity" [title]="user.name">
+      <div class="identity" [title]="user.name">
         @if (user.avatarUrl) {
-          <img class="keel-landing__avatar" [src]="user.avatarUrl" [alt]="user.name" />
+          <img class="avatar" [src]="user.avatarUrl" [alt]="user.name" />
         }
-        <span class="keel-landing__identity-name">{{ user.name }}</span>
+        <span class="identity-name">{{ user.name }}</span>
       </div>
     } @else {
-      <div class="keel-landing__identity">
+      <div class="identity">
         <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
           Sign in with GitHub
         </button>
@@ -27,31 +27,31 @@
     }
   </header>
 
-  <main class="keel-landing__hero">
-    <h1 class="keel-landing__headline">
+  <main class="hero">
+    <h1 class="headline">
       Design system architecture that flags its own outages
     </h1>
-    <p class="keel-landing__subhead">
+    <p class="subhead">
       A real-time multiplayer canvas for system diagrams. Shapes are typed, edges carry
       runtime semantics like timeouts and retries, and the diagram validates itself as you
       and your team draw it together.
     </p>
 
-    <div class="keel-landing__cta-row">
+    <div class="cta-row">
       <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
         Start a new diagram
       </button>
-      <span class="keel-landing__cta-hint">No account needed. The link is the invite.</span>
+      <span class="cta-hint">No account needed. The link is the invite.</span>
     </div>
   </main>
 
-  <section class="keel-landing__features" aria-label="What Keel does">
-    <div class="keel-landing__feature">
+  <section class="features" aria-label="What Keel does">
+    <div class="feature">
       <span class="keel-kind-dot" style="background: var(--keel-kind-service)"></span>
       <h2>Real-time, together</h2>
       <p>Every edit syncs instantly over a CRDT. Undo only ever touches your own changes.</p>
     </div>
-    <div class="keel-landing__feature">
+    <div class="feature">
       <span class="keel-kind-dot" style="background: var(--keel-kind-datastore)"></span>
       <h2>A structured graph, not a drawing</h2>
       <p>
@@ -59,7 +59,7 @@
         canvas can reason about the design, not just render it.
       </p>
     </div>
-    <div class="keel-landing__feature">
+    <div class="feature">
       <span class="keel-kind-dot" style="background: var(--keel-kind-gateway)"></span>
       <h2>Caught before it ships</h2>
       <p>

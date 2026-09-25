@@ -2,28 +2,28 @@
 // squeezing the canvas into whatever was left; it is islands now, floating
 // over a full-bleed canvas, so the diagram gets the screen and every piece of
 // chrome claims space only while it has something to say.
-.keel-board {
+.board {
   position: relative;
   height: 100%;
   min-height: 0;
   overflow: hidden;
 }
 
-.keel-board__canvas {
+.canvas {
   position: absolute;
   inset: 0;
 }
 
 // --- Shared island bits ------------------------------------------------
 
-.keel-board__divider {
+.divider {
   width: 1px;
   height: 18px;
   background: var(--keel-border);
   flex: 0 0 auto;
 }
 
-.keel-board__logo {
+.logo {
   width: 16px;
   height: 16px;
   border-radius: 4px 4px 8px 8px;
@@ -33,7 +33,7 @@
 
 // --- Brand + presence islands -------------------------------------------
 
-.keel-board__brand {
+.brand {
   position: absolute;
   top: var(--keel-space-4);
   left: var(--keel-space-4);
@@ -50,7 +50,7 @@
   }
 }
 
-.keel-board__room {
+.room {
   position: relative;
   display: flex;
   align-items: center;
@@ -71,14 +71,14 @@
   }
 }
 
-.keel-board__room-icon {
+.room-icon {
   font-size: 11px;
 }
 
 // A brief confirmation next to the chip. The native `title` tooltip only
 // shows on hover, which is useless right after a click, so the click needs
 // its own feedback.
-.keel-board__copy-toast {
+.copy-toast {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -95,7 +95,7 @@
   pointer-events: none;
 }
 
-.keel-board__presence {
+.presence {
   position: absolute;
   top: var(--keel-space-4);
   right: var(--keel-space-4);
@@ -107,13 +107,13 @@
   overflow-x: auto;
 }
 
-.keel-board__peers {
+.peers {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
 }
 
-.keel-board__peer {
+.peer {
   display: grid;
   place-items: center;
   width: 26px;
@@ -125,26 +125,26 @@
   font-size: 10px;
   font-weight: 700;
 
-  &--self {
+  &.self {
     background: var(--keel-n-500);
   }
 }
 
-.keel-board__identity {
+.identity {
   display: flex;
   align-items: center;
   gap: var(--keel-space-2);
   flex: 0 0 auto;
 }
 
-.keel-board__avatar {
+.avatar {
   width: 22px;
   height: 22px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.keel-board__status {
+.status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -162,20 +162,20 @@
     background: currentColor;
   }
 
-  &--connected {
+  &.connected {
     color: var(--keel-severity-ok);
   }
-  &--connecting {
+  &.connecting {
     color: var(--keel-severity-warning);
   }
-  &--offline {
+  &.offline {
     color: var(--keel-text-muted);
   }
 }
 
 // --- The kind rail ---------------------------------------------------------
 
-.keel-board__rail {
+.rail {
   position: absolute;
   left: var(--keel-space-4);
   top: 50%;
@@ -189,7 +189,7 @@
   overflow-y: auto;
 }
 
-.keel-rail__tile {
+.tile {
   display: grid;
   place-items: center;
   width: 38px;
@@ -200,7 +200,7 @@
   cursor: grab;
   transition: background-color 0.12s ease, border-color 0.12s ease;
 
-  .keel-rail__icon {
+  .icon {
     display: block;
   }
 
@@ -212,12 +212,12 @@
     cursor: grabbing;
   }
 
-  &--active {
+  &.active {
     background: var(--keel-accent-subtle);
     border-color: var(--keel-accent);
   }
 
-  &--edge {
+  &.edge {
     width: 30px;
     height: 30px;
     color: var(--keel-text-muted);
@@ -225,13 +225,13 @@
     font-weight: 700;
     text-transform: uppercase;
 
-    &.keel-rail__tile--active {
+    &.active {
       color: var(--keel-accent);
     }
   }
 }
 
-.keel-rail__divider {
+.rail-divider {
   width: 26px;
   height: 1px;
   margin: 6px 0;
@@ -240,7 +240,7 @@
 
 // --- View tools --------------------------------------------------------
 
-.keel-board__view-tools {
+.view-tools {
   position: absolute;
   left: 50%;
   bottom: var(--keel-space-4);
@@ -252,7 +252,7 @@
   max-width: calc(100% - var(--keel-space-4) * 2);
 }
 
-.keel-board__zoom-readout {
+.zoom-readout {
   min-width: 40px;
   padding: 0 4px;
   color: var(--keel-text);
@@ -266,13 +266,13 @@
 // components (they need the same treatment whether they are floating over
 // this board or, in principle, anywhere else a designer decides to put them).
 
-.keel-board__findings {
+.findings-slot {
   position: absolute;
   left: 78px;
   bottom: var(--keel-space-4);
 }
 
-.keel-board__inspector {
+.inspector-slot {
   position: absolute;
   top: 76px;
   right: var(--keel-space-4);
@@ -280,7 +280,7 @@
 
 // --- Empty state ---------------------------------------------------------
 
-.keel-board__empty {
+.empty {
   position: absolute;
   left: 50%;
   top: 45%;
@@ -298,7 +298,7 @@
   box-shadow: var(--keel-shadow);
 }
 
-.keel-board__empty-title {
+.empty-title {
   margin: 0;
   font-family: var(--keel-font-display);
   font-size: 15px;
@@ -306,7 +306,7 @@
   color: var(--keel-text);
 }
 
-.keel-board__empty-body {
+.empty-body {
   margin: 0;
   color: var(--keel-text-muted);
   font-size: 12.5px;
@@ -318,7 +318,7 @@
 // old grid falling back to a stacked layout. Collapse the rail into the top
 // bar and let the dock/inspector go full-width instead.
 @media (max-width: 720px) {
-  .keel-board__rail {
+  .rail {
     position: absolute;
     left: 50%;
     top: var(--keel-space-4);
@@ -330,21 +330,21 @@
     overflow-x: auto;
   }
 
-  .keel-rail__divider {
+  .rail-divider {
     width: 1px;
     height: 26px;
     margin: 0 6px;
   }
 
-  .keel-board__brand,
-  .keel-board__presence {
+  .brand,
+  .presence {
     position: static;
     justify-content: space-between;
     margin: var(--keel-space-2);
   }
 
-  .keel-board__findings,
-  .keel-board__inspector {
+  .findings-slot,
+  .inspector-slot {
     left: var(--keel-space-2);
     right: var(--keel-space-2);
     width: auto;
