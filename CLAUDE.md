@@ -31,6 +31,16 @@ npx vitest run src/collab/room.spec.ts   # single test file, from apps/server or
 npx vitest run -t "name substring"       # filter by test name
 ```
 
+End-to-end tests (Playwright, `e2e/` workspace) are kept out of `pnpm -r test` since they need a browser:
+
+```bash
+pnpm --filter @keel/e2e exec playwright install chromium   # once
+pnpm test:e2e                                              # builds shared + web, boots the prod server on :8790
+pnpm --filter @keel/e2e e2e:ui                             # interactive UI mode
+```
+
+The server is booted with `NODE_ENV=production` and without `--env-file`, so the local `.env` (AI keys, OAuth) never affects a run; AI review is mocked with `page.route`. The canvas is opaque to Playwright, so tests assert through the accessible mirror (the canvas `aria-label` counts and the hidden node list), via the `Board` helper in `e2e/tests/board.ts`.
+
 Running the app locally (two terminals, after the shared build above):
 
 ```bash
@@ -132,4 +142,8 @@ Nothing above required Render credentials, so it's all done. Creating the actual
 
 ### Not yet done — needs your GitHub/Google developer accounts
 
-Sign-in is fully coded and degrades gracefully with zero config (see Authentication above), but making it actually work needs two OAuth apps registered on platforms a coding session can't reach: GitHub → Developer Settings → OAuth Apps, and Google → Cloud Console → OAuth consent screen + Credentials. Each needs its callback URL set to `<PUBLIC_URL>/api/auth/{github,google}/callback` (`http://localhost:8787/...` for local dev, the eventual Render URL for production). Then set `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, and `PUBLIC_URL` in `apps/server/.env` (and later in Render's dashboard, same as the AI keys).
+Sign-in is fully coded and degrades gracefully with zero config (see Authentication above).
+
+- **GitHub**: OAuth App is already registered (Developer Settings → OAuth Apps), and `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET` are set in Render's dashboard. They are not yet set in `apps/server/.env` locally (present as empty keys as of 2026-09-21), so GitHub sign-in works on the deployed Render URL but not on localhost until those values, plus `PUBLIC_URL=http://localhost:8787`, are copied in. The GitHub OAuth App's callback URL also needs `http://localhost:8787/api/auth/github/callback` added alongside the production one, or local login will fail with a redirect URI mismatch.
+- **Google**: still needs an OAuth app registered on Google Cloud Console (OAuth consent screen + Credentials), with callback `<PUBLIC_URL>/api/auth/google/callback`. Then set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` in `apps/server/.env` and later in Render's dashboard.
+- `SESSION_SECRET` is required either way (already set locally).

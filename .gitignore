@@ -7,3 +7,6 @@ coverage/
 .env.local
 .DS_Store
 .gstack/
+playwright-report/
+test-results/
+blob-report/
