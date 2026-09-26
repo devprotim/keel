@@ -208,6 +208,10 @@
     <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
       Fit
     </button>
+
+    <span class="divider" aria-hidden="true"></span>
+
+    <keel-export-menu [roomId]="roomId()" [theme]="canvas().currentTheme()" />
   </div>
 
   <!-- The review dock: a collapsed pill by default, expands over the canvas. -->
@@ -227,11 +231,30 @@
     <div class="keel-island empty">
       <p class="empty-title">Nothing on the canvas yet</p>
       <p class="empty-body">
-        Drag a component from the rail, or start from a worked example and edit it.
+        Drag a component from the rail, start from a worked example, or open a diagram
+        exported from Keel.
       </p>
-      <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()">
-        Load example
-      </button>
+      <div class="empty-actions">
+        <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()">
+          Load example
+        </button>
+        <label class="keel-btn keel-file-button">
+          Import JSON
+          <input
+            class="keel-visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            (change)="importFile($event)"
+          />
+        </label>
+      </div>
+      @if (importErrors().length > 0) {
+        <ul class="import-errors" role="alert">
+          @for (message of importErrors(); track message) {
+            <li>{{ message }}</li>
+          }
+        </ul>
+      }
     </div>
   }
 </div>

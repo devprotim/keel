@@ -56,6 +56,9 @@ export class CollabService {
   readonly #displayName = signal(loadDisplayName());
   readonly #avatarUrl = signal<string | null>(null);
   readonly #roomId = signal<string | null>(null);
+  /** Diagrams waiting for their room to open, keyed by room id. See queueImport. */
+  readonly #pendingImports = new Map<string, { graph: ArchGraph; intent: DesignIntent }>();
+  readonly #importCount = signal(0);
 
   readonly graph = this.#graph.asReadonly();
   readonly observations = this.#observations.asReadonly();
@@ -89,6 +92,8 @@ export class CollabService {
   readonly displayName = this.#displayName.asReadonly();
   readonly avatarUrl = this.#avatarUrl.asReadonly();
   readonly roomId = this.#roomId.asReadonly();
+  /** Bumps on every import, so the board can frame what just arrived. */
+  readonly importCount = this.#importCount.asReadonly();
 
   /**
    * Deterministic validation, recomputed only when the graph actually changes.
@@ -166,6 +171,12 @@ export class CollabService {
 
     this.#stopObserving = this.#doc.observe(this.#syncGraph);
     this.#syncGraph();
+
+    const pending = this.#pendingImports.get(roomId);
+    if (pending) {
+      this.#pendingImports.delete(roomId);
+      this.importDiagram(pending.graph, pending.intent);
+    }
   }
 
   disconnect(): void {
@@ -238,6 +249,25 @@ export class CollabService {
 
   remove(ids: readonly string[]): void {
     this.#doc.removeSelection(ids);
+  }
+
+  /** Add a diagram from a file to the current room, as one undo step. */
+  importDiagram(graph: ArchGraph, intent: DesignIntent = {}): void {
+    this.#doc.importDiagram(graph, intent);
+    this.#importCount.update((n) => n + 1);
+  }
+
+  /**
+   * Import into a room that is about to be opened.
+   *
+   * The landing page opens a file before any room exists, and the document
+   * only exists once `connect` runs, so the diagram waits here until then.
+   * Writing before the socket has synced is safe because the room id is new:
+   * there is nothing on the server for the import to conflict with, and the
+   * CRDT merges it upward either way.
+   */
+  queueImport(roomId: string, graph: ArchGraph, intent: DesignIntent = {}): void {
+    this.#pendingImports.set(roomId, { graph, intent });
   }
 
   // --- Evidence and intent -----------------------------------------------

@@ -30,6 +30,8 @@ export interface ContentFrame {
   theme: CanvasTheme;
   selection: ReadonlySet<string>;
   hoveredId: string | null;
+  /** Draw the background grid. Off for exports, where it is noise. Defaults to true. */
+  grid?: boolean;
 }
 
 export interface RemoteCursor {
@@ -100,7 +102,7 @@ export function drawContent(ctx: CanvasRenderingContext2D, frame: ContentFrame):
   ctx.fillStyle = theme.background;
   ctx.fillRect(0, 0, width, height);
 
-  drawGrid(ctx, frame);
+  if (frame.grid !== false) drawGrid(ctx, frame);
 
   // World transform for everything below, so drawing code can work in world
   // units and stop thinking about the camera.

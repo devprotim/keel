@@ -478,6 +478,24 @@ describe('GraphDoc evidence and intent', () => {
     expect(doc.toIntent()['a']?.fields['replicas']).toEqual({ value: 3, by: 'ada', at });
   });
 
+  it('imports a diagram and its baseline as one undo step', () => {
+    const doc = new GraphDoc();
+    const undo = doc.createUndoManager(0);
+    const a = node('a', { replicas: 2 });
+    doc.importDiagram(
+      { nodes: [a, node('b')], edges: [edge('e', 'a', 'b')] },
+      { a: { kind: 'node', label: 'a', fields: { replicas: { value: 2, by: 'ada', at } } } },
+    );
+
+    expect(doc.toGraph().nodes.map((n) => n.id)).toEqual(['a', 'b']);
+    expect(doc.toGraph().edges).toHaveLength(1);
+    expect(doc.toIntent()['a']?.fields['replicas']).toEqual({ value: 2, by: 'ada', at });
+
+    undo.undo();
+    expect(doc.toGraph()).toEqual({ nodes: [], edges: [] });
+    expect(doc.toIntent()).toEqual({});
+  });
+
   it('round-trips a node ref', () => {
     const doc = new GraphDoc();
     doc.addNode(node('a', { ref: 'orders-svc' }));

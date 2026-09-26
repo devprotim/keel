@@ -1,0 +1,95 @@
+:host {
+  position: relative;
+  display: inline-flex;
+}
+
+// Opens upward: the trigger lives in the bottom view-tools bar.
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--keel-space-3));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: 248px;
+  padding: var(--keel-space-1);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--keel-radius-sm);
+  background: transparent;
+  color: var(--keel-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    background: var(--keel-n-100);
+    outline: none;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: progress;
+  }
+
+  &.check {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--keel-space-2);
+  }
+}
+
+.item-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.item-hint {
+  color: var(--keel-text-muted);
+  font-size: 11px;
+
+  code {
+    font-family: var(--keel-font-mono);
+    font-size: 10.5px;
+  }
+}
+
+.box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--keel-border-strong);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+
+  &.on {
+    border-color: var(--keel-accent);
+    background: var(--keel-accent);
+    color: #fff;
+  }
+}
+
+.separator {
+  height: 1px;
+  margin: var(--keel-space-1) 0;
+  background: var(--keel-border);
+}
+
+.error {
+  margin: var(--keel-space-1) 10px var(--keel-space-2);
+  color: var(--keel-severity-error);
+  font-size: 12px;
+}

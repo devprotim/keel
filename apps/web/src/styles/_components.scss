@@ -217,3 +217,20 @@
   text-transform: uppercase;
   color: var(--keel-text-muted);
 }
+
+// Present for assistive tech and keyboard focus, absent visually. Used for the
+// file inputs behind styled "Import" labels.
+.keel-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// A <label> styled as a button around a hidden file input. The input takes the
+// focus, so the label draws the ring for it.
+.keel-file-button:focus-within {
+  box-shadow: 0 0 0 3px var(--keel-accent-subtle);
+}

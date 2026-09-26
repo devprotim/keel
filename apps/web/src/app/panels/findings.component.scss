@@ -211,12 +211,6 @@
   margin-left: auto;
   padding: 3px 8px;
   font-size: 12px;
-
-  // The file input inside is visually hidden but still takes focus; the
-  // label shows the ring for it.
-  &:focus-within {
-    box-shadow: 0 0 0 3px var(--keel-accent-subtle);
-  }
 }
 
 .source {
@@ -250,15 +244,6 @@
   color: var(--keel-text-muted);
   font-family: var(--keel-font-mono);
   font-size: 11px;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 .finding-group {

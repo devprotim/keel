@@ -1,0 +1,46 @@
+<button
+  #trigger
+  type="button"
+  class="keel-btn keel-btn--ghost"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="open()"
+  [disabled]="empty()"
+  [title]="empty() ? 'Nothing to export yet' : 'Export the diagram'"
+  (click)="toggle()"
+>
+  Export
+</button>
+
+@if (open()) {
+  <div #menu class="keel-island menu" role="menu" aria-label="Export" tabindex="-1" (keydown)="onMenuKeydown($event)">
+    <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('png')">
+      <span class="item-label">PNG image</span>
+      <span class="item-hint">{{ busy() === 'png' ? 'Rendering…' : 'For docs and slides' }}</span>
+    </button>
+    <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('svg')">
+      <span class="item-label">SVG image</span>
+      <span class="item-hint">{{ busy() === 'svg' ? 'Rendering…' : 'Scales without blurring' }}</span>
+    </button>
+    <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('json')">
+      <span class="item-label">JSON</span>
+      <span class="item-hint">Accepted as-is by <code>/api/validate</code></span>
+    </button>
+
+    <div class="separator" role="separator"></div>
+
+    <button
+      type="button"
+      class="item check"
+      role="menuitemcheckbox"
+      [attr.aria-checked]="includeFindings()"
+      (click)="includeFindings.set(!includeFindings())"
+    >
+      <span class="box" [class.on]="includeFindings()" aria-hidden="true">{{ includeFindings() ? '✓' : '' }}</span>
+      <span class="item-label">Show findings on images</span>
+    </button>
+
+    @if (error(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+  </div>
+}

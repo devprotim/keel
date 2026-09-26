@@ -38,11 +38,29 @@
     </p>
 
     <div class="cta-row">
-      <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
-        Start a new diagram
-      </button>
+      <div class="cta-buttons">
+        <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
+          Start a new diagram
+        </button>
+        <label class="keel-btn keel-btn--lg keel-file-button">
+          Open a file
+          <input
+            class="keel-visually-hidden"
+            type="file"
+            accept="application/json,.json"
+            (change)="openFile($event)"
+          />
+        </label>
+      </div>
       <span class="cta-hint">No account needed. The link is the invite.</span>
     </div>
+    @if (importErrors().length > 0) {
+      <ul class="import-errors" role="alert">
+        @for (message of importErrors(); track message) {
+          <li>{{ message }}</li>
+        }
+      </ul>
+    }
   </main>
 
   <section class="features" aria-label="What Keel does">

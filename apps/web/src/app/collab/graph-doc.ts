@@ -293,6 +293,22 @@ export class GraphDoc {
     });
   }
 
+  /**
+   * Add a whole diagram, and its approved baseline, as one change.
+   *
+   * One transaction, so it is one undo step and one broadcast, exactly like
+   * loading the example. Ids are kept as they are in the file: the baseline is
+   * keyed by them, and a room id already scopes them, so the same file opened
+   * in two rooms cannot collide.
+   */
+  importDiagram(graph: ArchGraph, intent: DesignIntent = {}): void {
+    this.transact(() => {
+      for (const node of graph.nodes) this.nodes.set(node.id, toYMap(node as unknown as Record<string, unknown>));
+      for (const edge of graph.edges) this.edges.set(edge.id, toYMap(edge as unknown as Record<string, unknown>));
+      for (const [id, element] of Object.entries(intent)) this.#writeIntent(id, element);
+    });
+  }
+
   /** Approve the whole diagram as it stands, including any removals. */
   approveAll(by: string, at?: string): void {
     const graph = this.toGraph();

@@ -95,6 +95,23 @@
   margin-top: var(--keel-space-2);
 }
 
+.cta-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--keel-space-2);
+}
+
+.import-errors {
+  max-width: 520px;
+  margin: var(--keel-space-2) auto 0;
+  padding: 0 0 0 var(--keel-space-4);
+  color: var(--keel-severity-error);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+
 .cta-hint {
   font-size: 12px;
   color: var(--keel-text-muted);

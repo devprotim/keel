@@ -15,7 +15,7 @@ pnpm install
 pnpm --filter @keel/shared build   # must run once before apps/server or apps/web will type-check against it
 
 pnpm -r build
-pnpm -r test        # 224 tests total, no network or browser required
+pnpm -r test        # 242 tests total, no network or browser required
 pnpm -r typecheck
 pnpm --parallel -r dev
 ```
@@ -84,6 +84,8 @@ apps/web          Angular 22, hand-rolled Canvas 2D renderer
 ### Rendering
 
 - The canvas renderer (`apps/web/src/app/canvas/renderer.ts`) is hand-written, split across two stacked `<canvas>` elements: content (grid/edges/nodes) redraws only when the scene or camera changes, cursors/marquee redraw on every pointer move. Remote cursors move constantly, so without the split, any peer's mouse movement would repaint the whole diagram.
+- Export (`apps/web/src/app/canvas/export.ts`) reuses `drawContent` for both image formats rather than having a second renderer: PNG draws into an offscreen canvas at 2x (capped at 8192px a side), SVG draws into `svgcanvas`, a Canvas 2D look-alike that emits SVG. It is lazy-loaded from its ESM build (`svgcanvas/dist/svgcanvas.esm.js`, typed via `src/svgcanvas.d.ts`) because the package's CommonJS entry loses its named exports when esbuild code-splits it. `svgcanvas` does not render shadows, and the SVG names Geist without embedding it. JSON export is the graph plus any approved intent, in the exact shape `/api/validate` accepts.
+- The file format lives in `packages/shared/src/diagram-file.ts` (`serializeDiagram`/`parseDiagram`). Parsing is strict and all-or-nothing with per-record error messages, unlike the live doc's skip-bad-records reads, because a user chose this file and silently dropping part of it is worse than refusing it. Import from the landing page always opens a new room (`CollabService.queueImport`, applied in `connect()`), never an existing one, so an import cannot land on top of collaborators' work; the board's Import JSON only appears on an empty canvas. Ids are kept, since the baseline is keyed by them and room ids already scope them.
 
 ### Authentication
 

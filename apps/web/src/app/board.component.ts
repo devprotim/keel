@@ -7,6 +7,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { EDGE_KINDS, NODE_KINDS, type EdgeKind, type NodeKind } from '@keel/shared';
@@ -14,7 +15,9 @@ import { AuthService } from './auth/auth.service';
 import { CanvasComponent, NODE_DRAG_MIME } from './canvas/canvas.component';
 import { CollabService } from './collab/collab.service';
 import { presenceColor } from './core/theme';
+import { readDiagramFile, takePickedFile } from './core/diagram-import';
 import { exampleGraph } from './core/example-graph';
+import { ExportMenuComponent } from './panels/export-menu.component';
 import { FindingsComponent } from './panels/findings.component';
 import { InspectorComponent } from './panels/inspector.component';
 
@@ -32,7 +35,7 @@ import { InspectorComponent } from './panels/inspector.component';
 @Component({
   selector: 'keel-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanvasComponent, FindingsComponent, InspectorComponent],
+  imports: [CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss',
 })
@@ -68,12 +71,23 @@ export class BoardComponent {
     return count === 0 ? 'You are the only person here' : `${count + 1} people editing`;
   });
 
+  /** Why the last picked file could not be imported, one line per problem. */
+  readonly importErrors = signal<readonly string[]>([]);
+
   /** Brief "Copied" confirmation after the room chip is clicked. */
   readonly roomIdCopied = signal(false);
   private copyResetHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => this.collab.connect(this.roomId()));
+
+    // Frame whatever an import just brought in, including one queued by the
+    // landing page before this board existed. Untracked, or the fit would
+    // re-run on every resize and edit it happens to read.
+    effect(() => {
+      if (this.collab.importCount() === 0) return;
+      untracked(() => this.canvas().zoomToFit());
+    });
 
     effect(() => {
       document.documentElement.setAttribute('data-theme', this.theme());
@@ -186,6 +200,19 @@ export class BoardComponent {
       for (const edge of edges) this.collab.addEdge(edge);
     });
     queueMicrotask(() => this.canvas().zoomToFit());
+  }
+
+  async importFile(event: Event): Promise<void> {
+    const file = takePickedFile(event);
+    if (!file) return;
+
+    const result = await readDiagramFile(file);
+    if (!result.ok) {
+      this.importErrors.set(result.errors);
+      return;
+    }
+    this.importErrors.set([]);
+    this.collab.importDiagram(result.graph, result.intent);
   }
 }
 

@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { CollabService } from '../collab/collab.service';
+import { readDiagramFile, takePickedFile } from '../core/diagram-import';
 import { newRoomId } from '../core/room-id';
 
 /**
@@ -17,6 +19,9 @@ import { newRoomId } from '../core/room-id';
 export class LandingComponent {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly collab = inject(CollabService);
+
+  protected readonly importErrors = signal<readonly string[]>([]);
 
   constructor() {
     void this.auth.refresh();
@@ -37,5 +42,25 @@ export class LandingComponent {
    */
   protected startDiagram(): void {
     void this.router.navigate(['/', newRoomId()]);
+  }
+
+  /**
+   * Open an exported diagram in a room of its own.
+   *
+   * Always a new room, never an existing one: importing into a shared room
+   * would drop a whole diagram on top of whatever collaborators are editing.
+   */
+  protected async openFile(event: Event): Promise<void> {
+    const file = takePickedFile(event);
+    if (!file) return;
+
+    const result = await readDiagramFile(file);
+    if (!result.ok) {
+      this.importErrors.set(result.errors);
+      return;
+    }
+    const roomId = newRoomId();
+    this.collab.queueImport(roomId, result.graph, result.intent);
+    void this.router.navigate(['/', roomId]);
   }
 }

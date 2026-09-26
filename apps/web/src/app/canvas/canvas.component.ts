@@ -68,6 +68,8 @@ export class CanvasComponent {
 
   private readonly size = signal({ width: 0, height: 0 });
   private readonly theme = signal<CanvasTheme>(FALLBACK_THEME);
+  /** The palette the canvas is drawing with, so an export can match it. */
+  readonly currentTheme = this.theme.asReadonly();
   private gesture: Gesture | null = null;
 
   private contentDirty = true;
@@ -142,6 +144,7 @@ export class CanvasComponent {
     return this.gestureVersion();
   }
 
+  private fitPending = false;
   private resizeObserver: ResizeObserver | null = null;
   private themeObserver: MutationObserver | null = null;
 
@@ -181,6 +184,7 @@ export class CanvasComponent {
 
     this.markContentDirty();
     this.markOverlayDirty();
+    if (this.fitPending) this.zoomToFit();
   }
 
   private markContentDirty(): void {
@@ -536,7 +540,14 @@ export class CanvasComponent {
   zoomToFit(): void {
     const { width, height } = this.size();
     const bounds = boundingBox(this.scene().nodes.map((n) => n.rect));
-    if (!bounds || width === 0) return;
+    if (!bounds) return;
+    // Asked before the canvas has been measured, as an import that opens a
+    // new room is: remember, and fit on the first real size instead.
+    if (width === 0) {
+      this.fitPending = true;
+      return;
+    }
+    this.fitPending = false;
     this.viewport.set(fitToContent(bounds, width, height));
   }
 

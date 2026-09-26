@@ -37,9 +37,9 @@
         @if (sources().length === 0) {
           <span class="reality-note">None. Values are taken as typed.</span>
         }
-        <label class="keel-btn keel-btn--ghost reality-action">
+        <label class="keel-btn keel-btn--ghost keel-file-button reality-action">
           Import
-          <input class="visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
+          <input class="keel-visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
         </label>
       </div>
       @for (source of sources(); track source.source) {

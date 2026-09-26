@@ -313,6 +313,20 @@
   line-height: 1.55;
 }
 
+.empty-actions {
+  display: flex;
+  gap: var(--keel-space-2);
+}
+
+.import-errors {
+  margin: 0;
+  padding: 0 0 0 var(--keel-space-4);
+  color: var(--keel-severity-error);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+
 // Below this, floating islands would start colliding into each other rather
 // than the canvas simply getting cramped, which is a worse failure than the
 // old grid falling back to a stacked layout. Collapse the rail into the top
