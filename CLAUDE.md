@@ -59,6 +59,7 @@ packages/shared   domain model, graph algorithms, validation engine (framework-f
 packages/action   GitHub Action: validates committed *.keel.json diagrams, diffs findings against the PR base
 apps/server       Fastify: Yjs sync protocol, rooms, persistence, AI review
 apps/web          Angular 22, hand-rolled Canvas 2D renderer
+apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> observation sets (no runtime deps)
 ```
 
 `packages/shared` is the contract both other workspaces import (`@keel/shared`, built to `dist/`). It must be built before `apps/server` or `apps/web` type-check, since they consume its `dist/*.d.ts`, not its source.
@@ -81,6 +82,11 @@ apps/web          Angular 22, hand-rolled Canvas 2D renderer
 - AI review (`apps/server/src/ai/`) is a second opinion for judgment calls a rule can't express (e.g. dual-write inconsistency, a boundary drawn in the wrong place) — not a replacement for the rules, and the system prompt explicitly tells the model not to repeat what the rule engine already covers. `ReviewProvider` is the only vendor-specific surface (Anthropic and Gemini implementations); caching (keyed on model + graph fingerprint, position-independent) and grounding live in `ArchitectureReviewer`/`review.ts` above that boundary so both providers get the same guarantees.
 - **Every AI finding must cite a real node/edge id.** `groundFindings()` discards any finding citing nothing or citing an id that doesn't exist in the graph — this is what makes a finding clickable instead of something to fact-check by hand. This filter runs for every provider; don't bypass it when adding one.
 - Anthropic wins if both `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` are set (`selectProvider` in `app.ts`).
+
+### Observation collector (`apps/collector`)
+
+- One process, two sources pushed as separate observation sets: `kubernetes` (ready replicas per ref from Deployments/StatefulSets, plus `keel.dev/*` annotations) and `otel` (an OTLP/HTTP **JSON-only** receiver; `ServiceGraph` pairs CLIENT/PRODUCER spans with SERVER/CONSUMER spans by parent id into edges with rps and caller-side p99). A failed Kubernetes round is skipped, never pushed empty. Only services seen *serving* get a node rps, since a reported 0 demotes findings.
+- Its only import from `@keel/shared` is types, so it runs from source with no `node_modules` (see its Dockerfile).
 
 ### CI Action (`packages/action`)
 
