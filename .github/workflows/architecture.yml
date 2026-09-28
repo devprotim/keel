@@ -1,0 +1,27 @@
+# Keel checking its own example diagram, through the action as a user would
+# run it. Also the smoke test for packages/action on a real runner.
+name: Architecture
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**.keel.json'
+      - 'packages/action/**'
+      - 'packages/shared/src/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  keel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./packages/action
+        with:
+          diagrams: examples/*.keel.json
+          # The example is deliberately flawed (it seeds empty rooms), so
+          # only a change that makes it worse should fail.
+          fail-on: error
+          fail-scope: new

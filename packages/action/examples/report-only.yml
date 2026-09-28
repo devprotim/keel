@@ -1,0 +1,16 @@
+# Report every change to a diagram on the pull request, without blocking merge.
+name: Architecture
+on:
+  pull_request:
+    paths: ['**/*.keel.json']
+
+permissions:
+  contents: read
+  pull-requests: write # for the report comment
+
+jobs:
+  keel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: <owner>/keel/packages/action@v1

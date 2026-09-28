@@ -47,6 +47,13 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+      # The action runs from its committed bundle, so a source change without a
+      # rebuild would ship the old behaviour.
+      - name: Action bundle is up to date
+        run: |
+          pnpm --filter @keel/action build
+          git diff --exit-code -- packages/action/dist
+
   e2e:
     runs-on: ubuntu-latest
     steps:

@@ -56,6 +56,7 @@ AI review is optional: copy `apps/server/.env.example` to `apps/server/.env` and
 
 ```
 packages/shared   domain model, graph algorithms, validation engine (framework-free, no deps)
+packages/action   GitHub Action: validates committed *.keel.json diagrams, diffs findings against the PR base
 apps/server       Fastify: Yjs sync protocol, rooms, persistence, AI review
 apps/web          Angular 22, hand-rolled Canvas 2D renderer
 ```
@@ -80,6 +81,11 @@ apps/web          Angular 22, hand-rolled Canvas 2D renderer
 - AI review (`apps/server/src/ai/`) is a second opinion for judgment calls a rule can't express (e.g. dual-write inconsistency, a boundary drawn in the wrong place) — not a replacement for the rules, and the system prompt explicitly tells the model not to repeat what the rule engine already covers. `ReviewProvider` is the only vendor-specific surface (Anthropic and Gemini implementations); caching (keyed on model + graph fingerprint, position-independent) and grounding live in `ArchitectureReviewer`/`review.ts` above that boundary so both providers get the same guarantees.
 - **Every AI finding must cite a real node/edge id.** `groundFindings()` discards any finding citing nothing or citing an id that doesn't exist in the graph — this is what makes a finding clickable instead of something to fact-check by hand. This filter runs for every provider; don't bypass it when adding one.
 - Anthropic wins if both `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` are set (`selectProvider` in `app.ts`).
+
+### CI Action (`packages/action`)
+
+- Bundled with esbuild to `dist/index.cjs`, which is **committed** (un-ignored in `.gitignore`); CI rebuilds it and fails on a diff, so rebuild after changing `src/` or `packages/shared`. `.github/workflows/architecture.yml` dogfoods it on `examples/checkout.keel.json`.
+- Findings are diffed by rule + cited ids. Default `fail-on: never` (report only); with no base revision, `fail-scope: new` falls back to all findings rather than none.
 
 ### Rendering
 

@@ -1,0 +1,25 @@
+# Hold the diagram to a clean bill: any warning, old or new, fails the check.
+# Mute rules that don't apply to this system rather than lowering the bar.
+name: Architecture
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  keel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: keel
+        uses: <owner>/keel/packages/action@v1
+        with:
+          fail-on: warning
+          fail-scope: all
+          disabled-rules: orphan-node
+      - if: always()
+        run: echo "${{ steps.keel.outputs.introduced }} new, ${{ steps.keel.outputs.resolved }} resolved"
