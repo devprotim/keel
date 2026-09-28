@@ -13,8 +13,15 @@ const schema = z.object({
   /** Comma-separated list of allowed browser origins. */
   CORS_ORIGINS: z.string().default('http://localhost:4200'),
 
-  /** Absent means the in-memory store, which is fine for dev and tests. */
+  /**
+   * Absent means the in-memory store, which is fine for dev and tests but
+   * loses every room on restart. Set, the server migrates the schema at boot
+   * and refuses to start if it cannot.
+   */
   DATABASE_URL: z.string().url().optional(),
+
+  /** Connections held open to Postgres. Rooms batch writes, so few are needed. */
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().max(100).default(10),
 
   /**
    * Review credentials. Whichever is present selects the provider; if both are
