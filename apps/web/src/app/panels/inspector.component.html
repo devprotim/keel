@@ -66,11 +66,10 @@
         <span class="keel-field__label">Kind</span>
         <select
           class="keel-select"
-          [value]="selected.kind"
           (change)="patchNode(selected.id, { kind: asNodeKind(value($event)) })"
         >
           @for (kind of nodeKinds; track kind) {
-            <option [value]="kind">{{ kind }}</option>
+            <option [value]="kind" [selected]="kind === selected.kind">{{ kind }}</option>
           }
         </select>
       </label>
@@ -86,31 +85,35 @@
         />
       </label>
 
-      <label class="keel-field">
-        <span class="keel-field__label">Runtime name</span>
+      <div class="keel-field">
+        <label class="keel-field__label" for="inspector-ref">Runtime name</label>
         <input
+          id="inspector-ref"
+          aria-describedby="inspector-ref-hint"
           class="keel-input mono"
           type="text"
           placeholder="e.g. orders-svc"
           [value]="selected.ref ?? ''"
           (input)="patchNode(selected.id, { ref: value($event).trim() || undefined })"
         />
-        <span class="keel-field__hint">
+        <span id="inspector-ref-hint" class="keel-field__hint">
           What telemetry calls it. Observations are matched to this component by it.
         </span>
-      </label>
+      </div>
 
-      <label class="keel-field">
-        <span class="keel-field__label">Instances</span>
+      <div class="keel-field">
+        <label class="keel-field__label" for="inspector-replicas">Instances</label>
         <input
+          id="inspector-replicas"
+          aria-describedby="inspector-replicas-hint"
           class="keel-input"
           type="number"
           min="0"
           [value]="selected.replicas"
           (input)="patchNode(selected.id, { replicas: numeric($event) ?? 1 })"
         />
-        <span class="keel-field__hint">One instance is a single point of failure.</span>
-      </label>
+        <span id="inspector-replicas-hint" class="keel-field__hint">One instance is a single point of failure.</span>
+      </div>
       @if (runningNote('replicas', selected.replicas); as running) {
         <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'replicas', running }" />
       }
@@ -193,24 +196,27 @@
         />
       </label>
 
-      <label class="keel-field">
-        <span class="keel-field__label">Call style</span>
+      <div class="keel-field">
+        <label class="keel-field__label" for="inspector-call-style">Call style</label>
         <select
+          id="inspector-call-style"
+          aria-describedby="inspector-call-style-hint"
           class="keel-select"
-          [value]="selected.kind"
           (change)="patchEdge(selected.id, { kind: asEdgeKind(value($event)) })"
         >
           @for (kind of edgeKinds; track kind) {
-            <option [value]="kind">{{ kind }}</option>
+            <option [value]="kind" [selected]="kind === selected.kind">{{ kind }}</option>
           }
         </select>
-        <span class="keel-field__hint">{{ edgeKindHint(selected.kind) }}</span>
-      </label>
+        <span id="inspector-call-style-hint" class="keel-field__hint">{{ edgeKindHint(selected.kind) }}</span>
+      </div>
 
       @if (selected.kind === 'sync') {
-        <label class="keel-field">
-          <span class="keel-field__label">Timeout (ms)</span>
+        <div class="keel-field">
+          <label class="keel-field__label" for="inspector-timeout">Timeout (ms)</label>
           <input
+            id="inspector-timeout"
+            aria-describedby="inspector-timeout-hint"
             class="keel-input"
             type="number"
             min="0"
@@ -218,8 +224,8 @@
             [value]="selected.timeoutMs ?? ''"
             (input)="patchEdge(selected.id, { timeoutMs: numeric($event) })"
           />
-          <span class="keel-field__hint">Leave empty to model an unbounded wait.</span>
-        </label>
+          <span id="inspector-timeout-hint" class="keel-field__hint">Leave empty to model an unbounded wait.</span>
+        </div>
         @if (runningNote('timeoutMs', selected.timeoutMs); as running) {
           <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'timeoutMs', running }" />
         }
