@@ -7,6 +7,8 @@
  * back into a snapshot so that loading a long-lived room stays fast.
  */
 export interface DocStore {
+  /** Reported by /health, so a deploy running on the wrong store is visible. */
+  readonly kind: 'memory' | 'postgres';
   /** Everything needed to rebuild a document: a base snapshot plus later updates. */
   load(roomId: string): Promise<LoadedDoc>;
   /** Append one update. Called on the hot path, so it must stay cheap. */
@@ -37,6 +39,7 @@ export interface RoomSummary {
  * compaction, so tests exercise the real code path rather than a simplified one.
  */
 export class MemoryDocStore implements DocStore {
+  readonly kind = 'memory';
   readonly #snapshots = new Map<string, Uint8Array>();
   readonly #updates = new Map<string, Uint8Array[]>();
   readonly #updatedAt = new Map<string, Date>();

@@ -203,6 +203,7 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
   app.get('/health', async () => ({
     status: 'ok',
     rooms: rooms.residentCount,
+    store: store.kind,
     review: reviewer ? 'enabled' : 'disabled',
     reviewProvider: reviewer?.providerName ?? null,
     oauth: { github: auth.github ? 'enabled' : 'disabled', google: auth.google ? 'enabled' : 'disabled' },
