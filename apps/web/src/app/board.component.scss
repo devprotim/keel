@@ -171,6 +171,9 @@
   &.offline {
     color: var(--keel-text-muted);
   }
+  &.refused {
+    color: var(--keel-severity-error);
+  }
 }
 
 // --- The kind rail ---------------------------------------------------------

@@ -19,7 +19,7 @@ import { KEEL_CONFIG } from '../core/app-config';
 import { GraphDoc } from './graph-doc';
 import { loadDisplayName, readPeerState, saveDisplayName, type Peer } from './presence';
 
-export type ConnectionStatus = 'connecting' | 'connected' | 'offline';
+export type ConnectionStatus = 'connecting' | 'connected' | 'offline' | 'refused';
 
 /**
  * The live document: network, presence, undo, and the signals the UI reads.
@@ -49,6 +49,12 @@ export class CollabService {
   readonly #peers = signal<readonly Peer[]>([]);
   /** What the socket itself reports. */
   readonly #socketStatus = signal<'connected' | 'connecting' | 'disconnected'>('connecting');
+  /**
+   * Why the server last closed the socket on purpose, if it did. The provider
+   * reconnects regardless, and the next sync is refused the same way, so
+   * without this the header would flicker "Connecting" with no explanation.
+   */
+  readonly #refusal = signal<string | null>(null);
   /** What the browser reports, which is a separate question. */
   readonly #browserOnline = signal(navigator.onLine);
   readonly #canUndo = signal(false);
@@ -78,6 +84,7 @@ export class CollabService {
    */
   readonly status = computed<ConnectionStatus>(() => {
     if (!this.#browserOnline()) return 'offline';
+    if (this.#refusal() !== null) return 'refused';
     switch (this.#socketStatus()) {
       case 'connected':
         return 'connected';
@@ -87,6 +94,7 @@ export class CollabService {
         return 'connecting';
     }
   });
+  readonly refusal = this.#refusal.asReadonly();
   readonly canUndo = this.#canUndo.asReadonly();
   readonly canRedo = this.#canRedo.asReadonly();
   readonly displayName = this.#displayName.asReadonly();
@@ -154,7 +162,14 @@ export class CollabService {
       else if (event.status === 'disconnected') this.#socketStatus.set('disconnected');
       else this.#socketStatus.set('connecting');
     });
-    this.#provider.on('connection-close', () => this.#socketStatus.set('disconnected'));
+    this.#provider.on('connection-close', (event: CloseEvent | null) => {
+      this.#socketStatus.set('disconnected');
+      const refusal = describeRefusal(event?.code);
+      if (refusal) this.#refusal.set(refusal);
+    });
+    this.#provider.on('sync', (synced: boolean) => {
+      if (synced) this.#refusal.set(null);
+    });
     this.#provider.on('connection-error', () => this.#socketStatus.set('disconnected'));
 
     this.#provider.awareness.setLocalState({
@@ -200,6 +215,7 @@ export class CollabService {
     this.#roomId.set(null);
     this.#peers.set([]);
     this.#socketStatus.set('connecting');
+    this.#refusal.set(null);
   }
 
   // --- Presence -----------------------------------------------------------
@@ -371,4 +387,14 @@ export class CollabService {
     const current = (awareness.getLocalState() ?? {}) as Record<string, unknown>;
     awareness.setLocalState({ ...current, ...patch });
   }
+}
+
+/**
+ * The server's deliberate close codes (apps/server: Room and the socket
+ * route), in words. Anything else is an ordinary disconnect.
+ */
+function describeRefusal(code: number | undefined): string | null {
+  if (code === 1009) return 'Not syncing · diagram too large';
+  if (code === 1008) return 'Not syncing · refused by server';
+  return null;
 }

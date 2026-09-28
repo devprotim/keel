@@ -1,7 +1,7 @@
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import type { DocStore } from '../store/store.ts';
-import { applyMessage, encodeAwareness, encodeSyncStep1, encodeUpdate } from './protocol.ts';
+import { applyMessage, encodeAwareness, encodeSyncStep1, encodeUpdate, MESSAGE_SYNC } from './protocol.ts';
 
 /**
  * The minimum a transport must provide.
@@ -12,13 +12,20 @@ import { applyMessage, encodeAwareness, encodeSyncStep1, encodeUpdate } from './
  */
 export interface Socket {
   send(data: Uint8Array): void;
-  close(): void;
+  /** Codes follow RFC 6455, e.g. 1009 for a message that is too big. */
+  close(code?: number, reason?: string): void;
   readonly open: boolean;
 }
 
 export interface RoomOptions {
   persistDebounceMs: number;
   compactAfterUpdates: number;
+  /**
+   * Refuse document writes once the stored document would exceed this. Every
+   * collaborator downloads the whole document on join, so an unbounded one is
+   * a way for one client to make the room unusable for everyone.
+   */
+  maxBytes?: number;
   /** Injected for tests. Defaults to real timers. */
   now?: () => number;
 }
@@ -44,6 +51,12 @@ export class Room {
   #pendingUpdates: Uint8Array[] = [];
   #flushTimer: ReturnType<typeof setTimeout> | null = null;
   #updatesSinceCompact = 0;
+  /**
+   * Stored size estimate: the last snapshot plus every update since. It only
+   * grows between compactions, since deletes are updates too, which errs on
+   * the side of refusing a little early rather than late.
+   */
+  #bytes = 0;
   #destroyed = false;
   /** Serialises flushes so two overlapping writes cannot interleave. */
   #flushChain: Promise<void> = Promise.resolve();
@@ -51,7 +64,7 @@ export class Room {
   private constructor(id: string, store: DocStore, options: RoomOptions) {
     this.id = id;
     this.#store = store;
-    this.#options = { now: () => Date.now(), ...options };
+    this.#options = { now: () => Date.now(), maxBytes: Number.POSITIVE_INFINITY, ...options };
     this.doc = new Y.Doc();
     this.awareness = new awarenessProtocol.Awareness(this.doc);
 
@@ -81,6 +94,7 @@ export class Room {
     );
 
     room.#updatesSinceCompact = updates.length;
+    room.#bytes = (snapshot?.byteLength ?? 0) + updates.reduce((sum, update) => sum + update.byteLength, 0);
     return room;
   }
 
@@ -114,6 +128,14 @@ export class Room {
   handleMessage(socket: Socket, data: Uint8Array): void {
     if (this.#destroyed) return;
 
+    // Checked before applying, because once Yjs has integrated an update there
+    // is no taking it back. Closing rather than dropping the frame: a client
+    // whose update was silently discarded would diverge from the room.
+    if (data[0] === MESSAGE_SYNC && this.#bytes + data.byteLength > this.#options.maxBytes) {
+      socket.close(1009, 'document too large');
+      return;
+    }
+
     try {
       const result = applyMessage(data, this.doc, this.awareness, socket);
       if (result.channel === 'sync' && result.reply) socket.send(result.reply);
@@ -142,6 +164,7 @@ export class Room {
   /** Relay a document update to every peer except the one that sent it. */
   readonly #onDocUpdate = (update: Uint8Array, origin: unknown): void => {
     if (origin !== LOAD_ORIGIN) {
+      this.#bytes += update.byteLength;
       this.#pendingUpdates.push(update);
       this.#scheduleFlush();
     }
@@ -236,8 +259,10 @@ export class Room {
       this.#updatesSinceCompact += 1;
 
       if (this.#updatesSinceCompact >= this.#options.compactAfterUpdates) {
-        await this.#store.compact(this.id, Y.encodeStateAsUpdate(this.doc));
+        const snapshot = Y.encodeStateAsUpdate(this.doc);
+        await this.#store.compact(this.id, snapshot);
         this.#updatesSinceCompact = 0;
+        this.#bytes = snapshot.byteLength + this.#pendingUpdates.reduce((sum, update) => sum + update.byteLength, 0);
       }
     } catch (error) {
       // Put the batch back so the next flush retries it rather than silently
