@@ -55,9 +55,9 @@ AI review is optional: copy `apps/server/.env.example` to `apps/server/.env` and
 ## Architecture
 
 ```
-packages/shared   domain model, graph algorithms, validation engine (framework-free, no deps)
+packages/shared   domain model, graph algorithms, validation engine, doc record readers (framework-free, no deps)
 packages/action   GitHub Action: validates committed *.keel.json diagrams, diffs findings against the PR base
-apps/server       Fastify: Yjs sync protocol, rooms, persistence, AI review
+apps/server       Fastify: Yjs sync protocol, rooms, persistence, AI review, drift alerts
 apps/web          Angular 22, hand-rolled Canvas 2D renderer
 apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> observation sets (no runtime deps)
 ```
@@ -82,6 +82,14 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - AI review (`apps/server/src/ai/`) is a second opinion for judgment calls a rule can't express (e.g. dual-write inconsistency, a boundary drawn in the wrong place) — not a replacement for the rules, and the system prompt explicitly tells the model not to repeat what the rule engine already covers. `ReviewProvider` is the only vendor-specific surface (Anthropic and Gemini implementations); caching (keyed on model + graph fingerprint, position-independent) and grounding live in `ArchitectureReviewer`/`review.ts` above that boundary so both providers get the same guarantees.
 - **Every AI finding must cite a real node/edge id.** `groundFindings()` discards any finding citing nothing or citing an id that doesn't exist in the graph — this is what makes a finding clickable instead of something to fact-check by hand. This filter runs for every provider; don't bypass it when adding one.
 - Anthropic wins if both `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` are set (`selectProvider` in `app.ts`).
+
+### Drift alerts (`apps/server/src/alerts/`)
+
+- `AlertWorker` runs in-process: an observations push debounces an evaluation of that room (`ALERT_DEBOUNCE_MS`), and a sweep re-evaluates every configured room every `ALERT_SWEEP_SECONDS`, because a collector going silent (stale evidence) produces no push to react to. Evaluations of one room are serialised.
+- The server reads a room with `readRoom` (`collab/room-reader.ts`), which uses the same record readers as the client (`packages/shared/src/doc-schema.ts`; GraphDoc imports them too), so server and canvas never disagree about what a room contains. `RoomManager.read()` opens a room for this and schedules its eviction.
+- `evaluateAlerts` is pure: alert key = rule + sorted cited ids (not title, so renames don't re-alert); triggers go to each channel whose `minSeverity` the finding meets, tracked per channel in `delivered` so a failed delivery retries without double-sending and a warning that becomes an error pages then; resolves wait `resolveAfterMinutes` to absorb flapping. Only reality checks and rule findings with `observed: true` alert; `unapproved-change` is off by default (it fires on diagram edits).
+- Config (Slack webhook, PagerDuty routing key) is stored server-side (`AlertStore`: memory, or Postgres tables from migration 2), never in the room doc, and only ever returned masked. PUT merges, so a channel sent without its secret keeps the stored one. Webhooks must be `https://hooks.slack.com/services/...` (SSRF boundary).
+- The client UI is `panels/alerts-menu.component.ts` in the view-tools bar.
 
 ### Observation collector (`apps/collector`)
 

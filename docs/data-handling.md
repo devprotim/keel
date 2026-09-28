@@ -13,6 +13,8 @@ Status: **draft for review.** It describes what the code does today, as of 2026-
 | Presence: display name, avatar URL, cursor, selection | Relayed between open tabs in memory, **never persisted** | Until the tab closes | Others in the room at that moment |
 | Session cookie: provider user id, name, avatar URL | The user's browser only (a signed token, nothing stored server-side) | 30 days, or until sign-out | The server, to verify it |
 | Guest name and theme | Browser `localStorage` | Until cleared | That browser |
+| Alert destinations: Slack webhook URL, PagerDuty integration key, thresholds | Postgres (`room_alert_configs`), never in the room document | Until alerting is turned off for the room | The server only. The API returns them masked. |
+| Open alerts: finding title, detail, cited ids, first and last seen | Postgres (`room_alert_state`) | Until the alert resolves | The server. The API returns titles and severities. |
 | Request logs: method, URL (room ids replaced by a one-way tag), client IP | The host's log stream (Render) | The host's log retention. *To decide.* | Operators |
 
 Keel does not store passwords, email addresses, or OAuth access tokens. GitHub sign-in asks only for `read:user`, and the access token is used once to read the public profile, then discarded.
@@ -20,6 +22,7 @@ Keel does not store passwords, email addresses, or OAuth access tokens. GitHub s
 ## What leaves Keel
 
 - **AI review** sends the diagram (names, kinds, technology, notes, and dependency settings, but not positions, approvals or observations) to Anthropic or Google, whichever key is configured. That happens only when someone presses Review. The provider's API data policy applies. By default neither Anthropic's nor Google's paid API trains on API inputs, but *confirm against the current terms before publishing this.* The server keeps the last 100 results in memory, keyed by a fingerprint of the diagram, and they are gone on restart.
+- **Drift alerts**, when a room has them configured, send the finding's title and detail (which quote component names and observed values) to that room's Slack webhook or PagerDuty service, along with a **link to the room**. That link is the room's edit capability, so everyone in the Slack channel or on the PagerDuty service can open and edit the diagram.
 - **Fonts** load from Google Fonts and Fontshare, and **avatars** from GitHub's and Google's CDNs, so those hosts see the viewer's IP address.
 - Nothing else. The app has no analytics, error reporting, or third-party scripts. (The `analytics` key in `apps/web/angular.json` is Angular CLI usage reporting for whoever runs `ng`. It is not part of the app.)
 

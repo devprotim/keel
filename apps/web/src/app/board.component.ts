@@ -17,6 +17,7 @@ import { CollabService } from './collab/collab.service';
 import { presenceColor } from './core/theme';
 import { readDiagramFile, takePickedFile } from './core/diagram-import';
 import { exampleGraph } from './core/example-graph';
+import { AlertsMenuComponent } from './panels/alerts-menu.component';
 import { ExportMenuComponent } from './panels/export-menu.component';
 import { FindingsComponent } from './panels/findings.component';
 import { InspectorComponent } from './panels/inspector.component';
@@ -35,7 +36,7 @@ import { InspectorComponent } from './panels/inspector.component';
 @Component({
   selector: 'keel-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent],
+  imports: [AlertsMenuComponent, CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss',
 })

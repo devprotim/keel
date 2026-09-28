@@ -73,6 +73,15 @@ const schema = z.object({
   ROOM_MAX_BYTES: z.coerce.number().int().positive().default(16 * 1024 * 1024),
 
   /**
+   * Drift alerting. Every configured room is re-evaluated this often, which is
+   * what catches a collector going quiet; a push to a room is evaluated after
+   * the debounce.
+   */
+  ALERT_SWEEP_SECONDS: z.coerce.number().positive().default(300),
+  ALERT_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(2_000),
+  RATE_LIMIT_ALERTS_PER_MIN: z.coerce.number().int().positive().default(30),
+
+  /**
    * Comma-separated models the review endpoint may call. Unset, any model the
    * key can list is allowed. Either way the configured default always is.
    */
