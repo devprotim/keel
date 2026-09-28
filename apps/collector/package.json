@@ -1,0 +1,24 @@
+{
+  "name": "@keel/collector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reports what a running system actually looks like (Kubernetes workloads, OpenTelemetry traces) to a Keel room",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env --experimental-strip-types src/main.ts",
+    "start": "node --experimental-strip-types src/main.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@keel/shared": "workspace:*",
+    "@types/node": "^26.4.0",
+    "eslint": "^10.9.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11"
+  }
+}

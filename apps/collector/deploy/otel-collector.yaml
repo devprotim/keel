@@ -1,0 +1,14 @@
+# Fragment for an existing OpenTelemetry Collector: send a copy of traces to
+# the Keel collector alongside wherever they already go. JSON encoding is
+# required; the Keel collector does not decode protobuf.
+exporters:
+  otlphttp/keel:
+    endpoint: http://keel-collector.keel.svc.cluster.local:4318
+    encoding: json
+    compression: gzip
+
+service:
+  pipelines:
+    traces:
+      # Keep your existing exporters; add this one.
+      exporters: [otlphttp/keel]

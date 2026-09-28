@@ -1,0 +1,107 @@
+# Keel collector: reports ready replicas (Kubernetes) and the service graph
+# (OpenTelemetry traces) to one or more Keel rooms.
+#
+#   kubectl create namespace keel
+#   kubectl -n keel create configmap keel-collector --from-literal=KEEL_URL=https://<your keel> --from-literal=KEEL_ROOMS=<room id>
+#   kubectl apply -f collector.yaml
+#
+# Reads only Deployments and StatefulSets, cluster-wide. To scope it to some
+# namespaces, set KEEL_KUBERNETES_NAMESPACES and swap the ClusterRole binding
+# for a RoleBinding per namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keel-collector
+  namespace: keel
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: keel-collector
+rules:
+  - apiGroups: ['apps']
+    resources: ['deployments', 'statefulsets']
+    verbs: ['list']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: keel-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: keel-collector
+subjects:
+  - kind: ServiceAccount
+    name: keel-collector
+    namespace: keel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keel-collector
+  namespace: keel
+  labels:
+    app.kubernetes.io/name: keel-collector
+  annotations:
+    # The collector is not part of anyone's architecture diagram.
+    keel.dev/ignore: 'true'
+spec:
+  # One replica: two would each hold half the traces and push competing sets.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keel-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keel-collector
+    spec:
+      serviceAccountName: keel-collector
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: collector
+          image: keel-collector:latest # build from apps/collector/Dockerfile and push to your registry
+          envFrom:
+            - configMapRef:
+                name: keel-collector
+          env:
+            # Match the trace pipeline's sampler, or rates read low.
+            - name: KEEL_OTLP_SAMPLE_RATIO
+              value: '1'
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: otlp-http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keel-collector
+  namespace: keel
+spec:
+  selector:
+    app.kubernetes.io/name: keel-collector
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
