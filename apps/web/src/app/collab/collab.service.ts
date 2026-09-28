@@ -228,11 +228,11 @@ export class CollabService {
   // --- Mutations ----------------------------------------------------------
 
   addNode(node: ArchNode): void {
-    this.#doc.addNode(node);
+    this.#step(() => this.#doc.addNode(node));
   }
 
   addEdge(edge: ArchEdge): void {
-    this.#doc.addEdge(edge);
+    this.#step(() => this.#doc.addEdge(edge));
   }
 
   updateNode(id: string, patch: Partial<ArchNode>): void {
@@ -248,12 +248,12 @@ export class CollabService {
   }
 
   remove(ids: readonly string[]): void {
-    this.#doc.removeSelection(ids);
+    this.#step(() => this.#doc.removeSelection(ids));
   }
 
   /** Add a diagram from a file to the current room, as one undo step. */
   importDiagram(graph: ArchGraph, intent: DesignIntent = {}): void {
-    this.#doc.importDiagram(graph, intent);
+    this.#step(() => this.#doc.importDiagram(graph, intent));
     this.#importCount.update((n) => n + 1);
   }
 
@@ -283,16 +283,16 @@ export class CollabService {
 
   /** Approve these elements as they are drawn now, attributed to this user. */
   approve(ids: readonly string[]): void {
-    this.#doc.approve(ids, this.#displayName());
+    this.#step(() => this.#doc.approve(ids, this.#displayName()));
   }
 
   approveAll(): void {
-    this.#doc.approveAll(this.#displayName());
+    this.#step(() => this.#doc.approveAll(this.#displayName()));
   }
 
   /** Update the diagram to what the running system reports, and approve it. */
   acceptObserved(deltas: readonly FieldDelta[]): void {
-    this.#doc.acceptObserved(deltas, this.#displayName());
+    this.#step(() => this.#doc.acceptObserved(deltas, this.#displayName()));
   }
 
   undo(): void {
@@ -310,10 +310,24 @@ export class CollabService {
    * should be a single Ctrl+Z rather than a dozen.
    */
   batch(fn: () => void): void {
-    this.#doc.transact(fn);
+    this.#step(() => this.#doc.transact(fn));
   }
 
   // --- Internal -----------------------------------------------------------
+
+  /**
+   * Run a discrete action as exactly one undo step.
+   *
+   * The capture window exists so continuous input (a drag, typing a name)
+   * coalesces. Without closing it around discrete actions, whether "place a
+   * box, then rename it" is one Ctrl+Z or two came down to whether the rename
+   * began within 400ms, which is timing, not intent.
+   */
+  #step(fn: () => void): void {
+    this.#undoManager?.stopCapturing();
+    fn();
+    this.#undoManager?.stopCapturing();
+  }
 
   readonly #syncGraph = (): void => {
     this.#graph.set(this.#doc.toGraph());

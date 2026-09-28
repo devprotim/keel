@@ -41,15 +41,35 @@ test('renaming in the inspector updates the diagram, and undo walks it back', as
 
   await expect(board.nodeList.first()).toHaveText(/^Order events, queue/);
 
-  // Placing and an immediate rename land inside one UndoManager capture window
-  // (graph-doc.ts), so a single undo takes back both.
+  // Placing is a discrete action, so it is always its own undo step, however
+  // quickly the rename follows. The rename is the step above it.
   const undo = page.getByRole('button', { name: '↶' });
+  const redo = page.getByRole('button', { name: '↷' });
+  await undo.click();
+  await expect(board.nodeList.first()).toHaveText(/^New queue, queue/);
   await undo.click();
   await board.expectCounts(0, 0);
   await expect(undo).toBeDisabled();
 
-  await page.getByRole('button', { name: '↷' }).click();
+  await redo.click();
+  await expect(board.nodeList.first()).toHaveText(/^New queue, queue/);
+  await redo.click();
   await expect(board.nodeList.first()).toHaveText(/^Order events, queue/);
+  await expect(redo).toBeDisabled();
+});
+
+test('the inspector shows the kind and hint of the component actually selected', async ({ page }) => {
+  const board = new Board(page);
+  await board.placeNode('datastore', { x: 400, y: 300 });
+
+  // The <select> used to fall back to its first option ("service") because its
+  // value was bound before the options rendered.
+  await expect(board.field('Kind')).toHaveValue('datastore');
+  await expect(board.field('Instances')).toHaveAccessibleDescription('One instance is a single point of failure.');
+
+  await board.field('Kind').selectOption('queue');
+  await expect(board.nodeList.first()).toHaveText(/, queue/);
+  await expect(board.field('Kind')).toHaveValue('queue');
 });
 
 test('Delete removes the selection and Escape closes the inspector', async ({ page }) => {

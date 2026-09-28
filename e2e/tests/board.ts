@@ -62,14 +62,12 @@ export class Board {
   }
 
   /**
-   * An inspector field by the start of its accessible name. The inspector wraps
-   * each control in its <label> together with any hint text, so e.g. the
-   * Instances input is named "Instances One instance is a single point of
-   * failure." and an exact match would miss it.
+   * An inspector field by its exact accessible name. Hints are attached with
+   * aria-describedby rather than sitting inside the <label>, so a field's name
+   * is just its label.
    */
   field(label: string): Locator {
-    const name = new RegExp(`^${label}\\b`);
-    const byRole = (role: 'textbox' | 'combobox' | 'spinbutton') => this.inspector.getByRole(role, { name });
+    const byRole = (role: 'textbox' | 'combobox' | 'spinbutton') =>
+      this.inspector.getByRole(role, { name: label, exact: true });
     return byRole('textbox').or(byRole('combobox')).or(byRole('spinbutton'));
-  }
-}
+  }}
