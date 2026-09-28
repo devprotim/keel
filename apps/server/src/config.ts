@@ -44,6 +44,41 @@ const schema = z.object({
   COMPACT_AFTER_UPDATES: z.coerce.number().int().positive().default(200),
 
   /**
+   * Trust X-Forwarded-For from the proxy in front of this process. Required
+   * behind Render's (or any) load balancer, or every client shares the
+   * proxy's address and one busy user rate-limits everyone. Never set it
+   * without a proxy: clients could then spoof their address to dodge limits.
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+
+  /**
+   * Per-client-address request budgets, per minute. Review forwards to a paid
+   * API, so its budget is small; the others bound how fast one client can
+   * make the server do work or create rooms.
+   */
+  RATE_LIMIT_REVIEW_PER_MIN: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_OBSERVATIONS_PER_MIN: z.coerce.number().int().positive().default(120),
+  RATE_LIMIT_VALIDATE_PER_MIN: z.coerce.number().int().positive().default(300),
+
+  /**
+   * Collaboration socket bounds. The frame cap is well above a 500-node
+   * import; the message rate is well above a drag plus cursor movement at
+   * 60fps; the room cap bounds what every collaborator has to download.
+   */
+  WS_MAX_MESSAGE_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+  WS_MESSAGES_PER_SECOND: z.coerce.number().int().positive().default(200),
+  ROOM_MAX_BYTES: z.coerce.number().int().positive().default(16 * 1024 * 1024),
+
+  /**
+   * Comma-separated models the review endpoint may call. Unset, any model the
+   * key can list is allowed. Either way the configured default always is.
+   */
+  REVIEW_ALLOWED_MODELS: z.string().optional(),
+
+  /**
    * OAuth login. Each provider is enabled independently by setting both of its
    * vars; leaving a pair unset disables only that provider's login route. This
    * is identity-only: rooms stay open to anyone with the link either way.
@@ -60,7 +95,10 @@ const schema = z.object({
   PUBLIC_URL: z.string().url().default('http://localhost:8787'),
 });
 
-export type Config = Readonly<z.infer<typeof schema>> & { corsOrigins: readonly string[] };
+export type Config = Readonly<z.infer<typeof schema>> & {
+  corsOrigins: readonly string[];
+  reviewAllowedModels: readonly string[] | null;
+};
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = schema.safeParse(env);
@@ -84,8 +122,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   return {
     ...parsed.data,
-    corsOrigins: parsed.data.CORS_ORIGINS.split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
+    corsOrigins: splitList(parsed.data.CORS_ORIGINS),
+    reviewAllowedModels: parsed.data.REVIEW_ALLOWED_MODELS ? splitList(parsed.data.REVIEW_ALLOWED_MODELS) : null,
   };
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }

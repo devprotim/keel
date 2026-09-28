@@ -63,6 +63,9 @@ export class BoardComponent {
         // Edits still work: IndexedDB holds them and the CRDT merges on
         // reconnect. Saying "offline" without that reassurance reads as failure.
         return 'Offline · edits saved';
+      case 'refused':
+        // Edits are still kept locally, just not shared until this is resolved.
+        return this.collab.refusal() ?? 'Not syncing';
     }
   });
 

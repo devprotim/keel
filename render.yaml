@@ -9,6 +9,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22.22.3
+      # Render's load balancer sets X-Forwarded-For. Without this every client
+      # shares the proxy's address, and one user's rate limit is everyone's.
+      - key: TRUST_PROXY
+        value: "true"
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: GEMINI_API_KEY

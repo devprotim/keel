@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { validate } from '@keel/shared';
@@ -12,8 +14,9 @@ import { GeminiReviewProvider } from './ai/gemini-provider.ts';
 import type { ReviewProvider } from './ai/provider.ts';
 import { ArchitectureReviewer } from './ai/review.ts';
 import { registerAuth } from './auth/routes.ts';
+import { TokenBucket } from './collab/rate-limit.ts';
 import { RoomManager } from './collab/room-manager.ts';
-import type { Socket } from './collab/room.ts';
+import type { Room, Socket } from './collab/room.ts';
 import type { Config } from './config.ts';
 import type { DocStore } from './store/store.ts';
 
@@ -28,17 +31,25 @@ const RoomIdSchema = z
   .max(64)
   .regex(/^[a-zA-Z0-9_-]+$/, 'room id may contain only letters, numbers, hyphens and underscores');
 
+/**
+ * Element ids match the intent baseline's key bound, so anything that can be
+ * validated can also be approved.
+ */
+const ElementIdSchema = z.string().min(1).max(64);
+const Coordinate = z.number().finite().min(-1e6).max(1e6);
+const Extent = z.number().finite().nonnegative().max(1e5);
+
 const ArchNodeSchema = z.object({
-  id: z.string(),
+  id: ElementIdSchema,
   kind: z.enum(['service', 'datastore', 'queue', 'cache', 'gateway', 'job', 'external']),
-  label: z.string(),
-  x: z.number(),
-  y: z.number(),
-  w: z.number(),
-  h: z.number(),
-  replicas: z.number().int().nonnegative(),
-  tech: z.string().optional(),
-  notes: z.string().optional(),
+  label: z.string().max(200),
+  x: Coordinate,
+  y: Coordinate,
+  w: Extent,
+  h: Extent,
+  replicas: z.number().int().nonnegative().max(100_000),
+  tech: z.string().max(200).optional(),
+  notes: z.string().max(4000).optional(),
   critical: z.boolean().optional(),
   hasReplica: z.boolean().optional(),
   hasBackup: z.boolean().optional(),
@@ -47,13 +58,13 @@ const ArchNodeSchema = z.object({
 });
 
 const ArchEdgeSchema = z.object({
-  id: z.string(),
-  source: z.string(),
-  target: z.string(),
+  id: ElementIdSchema,
+  source: ElementIdSchema,
+  target: ElementIdSchema,
   kind: z.enum(['sync', 'async', 'stream']),
-  label: z.string().optional(),
-  timeoutMs: z.number().optional(),
-  retries: z.number().int().optional(),
+  label: z.string().max(200).optional(),
+  timeoutMs: z.number().finite().nonnegative().max(86_400_000).optional(),
+  retries: z.number().int().nonnegative().max(100).optional(),
   circuitBreaker: z.boolean().optional(),
   idempotent: z.boolean().optional(),
 });
@@ -88,7 +99,7 @@ const ObservationSetSchema = z.object({
     .array(
       z.object({
         ref: RefSchema,
-        replicas: z.number().int().nonnegative().optional(),
+        replicas: z.number().int().nonnegative().max(100_000).optional(),
         hasReplica: z.boolean().optional(),
         hasBackup: z.boolean().optional(),
         hasDlq: z.boolean().optional(),
@@ -102,8 +113,8 @@ const ObservationSetSchema = z.object({
       z.object({
         source: RefSchema,
         target: RefSchema,
-        timeoutMs: z.number().nonnegative().finite().nullable().optional(),
-        retries: z.number().int().nonnegative().optional(),
+        timeoutMs: z.number().nonnegative().finite().max(86_400_000).nullable().optional(),
+        retries: z.number().int().nonnegative().max(100).optional(),
         circuitBreaker: z.boolean().optional(),
         p99Ms: z.number().nonnegative().finite().optional(),
         rps: Rate.optional(),
@@ -113,7 +124,7 @@ const ObservationSetSchema = z.object({
     .optional(),
 });
 
-const FieldValueSchema = z.union([z.string().max(200), z.number(), z.boolean(), z.null()]);
+const FieldValueSchema = z.union([z.string().max(200), z.number().finite(), z.boolean(), z.null()]);
 
 const IntentSchema = z
   .record(
@@ -146,28 +157,53 @@ const ValidateRequestSchema = ArchGraphSchema.extend({
 export interface AppDeps {
   config: Config;
   store: DocStore;
+  /** Overrides the provider chosen from config. Tests pass a stub; null disables review. */
+  reviewProvider?: ReviewProvider | null;
 }
 
-export async function buildApp({ config, store }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, store, reviewProvider }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: config.NODE_ENV === 'test' ? false : { level: 'info' },
+    // Behind a proxy, request.ip is the proxy unless this is on, and every
+    // client would share one rate-limit bucket.
+    trustProxy: config.TRUST_PROXY,
+    logger:
+      config.NODE_ENV === 'test'
+        ? false
+        : {
+            level: 'info',
+            // Room ids are bearer capabilities: anyone holding one can edit the
+            // room. They stay out of logs, which outlive the rooms and are read
+            // by more people than the rooms are.
+            serializers: {
+              req: (request: { method: string; url: string; ip?: string }) => ({
+                method: request.method,
+                url: redactRoomIds(request.url),
+                remoteAddress: request.ip,
+              }),
+            },
+          },
   });
 
   const rooms = new RoomManager(store, {
     persistDebounceMs: config.PERSIST_DEBOUNCE_MS,
     compactAfterUpdates: config.COMPACT_AFTER_UPDATES,
+    maxBytes: config.ROOM_MAX_BYTES,
     idleMs: config.ROOM_IDLE_MS,
   });
 
   // Absent keys disable review rather than failing at boot. The canvas is the
   // product; the reviewer is an enhancement and must not gate startup.
-  const provider = selectProvider(config);
+  const provider = reviewProvider === undefined ? selectProvider(config) : reviewProvider;
   const reviewer = provider ? new ArchitectureReviewer({ provider }) : null;
 
   // credentials: true so the session cookie rides cross-origin in dev, where
   // the Angular dev server (:4200) and this API (:8787) are different origins.
   await app.register(cors, { origin: [...config.corsOrigins], credentials: true });
-  await app.register(websocket);
+  await app.register(websocket, { options: { maxPayload: config.WS_MAX_MESSAGE_BYTES } });
+  // Opt-in per route, keyed on client address. Static assets and the socket
+  // upgrade are not limited here; the socket has its own per-message budget.
+  await app.register(rateLimit, { global: false });
+  const perMinute = (max: number) => ({ config: { rateLimit: { max, timeWindow: '1 minute' } } });
 
   // CSP is scoped to this app's actual external dependencies: Google Fonts +
   // Fontshare for the type system (DESIGN.md), and GitHub/Google's avatar CDNs
@@ -220,7 +256,7 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
    * this endpoint exists for callers that are not the canvas: CI checks, scripts,
    * and anything that wants a trustworthy answer rather than a convenient one.
    */
-  app.post('/api/validate', async (request, reply) => {
+  app.post('/api/validate', perMinute(config.RATE_LIMIT_VALIDATE_PER_MIN), async (request, reply) => {
     const parsed = ValidateRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: 'invalid graph', issues: parsed.error.issues });
@@ -244,7 +280,7 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
    * Same access model as the socket: the room id is the capability. Anyone who
    * can open the room can already edit every number in it by hand.
    */
-  app.post('/api/rooms/:roomId/observations', async (request, reply) => {
+  app.post('/api/rooms/:roomId/observations', perMinute(config.RATE_LIMIT_OBSERVATIONS_PER_MIN), async (request, reply) => {
     const roomId = RoomIdSchema.safeParse((request.params as { roomId?: string }).roomId);
     if (!roomId.success) return reply.status(400).send({ error: 'invalid room id' });
 
@@ -274,11 +310,11 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
     return {
       provider: reviewer.providerName,
       defaultModel: reviewer.defaultModel,
-      models: await reviewer.listModels(),
+      models: await allowedModels(reviewer, config),
     };
   });
 
-  app.post('/api/review', async (request, reply) => {
+  app.post('/api/review', perMinute(config.RATE_LIMIT_REVIEW_PER_MIN), async (request, reply) => {
     if (!reviewer) {
       return reply.status(503).send({
         error: 'review is not configured',
@@ -300,6 +336,13 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
     // keeps this endpoint usable by anything that already has one.
     const requested = (request.query as { model?: string }).model;
     const model = typeof requested === 'string' && requested.trim() !== '' ? requested.trim() : undefined;
+
+    // The picker offers only allowed models, but the query string is not the
+    // picker. Unchecked, anyone could route reviews to the most expensive
+    // model the key can reach.
+    if (model !== undefined && !(await isAllowedModel(reviewer, config, model))) {
+      return reply.status(400).send({ error: 'model not allowed', detail: 'Choose one of the listed models.' });
+    }
 
     try {
       const result = await reviewer.review(graph, model);
@@ -331,9 +374,20 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
     }
     const roomId = parsed.data;
 
+    // Browsers attach Origin to every socket upgrade and cannot forge it, so a
+    // foreign page can be told apart from this app. Non-browser clients send
+    // none. The room id is still the real capability; this stops a page that
+    // has learned one from driving the room from a visitor's browser.
+    if (!isAllowedSocketOrigin(request.headers.origin, request.headers.host, config)) {
+      connection.close(1008, 'origin not allowed');
+      return;
+    }
+
+    const budget = new TokenBucket(config.WS_MESSAGES_PER_SECOND);
+
     const socket: Socket = {
       send: (data) => connection.send(data),
-      close: () => connection.close(),
+      close: (code, reason) => connection.close(code, reason),
       get open() {
         return connection.readyState === connection.OPEN;
       },
@@ -343,31 +397,35 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
     // them is what prevents a fast client's first edit from being dropped on a
     // cold room.
     const buffered: Uint8Array[] = [];
-    let joined = false;
+    let joined: Room | null = null;
+
+    // One listener for both phases, so the budget is checked before a frame
+    // can reach the document, buffered or not.
+    connection.on('message', (data: Buffer) => {
+      if (!budget.take()) {
+        connection.close(1008, 'rate limit exceeded');
+        return;
+      }
+      const frame = new Uint8Array(data);
+      if (joined) joined.handleMessage(socket, frame);
+      else buffered.push(frame);
+    });
 
     void rooms
       .join(roomId, socket)
       .then((room) => {
-        joined = true;
+        joined = room;
         for (const frame of buffered) room.handleMessage(socket, frame);
         buffered.length = 0;
-
-        connection.on('message', (data: Buffer) => {
-          room.handleMessage(socket, new Uint8Array(data));
-        });
       })
       .catch((error: unknown) => {
-        request.log.error({ err: error, roomId }, 'failed to join room');
+        request.log.error({ err: error, room: roomTag(roomId) }, 'failed to join room');
         connection.close(1011, 'could not open room');
       });
 
-    connection.on('message', (data: Buffer) => {
-      if (!joined) buffered.push(new Uint8Array(data));
-    });
-
     connection.on('close', () => {
       void rooms.leave(roomId, socket).catch((error: unknown) => {
-        request.log.error({ err: error, roomId }, 'failed to leave room cleanly');
+        request.log.error({ err: error, room: roomTag(roomId) }, 'failed to leave room cleanly');
       });
     });
   });
@@ -422,6 +480,40 @@ export async function buildApp({ config, store }: AppDeps): Promise<FastifyInsta
   });
 
   return app;
+}
+
+/**
+ * Room ids in a URL, replaced by a short one-way tag. Logs keep enough to
+ * correlate requests for one room without keeping the capability itself.
+ */
+export function redactRoomIds(url: string): string {
+  return url.replace(/^\/(ws|api\/rooms)\/([^/?#]+)/, (_match, prefix: string, id: string) => `/${prefix}/${roomTag(id)}`);
+}
+
+function roomTag(roomId: string): string {
+  return `room#${createHash('sha256').update(roomId).digest('hex').slice(0, 10)}`;
+}
+
+/** No Origin (not a browser), this app's own origin, or a configured one. */
+export function isAllowedSocketOrigin(origin: string | undefined, host: string | undefined, config: Config): boolean {
+  if (origin === undefined) return true;
+  if (config.corsOrigins.includes(origin)) return true;
+  try {
+    return host !== undefined && new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+async function allowedModels(reviewer: ArchitectureReviewer, config: Config): Promise<string[]> {
+  const listed = await reviewer.listModels();
+  const allowList = config.reviewAllowedModels;
+  return allowList ? listed.filter((model) => allowList.includes(model)) : listed;
+}
+
+async function isAllowedModel(reviewer: ArchitectureReviewer, config: Config, model: string): Promise<boolean> {
+  if (model === reviewer.defaultModel) return true;
+  return (await allowedModels(reviewer, config)).includes(model);
 }
 
 /** Must match `GraphDoc.observations` on the client. */

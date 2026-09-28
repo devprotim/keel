@@ -61,6 +61,9 @@ export default defineConfig({
       // then rebuilt from storage without the suite crawling.
       PERSIST_DEBOUNCE_MS: '100',
       ROOM_IDLE_MS: '500',
+      // Far above anything the other specs draw, low enough that security.spec.ts
+      // can cross it by typing.
+      ROOM_MAX_BYTES: String(256 * 1024),
     },
   },
 });

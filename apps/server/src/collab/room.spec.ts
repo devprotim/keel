@@ -201,4 +201,33 @@ describe('Room persistence', () => {
     expect(written).toHaveLength(1);
     await room.destroy();
   });
+
+  it('closes a client that would push the document past its size cap', async () => {
+    const room = await Room.open('r1', store, { ...OPTIONS, maxBytes: 4096 });
+    const alice = TestClient.connect(room);
+    const bob = TestClient.connect(room);
+
+    alice.nodes.set('n1', { label: 'small' });
+    expect(bob.nodes.get('n1')).toEqual({ label: 'small' });
+
+    alice.nodes.set('n2', { label: 'x'.repeat(8192) });
+
+    // Refused before Yjs integrated it: bob never sees it, alice is told why.
+    expect(alice.socket.open).toBe(false);
+    expect(bob.nodes.has('n2')).toBe(false);
+    expect(room.doc.getMap('nodes').has('n2')).toBe(false);
+    await room.destroy();
+  });
+
+  it('counts stored history against the size cap when a room reopens', async () => {
+    const seeded = await Room.open('r1', store, OPTIONS);
+    TestClient.connect(seeded).nodes.set('n1', { label: 'x'.repeat(3000) });
+    await seeded.destroy();
+
+    const reopened = await Room.open('r1', store, { ...OPTIONS, maxBytes: 4096 });
+    const alice = TestClient.connect(reopened);
+    alice.nodes.set('n2', { label: 'y'.repeat(2000) });
+    expect(alice.socket.open).toBe(false);
+    await reopened.destroy();
+  });
 });

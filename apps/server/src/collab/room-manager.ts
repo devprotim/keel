@@ -5,6 +5,8 @@ import { Room, type Socket } from './room.ts';
 export interface RoomManagerOptions {
   persistDebounceMs: number;
   compactAfterUpdates: number;
+  /** See RoomOptions.maxBytes. */
+  maxBytes?: number;
   /** Grace period before an empty room is evicted from memory. */
   idleMs: number;
 }
@@ -59,6 +61,7 @@ export class RoomManager {
     const opening = Room.open(roomId, this.#store, {
       persistDebounceMs: this.#options.persistDebounceMs,
       compactAfterUpdates: this.#options.compactAfterUpdates,
+      ...(this.#options.maxBytes !== undefined ? { maxBytes: this.#options.maxBytes } : {}),
     }).catch((error: unknown) => {
       // A failed open must not be cached, or every later attempt inherits the
       // failure for the lifetime of the process.

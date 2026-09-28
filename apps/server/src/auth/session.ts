@@ -33,7 +33,8 @@ export function createSessionManager(secret: string, secureCookie: boolean): Ses
       const token = request.cookies[COOKIE_NAME];
       if (!token) return null;
       try {
-        const { payload } = await jwtVerify(token, key);
+        // Pinned, so a token can never pick its own verification algorithm.
+        const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
         return parseSessionPayload(payload);
       } catch {
         return null;

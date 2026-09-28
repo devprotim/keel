@@ -102,6 +102,9 @@ apps/web          Angular 22, hand-rolled Canvas 2D renderer
 - Room ids are validated against a strict allowlist regex (`RoomIdSchema` in `app.ts`) before being used as storage keys or in URLs — they're an injection/traversal boundary, not free text.
 - `ArchGraphSchema` bounds graphs to 500 nodes / 1500 edges; `/api/review` forwards the graph to a paid API, so an unbounded graph is an unbounded bill.
 - Config (`config.ts`) is parsed once at boot with Zod and the process refuses to start on invalid env — deliberately, so failures surface at boot rather than on the first real request.
+- Budgets (see `docs/security-audit.md`): per-client-IP rate limits on `/api/review`, `/api/validate` and the observations endpoint (`@fastify/rate-limit`, keyed on `request.ip`, so `TRUST_PROXY=true` behind Render's proxy); `/api/review?model=` must be the default or a listed model (`REVIEW_ALLOWED_MODELS` narrows it). The socket caps frames (`WS_MAX_MESSAGE_BYTES`), messages per second per socket (`TokenBucket`, closes 1008), and room size (`Room` checks `ROOM_MAX_BYTES` *before* applying a sync frame, closes 1009, since an integrated Yjs update can't be taken back); the client shows those two codes as a "Not syncing" status instead of silently reconnecting. Browser socket upgrades must come from this origin or `CORS_ORIGINS`.
+- Room ids are capabilities, so request logs carry a SHA-256 tag instead (`redactRoomIds`/`roomTag` in `app.ts`); don't log a raw `roomId`.
+- `docs/data-handling.md` is the draft inventory of what is stored and where; keep it in step when adding a stored or transmitted field.
 
 ## Routing
 
