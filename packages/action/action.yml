@@ -1,0 +1,40 @@
+name: Keel architecture check
+description: Check Keel diagrams in a pull request for the design flaws that cause outages, and report what the change introduces.
+author: Keel
+branding:
+  icon: git-pull-request
+  color: blue
+
+inputs:
+  diagrams:
+    description: Diagram files to check. Globs, separated by commas or newlines. Files are Keel's JSON export.
+    default: '**/*.keel.json'
+  fail-on:
+    description: Lowest severity that fails the check. error, warning, info, or never (report only).
+    default: never
+  fail-scope:
+    description: new fails only on findings this change introduces; all fails on any finding.
+    default: new
+  disabled-rules:
+    description: Rule ids to skip, separated by commas.
+    default: ''
+  comment:
+    description: Post the report as a pull request comment, updated in place on each push.
+    default: 'true'
+  github-token:
+    description: Token for the comment. Needs pull-requests write permission.
+    default: ${{ github.token }}
+
+outputs:
+  findings:
+    description: Total findings across the checked diagrams.
+  introduced:
+    description: Findings present at head and absent at the pull request's base.
+  resolved:
+    description: Findings present at base and gone at head.
+  blocking:
+    description: Findings that failed the check under fail-on and fail-scope.
+
+runs:
+  using: node24
+  main: dist/index.cjs

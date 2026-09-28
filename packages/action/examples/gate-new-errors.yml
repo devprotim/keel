@@ -1,0 +1,22 @@
+# Block merging a change that introduces an error-level finding. Problems the
+# diagram already had are reported but do not block, so adopting the check on
+# an imperfect diagram does not stop every pull request.
+name: Architecture
+on:
+  pull_request:
+    paths: ['architecture/**']
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  keel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: <owner>/keel/packages/action@v1
+        with:
+          diagrams: architecture/*.keel.json
+          fail-on: error
+          fail-scope: new

@@ -1,0 +1,226 @@
+{
+  "format": "keel-diagram",
+  "version": 1,
+  "exportedAt": "2026-09-28T00:00:00.000Z",
+  "nodes": [
+    {
+      "id": "n_web",
+      "kind": "external",
+      "label": "Web & mobile",
+      "x": 40,
+      "y": 240,
+      "w": 184,
+      "h": 84,
+      "replicas": 1,
+      "ref": "web"
+    },
+    {
+      "id": "n_gateway",
+      "kind": "gateway",
+      "label": "API gateway",
+      "x": 280,
+      "y": 240,
+      "w": 184,
+      "h": 84,
+      "replicas": 3,
+      "ref": "api-gateway",
+      "tech": "Envoy"
+    },
+    {
+      "id": "n_checkout",
+      "kind": "service",
+      "label": "Checkout",
+      "x": 540,
+      "y": 140,
+      "w": 184,
+      "h": 84,
+      "replicas": 4,
+      "ref": "checkout",
+      "tech": "Node / Fastify",
+      "critical": true
+    },
+    {
+      "id": "n_catalog",
+      "kind": "service",
+      "label": "Catalog",
+      "x": 540,
+      "y": 360,
+      "w": 184,
+      "h": 84,
+      "replicas": 3,
+      "ref": "catalog",
+      "tech": "Node"
+    },
+    {
+      "id": "n_pricing",
+      "kind": "service",
+      "label": "Pricing engine",
+      "x": 820,
+      "y": 240,
+      "w": 184,
+      "h": 84,
+      "replicas": 1,
+      "ref": "pricing",
+      "tech": "Python",
+      "critical": true
+    },
+    {
+      "id": "n_orders_db",
+      "kind": "datastore",
+      "label": "Orders DB",
+      "x": 820,
+      "y": 60,
+      "w": 184,
+      "h": 84,
+      "replicas": 2,
+      "ref": "orders-db",
+      "tech": "Postgres 16",
+      "hasReplica": true,
+      "hasBackup": true
+    },
+    {
+      "id": "n_catalog_db",
+      "kind": "datastore",
+      "label": "Catalog DB",
+      "x": 820,
+      "y": 440,
+      "w": 184,
+      "h": 84,
+      "replicas": 1,
+      "ref": "catalog-db",
+      "tech": "Postgres 16"
+    },
+    {
+      "id": "n_events",
+      "kind": "queue",
+      "label": "Order events",
+      "x": 1080,
+      "y": 140,
+      "w": 184,
+      "h": 84,
+      "replicas": 3,
+      "ref": "order-events",
+      "tech": "Kafka"
+    },
+    {
+      "id": "n_fulfilment",
+      "kind": "service",
+      "label": "Fulfilment",
+      "x": 1320,
+      "y": 140,
+      "w": 184,
+      "h": 84,
+      "replicas": 2,
+      "ref": "fulfilment"
+    },
+    {
+      "id": "n_search_indexer",
+      "kind": "job",
+      "label": "Search indexer",
+      "x": 1320,
+      "y": 360,
+      "w": 184,
+      "h": 84,
+      "replicas": 1,
+      "ref": "search-indexer"
+    },
+    {
+      "id": "n_stripe",
+      "kind": "external",
+      "label": "Stripe",
+      "x": 540,
+      "y": 20,
+      "w": 184,
+      "h": 84,
+      "replicas": 1,
+      "ref": "stripe"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_web_gw",
+      "source": "n_web",
+      "target": "n_gateway",
+      "kind": "sync",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "e_gw_checkout",
+      "source": "n_gateway",
+      "target": "n_checkout",
+      "kind": "sync",
+      "timeoutMs": 3000,
+      "retries": 1
+    },
+    {
+      "id": "e_gw_catalog",
+      "source": "n_gateway",
+      "target": "n_catalog",
+      "kind": "sync",
+      "timeoutMs": 2000,
+      "retries": 1
+    },
+    {
+      "id": "e_checkout_pricing",
+      "source": "n_checkout",
+      "target": "n_pricing",
+      "kind": "sync"
+    },
+    {
+      "id": "e_catalog_pricing",
+      "source": "n_catalog",
+      "target": "n_pricing",
+      "kind": "sync",
+      "timeoutMs": 800,
+      "retries": 4
+    },
+    {
+      "id": "e_checkout_stripe",
+      "source": "n_checkout",
+      "target": "n_stripe",
+      "kind": "sync",
+      "timeoutMs": 5000,
+      "retries": 2
+    },
+    {
+      "id": "e_checkout_db",
+      "source": "n_checkout",
+      "target": "n_orders_db",
+      "kind": "sync",
+      "timeoutMs": 500
+    },
+    {
+      "id": "e_catalog_db",
+      "source": "n_catalog",
+      "target": "n_catalog_db",
+      "kind": "sync",
+      "timeoutMs": 500
+    },
+    {
+      "id": "e_indexer_db",
+      "source": "n_search_indexer",
+      "target": "n_catalog_db",
+      "kind": "sync",
+      "timeoutMs": 1000
+    },
+    {
+      "id": "e_checkout_events",
+      "source": "n_checkout",
+      "target": "n_events",
+      "kind": "async"
+    },
+    {
+      "id": "e_events_fulfilment",
+      "source": "n_events",
+      "target": "n_fulfilment",
+      "kind": "async",
+      "idempotent": true
+    },
+    {
+      "id": "e_events_indexer",
+      "source": "n_events",
+      "target": "n_search_indexer",
+      "kind": "async"
+    }
+  ]
+}

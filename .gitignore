@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The action runs from its committed bundle; `uses:` never installs or builds.
+!packages/action/dist/
 .angular/
 coverage/
 *.log
