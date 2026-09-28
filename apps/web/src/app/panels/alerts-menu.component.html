@@ -1,0 +1,109 @@
+<button
+  #trigger
+  type="button"
+  class="keel-btn keel-btn--ghost"
+  aria-haspopup="dialog"
+  [attr.aria-expanded]="open()"
+  title="Alert Slack or PagerDuty when production drifts from this diagram"
+  (click)="toggle()"
+>
+  Alerts
+  @if (configured()) {
+    <span class="on-dot" aria-hidden="true"></span>
+  }
+</button>
+
+@if (open()) {
+  <div class="keel-island panel" role="dialog" aria-label="Drift alerts">
+    <div class="head">
+      <h2 class="title">Drift alerts</h2>
+      <span class="state" [class.on]="configured()">{{ summary() }}</span>
+    </div>
+    <p class="lede">
+      Sent when the running system stops matching this diagram, reported by a collector or any
+      push to the observations API. Anyone with this room's link can change these settings.
+    </p>
+
+    <form (submit)="$event.preventDefault(); save()">
+      <fieldset class="channel">
+        <legend class="keel-field__label">Slack</legend>
+        <input
+          #firstField
+          class="keel-input mono"
+          type="url"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Slack incoming webhook URL"
+          [placeholder]="configured()?.slack?.webhookUrl ?? 'https://hooks.slack.com/services/…'"
+          [value]="slackUrl()"
+          (input)="slackUrl.set(value($event))"
+        />
+        <label class="threshold">
+          <span>Post</span>
+          <select class="keel-select" (change)="slackSeverity.set(asSeverity(value($event)))">
+            @for (s of severities; track s) {
+              <option [value]="s" [selected]="s === slackSeverity()">{{ s }}{{ s === 'info' ? '' : ' and worse' }}</option>
+            }
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset class="channel">
+        <legend class="keel-field__label">PagerDuty</legend>
+        <input
+          class="keel-input mono"
+          type="password"
+          autocomplete="off"
+          aria-label="PagerDuty Events API v2 integration key"
+          [placeholder]="configured()?.pagerduty ? 'Stored (' + configured()?.pagerduty?.routingKey + ')' : 'Events API v2 integration key'"
+          [value]="pagerdutyKey()"
+          (input)="pagerdutyKey.set(value($event))"
+        />
+        <label class="threshold">
+          <span>Page on</span>
+          <select class="keel-select" (change)="pagerdutySeverity.set(asSeverity(value($event)))">
+            @for (s of severities; track s) {
+              <option [value]="s" [selected]="s === pagerdutySeverity()">{{ s }}{{ s === 'info' ? '' : ' and worse' }}</option>
+            }
+          </select>
+        </label>
+      </fieldset>
+
+      @if (configured()) {
+        <p class="hint">Leave a key blank to keep the stored one.</p>
+      }
+
+      @if (message(); as m) {
+        <p class="message" [class.error]="m.tone === 'error'" [attr.role]="m.tone === 'error' ? 'alert' : 'status'">{{ m.text }}</p>
+      }
+
+      <div class="actions">
+        <button type="submit" class="keel-btn keel-btn--primary" [disabled]="busy() !== null">
+          {{ busy() === 'save' ? 'Saving…' : 'Save' }}
+        </button>
+        @if (configured()) {
+          <button type="button" class="keel-btn" [disabled]="busy() !== null" (click)="sendTest()">
+            {{ busy() === 'test' ? 'Sending…' : 'Send test' }}
+          </button>
+          <button type="button" class="keel-btn keel-btn--ghost off" [disabled]="busy() !== null" (click)="turnOff()">
+            Turn off
+          </button>
+        }
+      </div>
+    </form>
+
+    @if (openCount() > 0) {
+      <div class="open">
+        <p class="keel-field__label">Open now</p>
+        <ul>
+          @for (alert of view()?.open; track alert.title) {
+            <li>
+              <span class="keel-severity" [class]="'keel-severity keel-severity--' + alert.severity">{{ alert.severity }}</span>
+              <span class="open-title">{{ alert.title }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+}

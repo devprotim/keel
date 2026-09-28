@@ -6,13 +6,17 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { validate } from '@keel/shared';
+import { DOC_MAPS, validate } from '@keel/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
 import { GeminiReviewProvider } from './ai/gemini-provider.ts';
 import type { ReviewProvider } from './ai/provider.ts';
 import { ArchitectureReviewer } from './ai/review.ts';
+import { createSender, type Send } from './alerts/notifiers.ts';
+import { registerAlertRoutes } from './alerts/routes.ts';
+import { MemoryAlertStore, type AlertStore } from './alerts/store.ts';
+import { AlertWorker } from './alerts/worker.ts';
 import { registerAuth } from './auth/routes.ts';
 import { TokenBucket } from './collab/rate-limit.ts';
 import { RoomManager } from './collab/room-manager.ts';
@@ -159,9 +163,13 @@ export interface AppDeps {
   store: DocStore;
   /** Overrides the provider chosen from config. Tests pass a stub; null disables review. */
   reviewProvider?: ReviewProvider | null;
+  /** Alert configuration and open alerts. Defaults to memory, like the doc store. */
+  alertStore?: AlertStore;
+  /** Delivers alert events. Tests pass a recorder instead of calling Slack and PagerDuty. */
+  alertSend?: Send;
 }
 
-export async function buildApp({ config, store, reviewProvider }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, store, reviewProvider, alertStore, alertSend }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     // Behind a proxy, request.ip is the proxy unless this is on, and every
     // client would share one rate-limit bucket.
@@ -236,6 +244,32 @@ export async function buildApp({ config, store, reviewProvider }: AppDeps): Prom
 
   const auth = await registerAuth(app, config);
 
+  const alerts = alertStore ?? new MemoryAlertStore();
+  const send = alertSend ?? createSender();
+  const roomUrl = (roomId: string) => `${new URL(config.PUBLIC_URL).origin}/${roomId}`;
+  const alertWorker = new AlertWorker({
+    store: alerts,
+    rooms,
+    send,
+    log: app.log,
+    roomUrl,
+    roomTag,
+    sweepIntervalMs: config.ALERT_SWEEP_SECONDS * 1000,
+    debounceMs: config.ALERT_DEBOUNCE_MS,
+  });
+  alertWorker.start();
+  registerAlertRoutes(app, {
+    store: alerts,
+    worker: alertWorker,
+    send,
+    roomUrl,
+    parseRoomId: (raw) => {
+      const parsed = RoomIdSchema.safeParse(raw);
+      return parsed.success ? parsed.data : null;
+    },
+    limit: perMinute(config.RATE_LIMIT_ALERTS_PER_MIN),
+  });
+
   app.get('/health', async () => ({
     status: 'ok',
     rooms: rooms.residentCount,
@@ -290,8 +324,9 @@ export async function buildApp({ config, store, reviewProvider }: AppDeps): Prom
     }
 
     await rooms.mutate(roomId.data, (doc) => {
-      doc.getMap(OBSERVATIONS_MAP).set(parsed.data.source, parsed.data);
+      doc.getMap(DOC_MAPS.observations).set(parsed.data.source, parsed.data);
     });
+    alertWorker.notify(roomId.data);
 
     return reply.status(202).send({
       accepted: {
@@ -475,6 +510,8 @@ export async function buildApp({ config, store, reviewProvider }: AppDeps): Prom
   // Rooms hold unflushed edits, so shutdown must wait for them rather than
   // letting the process exit with work still in memory.
   app.addHook('onClose', async () => {
+    // First, so no evaluation reopens a room that is being torn down.
+    await alertWorker.stop();
     await rooms.closeAll();
     await store.close();
   });
@@ -515,9 +552,6 @@ async function isAllowedModel(reviewer: ArchitectureReviewer, config: Config, mo
   if (model === reviewer.defaultModel) return true;
   return (await allowedModels(reviewer, config)).includes(model);
 }
-
-/** Must match `GraphDoc.observations` on the client. */
-const OBSERVATIONS_MAP = 'observations';
 
 /**
  * Pick the review provider from whichever credential is present.

@@ -107,6 +107,19 @@ export class RoomManager {
     if (room.isEmpty) this.#scheduleEviction(roomId);
   }
 
+  /**
+   * Read a room's document without joining it. A room opened only for this is
+   * scheduled for eviction like one its last client left.
+   */
+  async read<T>(roomId: string, reader: (doc: Y.Doc) => T): Promise<T> {
+    const room = await this.get(roomId);
+    try {
+      return reader(room.doc);
+    } finally {
+      if (room.isEmpty) this.#scheduleEviction(roomId);
+    }
+  }
+
   /** Detach a socket, scheduling eviction if it was the last one. */
   async leave(roomId: string, socket: Socket): Promise<void> {
     const pending = this.#rooms.get(roomId);

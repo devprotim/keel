@@ -1,0 +1,52 @@
+import {
+  DOC_MAPS,
+  readEdge,
+  readElementIntent,
+  readNode,
+  readObservationSet,
+  type ArchEdge,
+  type ArchGraph,
+  type ArchNode,
+  type DesignIntent,
+  type ObservationSet,
+} from '@keel/shared';
+import * as Y from 'yjs';
+
+export interface RoomContents {
+  graph: ArchGraph;
+  observations: ObservationSet[];
+  intent: DesignIntent;
+}
+
+/**
+ * A room document as domain values, read exactly as the client reads it (the
+ * readers are shared), so the server validating a room nobody has open sees
+ * the same diagram the canvas would.
+ */
+export function readRoom(doc: Y.Doc): RoomContents {
+  const nodes: ArchNode[] = [];
+  for (const value of doc.getMap(DOC_MAPS.nodes).values()) {
+    const node = readNode(value);
+    if (node) nodes.push(node);
+  }
+  const edges: ArchEdge[] = [];
+  for (const value of doc.getMap(DOC_MAPS.edges).values()) {
+    const edge = readEdge(value);
+    if (edge) edges.push(edge);
+  }
+  const observations: ObservationSet[] = [];
+  for (const value of doc.getMap(DOC_MAPS.observations).values()) {
+    const set = readObservationSet(value);
+    if (set) observations.push(set);
+  }
+  const intent: DesignIntent = {};
+  for (const [id, value] of doc.getMap(DOC_MAPS.intent).entries()) {
+    const element = value instanceof Y.Map ? readElementIntent(value) : null;
+    if (element) intent[id] = element;
+  }
+
+  nodes.sort((a, b) => a.id.localeCompare(b.id));
+  edges.sort((a, b) => a.id.localeCompare(b.id));
+  observations.sort((a, b) => a.source.localeCompare(b.source));
+  return { graph: { nodes, edges }, observations, intent };
+}

@@ -1,0 +1,132 @@
+:host {
+  position: relative;
+  display: inline-flex;
+}
+
+.on-dot {
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--keel-accent);
+}
+
+// Opens upward: the trigger lives in the bottom view-tools bar.
+.panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--keel-space-3));
+  z-index: 10;
+  width: 320px;
+  max-width: calc(100vw - var(--keel-space-4) * 2);
+  padding: var(--keel-space-4);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--keel-space-2);
+}
+
+.title {
+  margin: 0;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.state {
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+
+  &.on {
+    color: var(--keel-accent);
+  }
+}
+
+.lede,
+.hint {
+  margin: var(--keel-space-2) 0 var(--keel-space-3);
+  color: var(--keel-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.hint {
+  margin-top: 0;
+  font-size: 11px;
+}
+
+.channel {
+  margin: 0 0 var(--keel-space-3);
+  padding: 0;
+  border: 0;
+}
+
+.mono {
+  font-family: var(--keel-font-mono);
+  font-size: 12px;
+}
+
+.threshold {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  margin-top: var(--keel-space-2);
+  color: var(--keel-text-muted);
+  font-size: 12px;
+
+  span {
+    flex: 0 0 auto;
+  }
+}
+
+.message {
+  margin: 0 0 var(--keel-space-3);
+  color: var(--keel-severity-ok);
+  font-size: 12px;
+
+  &.error {
+    color: var(--keel-severity-error);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--keel-space-2);
+}
+
+.off {
+  margin-left: auto;
+}
+
+.open {
+  margin-top: var(--keel-space-4);
+  padding-top: var(--keel-space-3);
+  border-top: 1px solid var(--keel-border);
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--keel-space-2);
+    margin-bottom: var(--keel-space-1);
+    font-size: 12px;
+  }
+}
+
+.open-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

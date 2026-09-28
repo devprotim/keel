@@ -1344,6 +1344,10 @@ var isId = (value) => typeof value === "string" && value.length > 0 && value.len
 var isFieldValue = (value) => value === null || ["string", "number", "boolean"].includes(typeof value);
 var positive = (value, fallback) => value > 0 ? value : fallback;
 
+// ../shared/dist/doc-schema.js
+var NODE_KIND_SET = new Set(NODE_KINDS);
+var EDGE_KIND_SET = new Set(EDGE_KINDS);
+
 // src/check.ts
 var SEVERITY_RANK = { error: 0, warning: 1, info: 2 };
 function findingKey2(finding) {

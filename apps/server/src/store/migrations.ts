@@ -38,6 +38,25 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE INDEX rooms_updated_at ON rooms (updated_at DESC)`,
     ],
   },
+  {
+    id: 2,
+    name: 'drift alerts',
+    statements: [
+      // Credentials live here, never in the room document everyone downloads.
+      `CREATE TABLE room_alert_configs (
+        room_id    text PRIMARY KEY REFERENCES rooms (room_id) ON DELETE CASCADE,
+        config     jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`,
+      // Open alerts, one document per room. Persisted so a restart never
+      // re-pages for a finding that was already delivered.
+      `CREATE TABLE room_alert_state (
+        room_id    text PRIMARY KEY REFERENCES rooms (room_id) ON DELETE CASCADE,
+        state      jsonb NOT NULL,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`,
+    ],
+  },
 ];
 
 /**
