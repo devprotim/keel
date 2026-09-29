@@ -48,3 +48,16 @@ describe('bounded', () => {
     expect(kept[0]?.ref).toBe(`n${MAX_NODES + 9}`);
   });
 });
+
+describe('ingest token', () => {
+  it('is sent as a Bearer token when configured', async () => {
+    const seen: (string | null)[] = [];
+    const fetch = ((_url: string, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get('authorization'));
+      return Promise.resolve(new Response('{}', { status: 202 }));
+    }) as typeof globalThis.fetch;
+    await new KeelClient('https://keel.test', { fetch, token: 'keel_ing_abc' }).push(['room-a'], set);
+    await new KeelClient('https://keel.test', { fetch }).push(['room-a'], set);
+    expect(seen).toEqual(['Bearer keel_ing_abc', null]);
+  });
+});

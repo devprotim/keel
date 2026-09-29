@@ -18,7 +18,7 @@ describe('registerAuth', () => {
     const status = await registerAuth(app, testConfig());
     await app.ready();
 
-    expect(status).toEqual({ github: false, google: false });
+    expect(status).toMatchObject({ github: false, google: false });
     expect((await app.inject({ method: 'GET', url: '/api/auth/me' })).json()).toEqual({ user: null });
     expect((await app.inject({ method: 'GET', url: '/api/auth/github' })).statusCode).toBe(404);
 
@@ -30,7 +30,7 @@ describe('registerAuth', () => {
     const status = await registerAuth(app, testConfig({ GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' }));
     await app.ready();
 
-    expect(status).toEqual({ github: true, google: false });
+    expect(status).toMatchObject({ github: true, google: false });
 
     const start = await app.inject({ method: 'GET', url: '/api/auth/github?returnTo=/room-42' });
     expect(start.statusCode).toBe(302);
@@ -47,7 +47,7 @@ describe('registerAuth', () => {
     const status = await registerAuth(app, testConfig({ GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' }));
     await app.ready();
 
-    expect(status).toEqual({ github: false, google: true });
+    expect(status).toMatchObject({ github: false, google: true });
 
     const start = await app.inject({ method: 'GET', url: '/api/auth/google' });
     expect(start.statusCode).toBe(302);

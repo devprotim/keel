@@ -3,11 +3,22 @@ import { fastifyOauth2 } from '@fastify/oauth2';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Config } from '../config.ts';
 import { fetchGithubUser, fetchGoogleUser } from './providers.ts';
-import { createSessionManager } from './session.ts';
+import { createSessionManager, type SessionUser } from './session.ts';
 
 export interface AuthStatus {
   github: boolean;
   google: boolean;
+  /** The signed-in user, if any. Always null when no provider is configured. */
+  readUser(request: FastifyRequest): Promise<SessionUser | null>;
+}
+
+export interface AuthHooks {
+  /**
+   * Called with the signed-in user on sign-in and on every `/api/auth/me`, so
+   * a session that predates something that needs the user on record (member
+   * lists) is recorded on its next visit rather than its next sign-in.
+   */
+  onSeen?: (user: SessionUser) => Promise<void>;
 }
 
 interface OAuth2Namespace {
@@ -18,8 +29,8 @@ interface OAuth2Namespace {
   ): Promise<{ token: { access_token: string } }>;
 }
 
-/** Room ids are the only thing a post-login redirect is allowed to target. */
-const RETURN_TO_PATTERN = /^\/[a-zA-Z0-9_-]*$/;
+/** A room, or an invite being accepted, is all a post-login redirect may target. */
+const RETURN_TO_PATTERN = /^\/(invite\/)?[a-zA-Z0-9_-]*$/;
 const RETURN_TO_COOKIE = 'keel_return_to';
 
 /**
@@ -32,7 +43,7 @@ const RETURN_TO_COOKIE = 'keel_return_to';
  * Auth here is identity-only: it never gates a room. A successful login just
  * replaces the client's random guest name with the provider's real one.
  */
-export async function registerAuth(app: FastifyInstance, config: Config): Promise<AuthStatus> {
+export async function registerAuth(app: FastifyInstance, config: Config, hooks: AuthHooks = {}): Promise<AuthStatus> {
   const github =
     config.GITHUB_CLIENT_ID && config.GITHUB_CLIENT_SECRET
       ? { id: config.GITHUB_CLIENT_ID, secret: config.GITHUB_CLIENT_SECRET }
@@ -44,7 +55,7 @@ export async function registerAuth(app: FastifyInstance, config: Config): Promis
 
   if (!github && !google) {
     app.get('/api/auth/me', async () => ({ user: null }));
-    return { github: false, google: false };
+    return { github: false, google: false, readUser: async () => null };
   }
 
   const sessionSecret = config.SESSION_SECRET;
@@ -66,7 +77,7 @@ export async function registerAuth(app: FastifyInstance, config: Config): Promis
       callbackUri: `${config.PUBLIC_URL}/api/auth/github/callback`,
     });
 
-    registerProviderRoutes(app, config, 'github', 'githubOAuth2', fetchGithubUser, session, secureCookie);
+    registerProviderRoutes(app, config, 'github', 'githubOAuth2', fetchGithubUser, session, secureCookie, hooks);
   }
 
   if (google) {
@@ -77,17 +88,21 @@ export async function registerAuth(app: FastifyInstance, config: Config): Promis
       callbackUri: `${config.PUBLIC_URL}/api/auth/google/callback`,
     });
 
-    registerProviderRoutes(app, config, 'google', 'googleOAuth2', fetchGoogleUser, session, secureCookie);
+    registerProviderRoutes(app, config, 'google', 'googleOAuth2', fetchGoogleUser, session, secureCookie, hooks);
   }
 
-  app.get('/api/auth/me', async (request) => ({ user: await session.read(request) }));
+  app.get('/api/auth/me', async (request) => {
+    const user = await session.read(request);
+    if (user) await hooks.onSeen?.(user);
+    return { user };
+  });
 
   app.post('/api/auth/logout', async (_request, reply) => {
     session.clear(reply);
     return { ok: true };
   });
 
-  return { github: Boolean(github), google: Boolean(google) };
+  return { github: Boolean(github), google: Boolean(google), readUser: (request) => session.read(request) };
 }
 
 function registerProviderRoutes(
@@ -98,6 +113,7 @@ function registerProviderRoutes(
   fetchUser: (accessToken: string) => Promise<import('./session.ts').SessionUser>,
   session: ReturnType<typeof createSessionManager>,
   secureCookie: boolean,
+  hooks: AuthHooks,
 ): void {
   // Independent of the plugin's own CSRF-state cookie: `returnTo` is which
   // room to bounce back to, not part of the security check, so it travels in
@@ -135,6 +151,7 @@ function registerProviderRoutes(
       const { token } = await oauth.getAccessTokenFromAuthorizationCodeFlow(request, reply);
       const user = await fetchUser(token.access_token);
       await session.write(reply, user);
+      await hooks.onSeen?.(user);
     } catch (error) {
       request.log.error({ err: error }, `${path} login failed`);
     }

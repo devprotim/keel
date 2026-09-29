@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-test('health reports the process is up with review and OAuth disabled', async ({ request }) => {
+test('health reports the process is up, with review disabled and GitHub sign-in on', async ({ request }) => {
   const response = await request.get('/health');
   expect(response.ok()).toBe(true);
   expect(await response.json()).toMatchObject({
     status: 'ok',
     review: 'disabled',
-    oauth: { github: 'disabled', google: 'disabled' },
+    oauth: { github: 'enabled', google: 'disabled' },
   });
 });
 

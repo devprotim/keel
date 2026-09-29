@@ -37,10 +37,12 @@
         @if (sources().length === 0) {
           <span class="reality-note">None. Values are taken as typed.</span>
         }
-        <label class="keel-btn keel-btn--ghost keel-file-button reality-action">
-          Import
-          <input class="keel-visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
-        </label>
+        @if (!readOnly()) {
+          <label class="keel-btn keel-btn--ghost keel-file-button reality-action">
+            Import
+            <input class="keel-visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
+          </label>
+        }
       </div>
       @for (source of sources(); track source.source) {
         <div class="source" [class.stale]="source.stale">
@@ -51,14 +53,16 @@
               · stale
             }
           </span>
-          <button
-            type="button"
-            class="keel-btn keel-btn--ghost keel-btn--icon source-remove"
-            [attr.aria-label]="'Remove observations from ' + source.source"
-            (click)="removeSource(source.source)"
-          >
-            ✕
-          </button>
+          @if (!readOnly()) {
+            <button
+              type="button"
+              class="keel-btn keel-btn--ghost keel-btn--icon source-remove"
+              [attr.aria-label]="'Remove observations from ' + source.source"
+              (click)="removeSource(source.source)"
+            >
+              ✕
+            </button>
+          }
           @if (source.unmatchedRefs.length > 0) {
             <span class="source-unmatched">
               Not on the diagram: {{ source.unmatchedRefs.join(', ') }}
@@ -82,7 +86,7 @@
               Matches the approved design.
             }
           </span>
-          @if (hasUnapprovedChanges()) {
+          @if (hasUnapprovedChanges() && !readOnly()) {
             <button type="button" class="keel-btn keel-btn--ghost reality-action" (click)="approveAll()">
               {{ hasBaseline() ? 'Approve all' : 'Approve design' }}
             </button>
@@ -138,7 +142,7 @@
               <span class="finding-title">{{ row.finding.title }}</span>
               <span class="finding-detail">{{ row.finding.detail }}</span>
             </button>
-            @if (fixLabel(row.finding); as label) {
+            @if (!readOnly() && fixLabel(row.finding); as label) {
               <button type="button" class="keel-btn finding-fix" (click)="applyFix(row.finding)">
                 {{ label }}
               </button>

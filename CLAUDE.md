@@ -109,9 +109,17 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 
 ### Authentication
 
-- GitHub/Google sign-in is **identity-only**: it never gates a room. Anyone with a room link can still join and edit anonymously; a successful login just replaces the client's random guest name/avatar (`apps/web/src/app/collab/presence.ts`) with the provider's real one. There are no accounts in the "protects data" sense and no per-room ACLs — this preserves the "room id is the whole sharing mechanism" design in `app.routes.ts`.
+- Sign-in replaces the client's guest name/avatar (`apps/web/src/app/collab/presence.ts`) with the provider's, and is what gives someone standing in a workspace. It does not gate **link rooms**, which stay the default: anyone with the id can edit, anonymously.
 - Server side (`apps/server/src/auth/`): `@fastify/oauth2` per configured provider + a stateless, `jose`-signed JWT session cookie (`session.ts`) — no new persistence layer, since losing a session just means signing in again. `/api/auth/{github,google}` and their `/callback` routes exist only when that provider's `_CLIENT_ID`/`_CLIENT_SECRET` env pair is set; with neither set, only `/api/auth/me` exists and always reports `{ user: null }`. This mirrors `/api/review`'s "absent credentials disable the feature, never the boot" precedent. `SESSION_SECRET` and `PUBLIC_URL` (for building the OAuth callback URI) round out the config; see `.env.example`.
 - Client side (`apps/web/src/app/auth/auth.service.ts`): calls `/api/auth/me` on boot and, on a real user, calls `CollabService.setIdentity()` to overwrite the guest name/avatar in awareness. Login/logout are full-page redirects, not in-app steps — there is no dedicated Angular login route.
+
+### Workspaces and access (`apps/server/src/access/`)
+
+- A room is a link room until a signed-in user moves it into a workspace (`room_workspaces` row); then only members open it, as `owner` / `editor` / `viewer`. `roomAccess()` in `policy.ts` is the single answer every door asks: the socket (upgrade is refused with close code 4003; viewers join read-only, and `Room` drops their sync step 2 and update frames before Yjs sees them), the observations endpoint (a private room needs an ingest token as `Authorization: Bearer`, or an editor session), and the alerts routes.
+- Any change to who may open a room (move, release, role change, removal) calls `RoomManager.disconnect()` with close code 4001, so no socket keeps a stale grant; the client re-checks access on 4001/4003 (`CollabService.accessChecks`).
+- Defaults that are deliberately provisional (see PROJECT_PLAN task 7): anyone who can edit a link room may move it into a workspace they can edit; invites are reusable links for 7 days (`INVITE_TTL_DAYS`); accepting never lowers a role; a workspace always keeps an owner. Invite and ingest secrets are stored only as SHA-256 hashes.
+- `AccessStore` has memory and Postgres implementations (migration 3). `users` is refreshed from `/api/auth/me` (throttled) as well as on sign-in, so member lists show names for sessions that predate a feature.
+- Client: the board fetches `/api/rooms/:id/access` before connecting (`BoardComponent.checkAccess`); denied means it deletes the room's IndexedDB copy and shows a private-room card; unreachable means it opens from the local copy as before and lets the socket decide. `CollabService` no-ops every mutation when `readOnly` (the server enforces it anyway). `CollabService` builds a **new GraphDoc per connect**; reusing one carried room A's diagram into room B on in-app navigation. Sharing UI: `panels/share-menu.component.ts`; joining: `/invite/:token` (`invite/invite.component.ts`). `core/credentials.interceptor.ts` sends the session cookie to the API in dev, where it is cross-origin.
 
 ### PWA
 
@@ -128,7 +136,7 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 
 ## Routing
 
-The room id lives in the URL and *is* the sharing mechanism (`apps/web/src/app/app.routes.ts`) — no accounts, no invitations. Visiting `/` generates a new random room id and redirects.
+The room id lives in the URL (`apps/web/src/app/app.routes.ts`). For a link room it *is* the sharing mechanism; a workspace room also needs membership, which comes from an `/invite/:token` link. `/` is the landing page, which lists a signed-in user's workspaces and their diagrams.
 
 ## Design System
 

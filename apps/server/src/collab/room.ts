@@ -1,3 +1,4 @@
+import * as decoding from 'lib0/decoding';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import type { DocStore } from '../store/store.ts';
@@ -44,6 +45,8 @@ export class Room {
 
   /** Each socket, mapped to the awareness client ids it introduced. */
   readonly #connections = new Map<Socket, Set<number>>();
+  /** Sockets that may read and show presence, but never write the document. */
+  readonly #readOnly = new WeakSet<Socket>();
   readonly #store: DocStore;
   readonly #options: Required<RoomOptions>;
 
@@ -112,9 +115,10 @@ export class Room {
    * The server speaks first, sending its state vector, because the client cannot
    * know whether this room already exists.
    */
-  addConnection(socket: Socket): void {
+  addConnection(socket: Socket, options: { readOnly?: boolean } = {}): void {
     if (this.#destroyed) throw new Error(`room ${this.id} is destroyed`);
     this.#connections.set(socket, new Set());
+    if (options.readOnly) this.#readOnly.add(socket);
 
     socket.send(encodeSyncStep1(this.doc));
 
@@ -135,6 +139,12 @@ export class Room {
       socket.close(1009, 'document too large');
       return;
     }
+
+    // A viewer may ask for the document (step 1) but not change it. Its step 2
+    // and updates are dropped here, before Yjs sees them, which is the only
+    // place a read-only guarantee can actually be kept: the client hiding its
+    // edit controls is a courtesy, this is the rule.
+    if (this.#readOnly.has(socket) && data[0] === MESSAGE_SYNC && syncMessageType(data) !== SYNC_STEP_1) return;
 
     try {
       const result = applyMessage(data, this.doc, this.awareness, socket);
@@ -273,6 +283,30 @@ export class Room {
     }
   }
 
+  /**
+   * Close every socket, leaving the document loaded. Used when who may open
+   * the room changes, so every client reconnects and is authorised afresh.
+   */
+  disconnectAll(code: number, reason: string): void {
+    for (const socket of [...this.#connections.keys()]) {
+      try {
+        socket.close(code, reason);
+      } catch {
+        // Already closed.
+      }
+      this.removeConnection(socket);
+    }
+  }
+
+  /**
+   * Release the document without writing what is pending: the room is being
+   * deleted, and a flush would put back what the delete just removed.
+   */
+  discard(): Promise<void> {
+    this.#pendingUpdates = [];
+    return this.destroy();
+  }
+
   /** Flush, disconnect everyone, and release the document. */
   async destroy(): Promise<void> {
     if (this.#destroyed) return;
@@ -300,6 +334,19 @@ export class Room {
 
     this.awareness.destroy();
     this.doc.destroy();
+  }
+}
+
+const SYNC_STEP_1 = 0;
+
+/** The y-protocols sync sub-type: 0 step 1, 1 step 2, 2 update. */
+function syncMessageType(data: Uint8Array): number {
+  try {
+    const decoder = decoding.createDecoder(data);
+    decoding.readVarUint(decoder);
+    return decoding.readVarUint(decoder);
+  } catch {
+    return -1;
   }
 }
 

@@ -34,6 +34,8 @@ export class FindingsComponent {
     () => this.review.hasRun() && this.review.isStale(this.collab.effectiveGraph()),
   );
 
+  /** Viewers see findings but not the controls that would change the diagram. */
+  readonly readOnly = this.collab.readOnly;
   readonly hasBaseline = this.collab.hasBaseline;
   readonly hasUnapprovedChanges = this.collab.hasUnapprovedChanges;
   readonly importError = signal<string | null>(null);

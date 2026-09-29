@@ -1,0 +1,52 @@
+.invite {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--keel-space-4);
+  background: var(--keel-bg);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--keel-space-3);
+  width: 100%;
+  max-width: 380px;
+  padding: var(--keel-space-5);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  font-family: var(--keel-font-display);
+  font-size: 16px;
+}
+
+.logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px 4px 8px 8px;
+  background: linear-gradient(160deg, var(--keel-accent), var(--keel-kind-datastore));
+  flex: 0 0 auto;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.body {
+  margin: 0;
+  color: var(--keel-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error {
+  margin: 0;
+  color: var(--keel-severity-error);
+  font-size: 13px;
+}

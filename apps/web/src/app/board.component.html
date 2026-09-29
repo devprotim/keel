@@ -18,6 +18,15 @@
         <span class="copy-toast" role="status">Link copied</span>
       }
     </button>
+    @if (access()?.visibility === 'workspace' && !denied()) {
+      <span class="room-name" [title]="access()?.workspace?.name ?? ''">{{ access()?.name }}</span>
+    }
+    @if (collab.readOnly()) {
+      <span class="view-only">View only</span>
+    }
+    @if (!denied()) {
+      <keel-share-menu [roomId]="roomId()" [access]="access()" (changed)="collab.recheckAccess()" />
+    }
   </div>
 
   <!-- Presence: peers, connection status, account, theme. Top-right. -->
@@ -84,83 +93,85 @@
     reach for since a native drag needs a pointer. Both write the same
     `placingKind` signal, so the tile shows armed either way.
   -->
-  <div class="keel-island rail" role="toolbar" aria-label="Add a component">
-    @for (kind of nodeKinds; track kind) {
-      <button
-        type="button"
-        class="tile"
-        [class.active]="canvas().placingKind() === kind"
-        [attr.aria-pressed]="canvas().placingKind() === kind"
-        [attr.aria-label]="kind"
-        [title]="kind + ' — drag onto the canvas, or click then click the canvas'"
-        draggable="true"
-        (dragstart)="onKindDragStart($event, kind)"
-        (dragend)="onKindDragEnd()"
-        (click)="toggleKind(kind)"
-      >
-        <svg
-          class="icon"
-          width="18"
-          height="18"
-          viewBox="0 0 16 16"
-          fill="none"
-          [attr.stroke]="kindColor(kind)"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
+  @if (!collab.readOnly() && !denied()) {
+    <div class="keel-island rail" role="toolbar" aria-label="Add a component">
+      @for (kind of nodeKinds; track kind) {
+        <button
+          type="button"
+          class="tile"
+          [class.active]="canvas().placingKind() === kind"
+          [attr.aria-pressed]="canvas().placingKind() === kind"
+          [attr.aria-label]="kind"
+          [title]="kind + ' — drag onto the canvas, or click then click the canvas'"
+          draggable="true"
+          (dragstart)="onKindDragStart($event, kind)"
+          (dragend)="onKindDragEnd()"
+          (click)="toggleKind(kind)"
         >
-          @switch (kind) {
-            @case ('service') {
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
-              <path d="M5.5 8h5M8 5.5v5" />
+          <svg
+            class="icon"
+            width="18"
+            height="18"
+            viewBox="0 0 16 16"
+            fill="none"
+            [attr.stroke]="kindColor(kind)"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            @switch (kind) {
+              @case ('service') {
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2.5" />
+                <path d="M5.5 8h5M8 5.5v5" />
+              }
+              @case ('datastore') {
+                <ellipse cx="8" cy="4.2" rx="5.5" ry="2" />
+                <path d="M2.5 4.2v7.6c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4.2" />
+                <path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2" />
+              }
+              @case ('queue') {
+                <rect x="1.5" y="5" width="13" height="6" rx="3" />
+                <path d="M5.5 5v6M9 5v6" />
+              }
+              @case ('cache') {
+                <path d="M8 1.5 3 8h3.5l-1 6.5L11 8H7.5z" />
+              }
+              @case ('gateway') {
+                <path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z" />
+                <path d="M8 5.5v5" />
+              }
+              @case ('job') {
+                <circle cx="8" cy="8" r="5.8" />
+                <path d="M8 5v3.2l2.2 1.4" />
+              }
+              @case ('external') {
+                <path d="M9.5 2.5h4v4" />
+                <path d="M13.5 2.5 7.8 8.2" />
+                <path d="M11.5 9.5v2.8a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2V5.7a1.2 1.2 0 0 1 1.2-1.2h2.8" />
+              }
             }
-            @case ('datastore') {
-              <ellipse cx="8" cy="4.2" rx="5.5" ry="2" />
-              <path d="M2.5 4.2v7.6c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2V4.2" />
-              <path d="M2.5 8c0 1.1 2.5 2 5.5 2s5.5-.9 5.5-2" />
-            }
-            @case ('queue') {
-              <rect x="1.5" y="5" width="13" height="6" rx="3" />
-              <path d="M5.5 5v6M9 5v6" />
-            }
-            @case ('cache') {
-              <path d="M8 1.5 3 8h3.5l-1 6.5L11 8H7.5z" />
-            }
-            @case ('gateway') {
-              <path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z" />
-              <path d="M8 5.5v5" />
-            }
-            @case ('job') {
-              <circle cx="8" cy="8" r="5.8" />
-              <path d="M8 5v3.2l2.2 1.4" />
-            }
-            @case ('external') {
-              <path d="M9.5 2.5h4v4" />
-              <path d="M13.5 2.5 7.8 8.2" />
-              <path d="M11.5 9.5v2.8a1.2 1.2 0 0 1-1.2 1.2H3.7a1.2 1.2 0 0 1-1.2-1.2V5.7a1.2 1.2 0 0 1 1.2-1.2h2.8" />
-            }
-          }
-        </svg>
-      </button>
-    }
+          </svg>
+        </button>
+      }
 
-    <span class="rail-divider" aria-hidden="true"></span>
+      <span class="rail-divider" aria-hidden="true"></span>
 
-    @for (kind of edgeKinds; track kind) {
-      <button
-        type="button"
-        class="tile edge"
-        [class.active]="canvas().edgeKind() === kind"
-        [attr.aria-pressed]="canvas().edgeKind() === kind"
-        [attr.aria-label]="kind + ' connection'"
-        [title]="'Alt-drag from a component draws a new connection as ' + kind"
-        (click)="setEdgeKind(kind)"
-      >
-        {{ kind.charAt(0).toUpperCase() }}
-      </button>
-    }
-  </div>
+      @for (kind of edgeKinds; track kind) {
+        <button
+          type="button"
+          class="tile edge"
+          [class.active]="canvas().edgeKind() === kind"
+          [attr.aria-pressed]="canvas().edgeKind() === kind"
+          [attr.aria-label]="kind + ' connection'"
+          [title]="'Alt-drag from a component draws a new connection as ' + kind"
+          (click)="setEdgeKind(kind)"
+        >
+          {{ kind.charAt(0).toUpperCase() }}
+        </button>
+      }
+    </div>
+  }
 
   <!-- View tools: undo/redo, zoom, fit. Bottom-center. -->
   <div class="keel-island view-tools">
@@ -212,7 +223,9 @@
     <span class="divider" aria-hidden="true"></span>
 
     <keel-export-menu [roomId]="roomId()" [theme]="canvas().currentTheme()" />
-    <keel-alerts-menu [roomId]="roomId()" />
+    @if (!collab.readOnly() && !denied()) {
+      <keel-alerts-menu [roomId]="roomId()" />
+    }
   </div>
 
   <!-- The review dock: a collapsed pill by default, expands over the canvas. -->
@@ -228,7 +241,30 @@
     />
   }
 
-  @if (isEmpty()) {
+  @if (denied()) {
+    <div class="keel-island empty denied" role="alert">
+      @if (deleted()) {
+        <p class="empty-title">This diagram was deleted</p>
+        <p class="empty-body">An owner of its workspace deleted it. Any copy this browser kept for offline use has been removed too.</p>
+      } @else {
+        <p class="empty-title">This diagram is private</p>
+        <p class="empty-body">
+          It belongs to a workspace, and only its members can open it.
+          @if (access()?.signedIn) {
+            Ask one of its owners for an invite link.
+          } @else {
+            If you are a member, sign in.
+          }
+        </p>
+      }
+      <div class="empty-actions">
+        @if (!access()?.signedIn && !deleted()) {
+          <button type="button" class="keel-btn keel-btn--primary" (click)="loginWithGithub()">Sign in with GitHub</button>
+        }
+        <a class="keel-btn" href="/">Start a new diagram</a>
+      </div>
+    </div>
+  } @else if (isEmpty() && !collab.readOnly()) {
     <div class="keel-island empty">
       <p class="empty-title">Nothing on the canvas yet</p>
       <p class="empty-body">

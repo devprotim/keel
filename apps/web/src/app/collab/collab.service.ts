@@ -12,7 +12,7 @@ import {
   type ObservationSet,
   type ValidationReport,
 } from '@keel/shared';
-import { IndexeddbPersistence } from 'y-indexeddb';
+import { IndexeddbPersistence, clearDocument } from 'y-indexeddb';
 import { WebsocketProvider } from 'y-websocket';
 import type * as Y from 'yjs';
 import { KEEL_CONFIG } from '../core/app-config';
@@ -32,7 +32,12 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'offline' | 'refused
 export class CollabService {
   readonly #config = inject(KEEL_CONFIG);
 
-  readonly #doc = new GraphDoc();
+  /**
+   * One document per connection, never reused. A doc kept across rooms would
+   * carry room A's diagram into room B on the next connect, where the CRDT
+   * would merge it in and sync it to B's server.
+   */
+  #doc = new GraphDoc();
   #provider: WebsocketProvider | null = null;
   #persistence: IndexeddbPersistence | null = null;
   #undoManager: Y.UndoManager | null = null;
@@ -55,6 +60,15 @@ export class CollabService {
    * without this the header would flicker "Connecting" with no explanation.
    */
   readonly #refusal = signal<string | null>(null);
+  /** Viewers of a workspace room. The server drops their writes; this keeps the UI from making any. */
+  readonly #readOnly = signal(false);
+  /** Bumps when the server closes the socket because who may open the room changed. */
+  readonly #accessChecks = signal(0);
+  /**
+   * The server refused this room outright. Decisive on its own, so a private
+   * or deleted room is shut even when the HTTP access check can't be reached.
+   */
+  readonly #closedBy = signal<'forbidden' | 'deleted' | null>(null);
   /** What the browser reports, which is a separate question. */
   readonly #browserOnline = signal(navigator.onLine);
   readonly #canUndo = signal(false);
@@ -95,6 +109,9 @@ export class CollabService {
     }
   });
   readonly refusal = this.#refusal.asReadonly();
+  readonly readOnly = this.#readOnly.asReadonly();
+  readonly accessChecks = this.#accessChecks.asReadonly();
+  readonly closedBy = this.#closedBy.asReadonly();
   readonly canUndo = this.#canUndo.asReadonly();
   readonly canRedo = this.#canRedo.asReadonly();
   readonly displayName = this.#displayName.asReadonly();
@@ -140,8 +157,16 @@ export class CollabService {
 
   /** Join a room. Safe to call again; the previous connection is torn down. */
   connect(roomId: string): void {
-    if (this.#roomId() === roomId) return;
+    if (this.#roomId() === roomId) {
+      // Refused earlier and since allowed again (e.g. just added as a member).
+      if (this.#closedBy() === null) this.#provider?.connect();
+      return;
+    }
     this.disconnect();
+    this.#doc = new GraphDoc();
+    // Kept through disconnect() (forgetting a refused room disconnects it),
+    // cleared only on arriving somewhere else.
+    this.#closedBy.set(null);
     this.#roomId.set(roomId);
 
     // Local persistence first. It resolves from IndexedDB immediately, so a
@@ -166,6 +191,14 @@ export class CollabService {
       this.#socketStatus.set('disconnected');
       const refusal = describeRefusal(event?.code);
       if (refusal) this.#refusal.set(refusal);
+      if (event?.code === CLOSE_FORBIDDEN || event?.code === CLOSE_DELETED) {
+        // Retrying would only be refused again, over and over.
+        this.#provider?.disconnect();
+        this.#closedBy.set(event.code === CLOSE_DELETED ? 'deleted' : 'forbidden');
+      }
+      if (event?.code === CLOSE_ACCESS_CHANGED || event?.code === CLOSE_FORBIDDEN || event?.code === CLOSE_DELETED) {
+        this.#accessChecks.update((n) => n + 1);
+      }
     });
     this.#provider.on('sync', (synced: boolean) => {
       if (synced) this.#refusal.set(null);
@@ -213,6 +246,11 @@ export class CollabService {
     void this.#persistence?.destroy();
     this.#persistence = null;
     this.#roomId.set(null);
+    // Nothing of the room stays on screen once it is left, which matters most
+    // when it is left because it became private or was deleted.
+    this.#graph.set({ nodes: [], edges: [] });
+    this.#observations.set([]);
+    this.#intent.set({});
     this.#peers.set([]);
     this.#socketStatus.set('connecting');
     this.#refusal.set(null);
@@ -241,34 +279,56 @@ export class CollabService {
     this.#patchAwareness({ name: trimmed, avatarUrl });
   }
 
+  /** Ask the board to re-read this room's access, e.g. after the Share menu changed it. */
+  recheckAccess(): void {
+    this.#accessChecks.update((n) => n + 1);
+  }
+
+  setReadOnly(readOnly: boolean): void {
+    this.#readOnly.set(readOnly);
+  }
+
+  /** Drop this browser's offline copy of a room it can no longer open. */
+  async forgetLocal(roomId: string): Promise<void> {
+    if (this.#roomId() === roomId) this.disconnect();
+    await clearDocument(`keel:${roomId}`);
+  }
+
   // --- Mutations ----------------------------------------------------------
 
   addNode(node: ArchNode): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.addNode(node));
   }
 
   addEdge(edge: ArchEdge): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.addEdge(edge));
   }
 
   updateNode(id: string, patch: Partial<ArchNode>): void {
+    if (this.#readOnly()) return;
     this.#doc.updateNode(id, patch);
   }
 
   updateEdge(id: string, patch: Partial<ArchEdge>): void {
+    if (this.#readOnly()) return;
     this.#doc.updateEdge(id, patch);
   }
 
   moveNodes(moves: readonly { id: string; x: number; y: number }[]): void {
+    if (this.#readOnly()) return;
     this.#doc.moveNodes(moves);
   }
 
   remove(ids: readonly string[]): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.removeSelection(ids));
   }
 
   /** Add a diagram from a file to the current room, as one undo step. */
   importDiagram(graph: ArchGraph, intent: DesignIntent = {}): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.importDiagram(graph, intent));
     this.#importCount.update((n) => n + 1);
   }
@@ -289,33 +349,40 @@ export class CollabService {
   // --- Evidence and intent -----------------------------------------------
 
   importObservations(set: ObservationSet): void {
+    if (this.#readOnly()) return;
     this.#doc.setObservations(set);
     this.#now.set(Date.now());
   }
 
   removeObservations(source: string): void {
+    if (this.#readOnly()) return;
     this.#doc.removeObservations(source);
   }
 
   /** Approve these elements as they are drawn now, attributed to this user. */
   approve(ids: readonly string[]): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.approve(ids, this.#displayName()));
   }
 
   approveAll(): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.approveAll(this.#displayName()));
   }
 
   /** Update the diagram to what the running system reports, and approve it. */
   acceptObserved(deltas: readonly FieldDelta[]): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.acceptObserved(deltas, this.#displayName()));
   }
 
   undo(): void {
+    if (this.#readOnly()) return;
     this.#undoManager?.undo();
   }
 
   redo(): void {
+    if (this.#readOnly()) return;
     this.#undoManager?.redo();
   }
 
@@ -326,6 +393,7 @@ export class CollabService {
    * should be a single Ctrl+Z rather than a dozen.
    */
   batch(fn: () => void): void {
+    if (this.#readOnly()) return;
     this.#step(() => this.#doc.transact(fn));
   }
 
@@ -398,3 +466,8 @@ function describeRefusal(code: number | undefined): string | null {
   if (code === 1008) return 'Not syncing · refused by server';
   return null;
 }
+
+/** Must match apps/server/src/access/policy.ts. */
+const CLOSE_ACCESS_CHANGED = 4001;
+const CLOSE_FORBIDDEN = 4003;
+const CLOSE_DELETED = 4004;

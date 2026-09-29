@@ -1,0 +1,141 @@
+:host {
+  position: relative;
+  display: inline-flex;
+}
+
+// Opens downward: the trigger lives in the top-left brand island.
+.panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--keel-space-3));
+  z-index: 20;
+  width: 340px;
+  max-width: calc(100vw - var(--keel-space-4) * 2);
+  max-height: min(78vh, 640px);
+  overflow-y: auto;
+  padding: var(--keel-space-4);
+}
+
+.title {
+  margin: 0;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.lede,
+.hint {
+  margin: var(--keel-space-2) 0 0;
+  color: var(--keel-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+
+  code {
+    font-family: var(--keel-font-mono);
+    font-size: 11px;
+  }
+}
+
+.hint {
+  font-size: 11px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--keel-space-2);
+  margin-top: var(--keel-space-4);
+  padding-top: var(--keel-space-3);
+  border-top: 1px solid var(--keel-border);
+
+  .keel-field__label {
+    margin: 0;
+  }
+}
+
+.inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--keel-space-2);
+
+  .keel-input,
+  .keel-select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.section.inline {
+  flex-direction: row;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  color: var(--keel-text-muted);
+  font-size: 12px;
+}
+
+.mono {
+  font-family: var(--keel-font-mono);
+  font-size: 11.5px;
+}
+
+.members {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--keel-space-2);
+    padding: 2px 0;
+    font-size: 13px;
+  }
+}
+
+.member-name,
+.token-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role {
+  flex: 0 0 96px;
+  width: 96px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.role-label,
+.token-meta {
+  color: var(--keel-text-muted);
+  font-size: 11px;
+}
+
+.token {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  font-size: 13px;
+}
+
+.danger {
+  align-self: flex-start;
+  color: var(--keel-severity-error);
+}
+
+.error {
+  margin: var(--keel-space-3) 0 0;
+  color: var(--keel-severity-error);
+  font-size: 12px;
+}

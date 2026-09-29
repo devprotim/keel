@@ -23,8 +23,14 @@ export class KeelClient {
   readonly #fetch: typeof fetch;
   readonly #sleep: (ms: number) => Promise<void>;
 
-  constructor(baseUrl: string, deps: { fetch?: typeof fetch; sleep?: (ms: number) => Promise<void> } = {}) {
+  readonly #token: string | null;
+
+  constructor(
+    baseUrl: string,
+    deps: { fetch?: typeof fetch; sleep?: (ms: number) => Promise<void>; token?: string | null } = {},
+  ) {
     this.#baseUrl = baseUrl.replace(/\/+$/, '');
+    this.#token = deps.token ?? null;
     this.#fetch = deps.fetch ?? fetch;
     this.#sleep = deps.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
@@ -43,12 +49,14 @@ export class KeelClient {
       try {
         const response = await this.#fetch(url, {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          // Required once a room is in a workspace; harmless on a link room.
+          headers: { 'content-type': 'application/json', ...(this.#token ? { authorization: `Bearer ${this.#token}` } : {}) },
           body,
           signal: AbortSignal.timeout(10_000),
         });
         if (response.ok) return { roomId, ok: true, status: response.status };
         last = { roomId, ok: false, status: response.status, error: (await response.text()).slice(0, 300) };
+        // 401/403 is a missing or revoked ingest token: retrying won't mint one.
         if (response.status !== 429 && response.status < 500) return last;
       } catch (error) {
         last = { roomId, ok: false, error: error instanceof Error ? error.message : String(error) };

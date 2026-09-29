@@ -122,6 +122,22 @@ export class PostgresDocStore implements DocStore {
     return rows[0]?.found === true;
   }
 
+  /** One statement for the room; every table that references it cascades. */
+  async delete(roomId: string): Promise<void> {
+    await this.#db.transaction(async (tx) => {
+      await tx.query('DELETE FROM rooms WHERE room_id = $1', [roomId]);
+      await tx.query('INSERT INTO deleted_rooms (room_id) VALUES ($1) ON CONFLICT (room_id) DO NOTHING', [roomId]);
+    });
+  }
+
+  async isDeleted(roomId: string): Promise<boolean> {
+    const { rows } = await this.#db.query<{ found: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM deleted_rooms WHERE room_id = $1) AS found',
+      [roomId],
+    );
+    return rows[0]?.found === true;
+  }
+
   async close(): Promise<void> {
     await this.#db.end();
   }

@@ -81,6 +81,13 @@ const schema = z.object({
   ALERT_DEBOUNCE_MS: z.coerce.number().int().nonnegative().default(2_000),
   RATE_LIMIT_ALERTS_PER_MIN: z.coerce.number().int().positive().default(30),
 
+  /** Budget for workspace, membership, invite and token routes. */
+  RATE_LIMIT_ACCESS_PER_MIN: z.coerce.number().int().positive().default(60),
+  /** Every board load asks what the caller may do; a cheap read, so a larger budget. */
+  RATE_LIMIT_ACCESS_READ_PER_MIN: z.coerce.number().int().positive().default(600),
+  /** How long an invite link works. */
+  INVITE_TTL_DAYS: z.coerce.number().positive().max(90).default(7),
+
   /**
    * Comma-separated models the review endpoint may call. Unset, any model the
    * key can list is allowed. Either way the configured default always is.

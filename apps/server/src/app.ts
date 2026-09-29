@@ -7,12 +7,15 @@ import rateLimit from '@fastify/rate-limit';
 import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { DOC_MAPS, validate } from '@keel/shared';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
 import { GeminiReviewProvider } from './ai/gemini-provider.ts';
 import type { ReviewProvider } from './ai/provider.ts';
 import { ArchitectureReviewer } from './ai/review.ts';
+import { CLOSE_DELETED, CLOSE_FORBIDDEN, roomAccess } from './access/policy.ts';
+import { registerAccessRoutes } from './access/routes.ts';
+import { MemoryAccessStore, type AccessStore } from './access/store.ts';
 import { createSender, type Send } from './alerts/notifiers.ts';
 import { registerAlertRoutes } from './alerts/routes.ts';
 import { MemoryAlertStore, type AlertStore } from './alerts/store.ts';
@@ -167,9 +170,18 @@ export interface AppDeps {
   alertStore?: AlertStore;
   /** Delivers alert events. Tests pass a recorder instead of calling Slack and PagerDuty. */
   alertSend?: Send;
+  /** Workspaces, membership and tokens. Defaults to memory. */
+  accessStore?: AccessStore;
 }
 
-export async function buildApp({ config, store, reviewProvider, alertStore, alertSend }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({
+  config,
+  store,
+  reviewProvider,
+  alertStore,
+  alertSend,
+  accessStore,
+}: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     // Behind a proxy, request.ip is the proxy unless this is on, and every
     // client would share one rate-limit bucket.
@@ -242,7 +254,46 @@ export async function buildApp({ config, store, reviewProvider, alertStore, aler
     },
   });
 
-  const auth = await registerAuth(app, config);
+  const access = accessStore ?? new MemoryAccessStore();
+  // Remembered so member lists can name people who are not online. At most
+  // once per user per ten minutes per process: /api/auth/me runs on every load.
+  const recorded = new Map<string, number>();
+  const auth = await registerAuth(app, config, {
+    onSeen: async (user) => {
+      const last = recorded.get(user.id);
+      if (last !== undefined && Date.now() - last < 10 * 60_000) return;
+      recorded.set(user.id, Date.now());
+      await access.upsertUser({ id: user.id, name: user.name, avatarUrl: user.avatarUrl });
+    },
+  });
+  const parseRoomId = (raw: unknown): string | null => {
+    const parsed = RoomIdSchema.safeParse(raw);
+    return parsed.success ? parsed.data : null;
+  };
+  /** What the caller may do in a room, from their session. */
+  const accessFor = async (request: FastifyRequest, roomId: string) =>
+    roomAccess(access, roomId, (await auth.readUser(request))?.id ?? null);
+
+  registerAccessRoutes(app, {
+    store: access,
+    readUser: (request) => auth.readUser(request),
+    parseRoomId,
+    disconnect: async (roomIds, code, reason) => {
+      await Promise.all(roomIds.map((roomId) => rooms.disconnect(roomId, code, reason)));
+    },
+    deleteRoom: async (roomId) => {
+      await rooms.purge(roomId, CLOSE_DELETED, 'deleted');
+      // Cascades in Postgres; the memory stores need telling.
+      await store.delete(roomId);
+      await alerts.deleteConfig(roomId);
+      await access.releaseRoom(roomId);
+    },
+    isDeleted: (roomId) => store.isDeleted(roomId),
+    publicUrl: config.PUBLIC_URL,
+    inviteTtlMs: config.INVITE_TTL_DAYS * 24 * 60 * 60 * 1000,
+    limit: perMinute(config.RATE_LIMIT_ACCESS_PER_MIN),
+    readLimit: perMinute(config.RATE_LIMIT_ACCESS_READ_PER_MIN),
+  });
 
   const alerts = alertStore ?? new MemoryAlertStore();
   const send = alertSend ?? createSender();
@@ -263,9 +314,10 @@ export async function buildApp({ config, store, reviewProvider, alertStore, aler
     worker: alertWorker,
     send,
     roomUrl,
-    parseRoomId: (raw) => {
-      const parsed = RoomIdSchema.safeParse(raw);
-      return parsed.success ? parsed.data : null;
+    parseRoomId,
+    authorize: async (request, roomId, need) => {
+      const granted = await accessFor(request, roomId);
+      return need === 'edit' ? granted.canEdit : granted.canView;
     },
     limit: perMinute(config.RATE_LIMIT_ALERTS_PER_MIN),
   });
@@ -317,6 +369,17 @@ export async function buildApp({ config, store, reviewProvider, alertStore, aler
   app.post('/api/rooms/:roomId/observations', perMinute(config.RATE_LIMIT_OBSERVATIONS_PER_MIN), async (request, reply) => {
     const roomId = RoomIdSchema.safeParse((request.params as { roomId?: string }).roomId);
     if (!roomId.success) return reply.status(400).send({ error: 'invalid room id' });
+
+    if (await store.isDeleted(roomId.data)) return reply.status(410).send({ error: 'this room was deleted' });
+
+    // A private room takes observations only from a token issued for it (a
+    // collector), or from a member who could edit the numbers by hand anyway.
+    const placed = await accessFor(request, roomId.data);
+    if (placed.visibility === 'workspace' && !placed.canEdit) {
+      const bearer = /^Bearer (\S+)$/.exec(request.headers.authorization ?? '')?.[1];
+      if (!bearer) return reply.status(401).send({ error: 'this room is private: send an ingest token as a Bearer token' });
+      if (!(await access.useIngestToken(roomId.data, bearer))) return reply.status(403).send({ error: 'invalid ingest token' });
+    }
 
     const parsed = ObservationSetSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -446,9 +509,28 @@ export async function buildApp({ config, store, reviewProvider, alertStore, aler
       else buffered.push(frame);
     });
 
-    void rooms
-      .join(roomId, socket)
+    // Who may open the room is decided once, on upgrade. A change to that
+    // closes every socket on the room (CLOSE_ACCESS_CHANGED), so nobody keeps
+    // a grant that has since been taken away.
+    void store
+      .isDeleted(roomId)
+      .then(async (deleted) => {
+        if (deleted) {
+          connection.close(CLOSE_DELETED, 'deleted');
+          return null;
+        }
+        return accessFor(request, roomId);
+      })
+      .then((granted) => {
+        if (!granted) return null;
+        if (!granted.canView) {
+          connection.close(CLOSE_FORBIDDEN, 'private room');
+          return null;
+        }
+        return rooms.join(roomId, socket, { readOnly: !granted.canEdit });
+      })
       .then((room) => {
+        if (!room) return;
         joined = room;
         for (const frame of buffered) room.handleMessage(socket, frame);
         buffered.length = 0;

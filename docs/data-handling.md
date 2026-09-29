@@ -13,6 +13,9 @@ Status: **draft for review.** It describes what the code does today, as of 2026-
 | Presence: display name, avatar URL, cursor, selection | Relayed between open tabs in memory, **never persisted** | Until the tab closes | Others in the room at that moment |
 | Session cookie: provider user id, name, avatar URL | The user's browser only (a signed token, nothing stored server-side) | 30 days, or until sign-out | The server, to verify it |
 | Guest name and theme | Browser `localStorage` | Until cleared | That browser |
+| Signed-in users: provider user id, display name, avatar URL | Postgres (`users`), refreshed on each visit | Indefinitely. *To decide.* | Members of any workspace the user belongs to see the name and avatar |
+| Workspaces, membership and roles, diagram names | Postgres (`workspaces`, `workspace_members`, `room_workspaces`) | Until removed | Members of the workspace |
+| Invite links, collector tokens | Postgres, **as SHA-256 hashes only** | Invites 7 days; tokens until revoked or the room is made open | Nobody can read them back |
 | Alert destinations: Slack webhook URL, PagerDuty integration key, thresholds | Postgres (`room_alert_configs`), never in the room document | Until alerting is turned off for the room | The server only. The API returns them masked. |
 | Open alerts: finding title, detail, cited ids, first and last seen | Postgres (`room_alert_state`) | Until the alert resolves | The server. The API returns titles and severities. |
 | Request logs: method, URL (room ids replaced by a one-way tag), client IP | The host's log stream (Render) | The host's log retention. *To decide.* | Operators |
@@ -28,8 +31,8 @@ Keel does not store passwords, email addresses, or OAuth access tokens. GitHub s
 
 ## What users should know
 
-- **A room link is the key.** Anyone who has it can see and change the diagram. Treat links like shared documents, not like private files.
-- **Signing in does not make a room private.** It only puts the user's name and avatar on their cursor and approvals.
+- **A link room's link is the key.** Anyone who has it can see and change the diagram. Treat these links like shared documents, not like private files.
+- **A room moved into a workspace** opens only for the workspace's members. Signing in alone doesn't make a room private: someone has to move it.
 - **Diagrams sent for review go to a third party.** Don't put secrets (credentials, internal hostnames you consider sensitive) in notes.
 
 ## Gaps before this can be published

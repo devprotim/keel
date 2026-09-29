@@ -19,6 +19,13 @@ export interface DocStore {
   list(): Promise<RoomSummary[]>;
   /** True if the room has ever been persisted. */
   exists(roomId: string): Promise<boolean>;
+  /**
+   * Delete the room and everything hanging off it, leaving a tombstone. The
+   * tombstone matters: a browser that was offline still holds the whole
+   * diagram, and without one its next sync would quietly recreate the room.
+   */
+  delete(roomId: string): Promise<void>;
+  isDeleted(roomId: string): Promise<boolean>;
   close(): Promise<void>;
 }
 
@@ -43,6 +50,7 @@ export class MemoryDocStore implements DocStore {
   readonly #snapshots = new Map<string, Uint8Array>();
   readonly #updates = new Map<string, Uint8Array[]>();
   readonly #updatedAt = new Map<string, Date>();
+  readonly #deleted = new Set<string>();
 
   async load(roomId: string): Promise<LoadedDoc> {
     return {
@@ -74,7 +82,19 @@ export class MemoryDocStore implements DocStore {
     return this.#snapshots.has(roomId) || (this.#updates.get(roomId)?.length ?? 0) > 0;
   }
 
+  async delete(roomId: string): Promise<void> {
+    this.#snapshots.delete(roomId);
+    this.#updates.delete(roomId);
+    this.#updatedAt.delete(roomId);
+    this.#deleted.add(roomId);
+  }
+
+  async isDeleted(roomId: string): Promise<boolean> {
+    return this.#deleted.has(roomId);
+  }
+
   async close(): Promise<void> {
+    this.#deleted.clear();
     this.#snapshots.clear();
     this.#updates.clear();
     this.#updatedAt.clear();
