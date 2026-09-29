@@ -21,7 +21,7 @@ test('incident mode ranks what is broken and shows what changed just before', as
   await board.loadExample();
 
   const incident = page.locator('keel-incident');
-  await page.getByRole('button', { name: 'Incident' }).click();
+  await page.getByRole('button', { name: 'Incident', exact: true }).click();
   await expect(incident).toContainText('No live data in this room.');
 
   // Healthy five minutes ago...
@@ -100,7 +100,7 @@ test('the timeline includes approved design changes alongside production ones', 
 
   await push(request, roomId, { source: 'kubernetes', observedAt: minutesAgo(0), nodes: [{ ref: 'catalog-db', replicas: 2 }] });
 
-  await page.getByRole('button', { name: 'Incident' }).click();
+  await page.getByRole('button', { name: 'Incident', exact: true }).click();
   const timeline = page.getByRole('list', { name: 'Recent changes' });
   await expect(timeline).toContainText(/approved Catalog DB: Instances 1 → 2/);
   await expect(timeline).toContainText('kubernetes started reporting');

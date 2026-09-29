@@ -250,6 +250,11 @@
 
   <!-- The inspector: a floating card that exists only while something is
        selected, instead of a permanently-docked panel saying nothing. -->
+  <!-- The first-run checklist shares the inspector's corner and gives way to it. -->
+  @if (!denied() && canvas().selection().size === 0 && !incidentMode.active()) {
+    <keel-onboarding class="inspector-slot" />
+  }
+
   @if (canvas().selection().size > 0) {
     <keel-inspector
       class="inspector-slot"

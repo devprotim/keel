@@ -24,6 +24,8 @@ import { FindingsComponent } from './panels/findings.component';
 import { IncidentComponent } from './panels/incident.component';
 import { IncidentModeService } from './panels/incident-mode.service';
 import { InspectorComponent } from './panels/inspector.component';
+import { OnboardingComponent } from './panels/onboarding.component';
+import { OnboardingService } from './panels/onboarding.service';
 import { ShareMenuComponent } from './panels/share-menu.component';
 
 /**
@@ -47,6 +49,7 @@ import { ShareMenuComponent } from './panels/share-menu.component';
     FindingsComponent,
     IncidentComponent,
     InspectorComponent,
+    OnboardingComponent,
     ShareMenuComponent,
   ],
   templateUrl: './board.component.html',
@@ -56,6 +59,7 @@ export class BoardComponent {
   protected readonly collab = inject(CollabService);
   protected readonly auth = inject(AuthService);
   protected readonly incidentMode = inject(IncidentModeService);
+  private readonly onboarding = inject(OnboardingService);
   private readonly accessApi = inject(AccessService);
 
   /**
@@ -211,6 +215,7 @@ export class BoardComponent {
     }
 
     this.roomIdCopied.set(true);
+    this.onboarding.mark('shared');
     if (this.copyResetHandle !== null) clearTimeout(this.copyResetHandle);
     this.copyResetHandle = setTimeout(() => this.roomIdCopied.set(false), 1500);
   }

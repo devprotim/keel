@@ -28,21 +28,18 @@
   </header>
 
   <main class="hero">
-    <h1 class="headline">
-      Design system architecture that flags its own outages
-    </h1>
-    <p class="subhead">
-      A real-time multiplayer canvas for system diagrams. Shapes are typed, edges carry
-      runtime semantics like timeouts and retries, and the diagram validates itself as you
-      and your team draw it together.
-    </p>
+    <h1 class="headline">{{ pitch().headline }}</h1>
+    <p class="subhead">{{ pitch().subhead }}</p>
 
     <div class="cta-row">
       <div class="cta-buttons">
         <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
           Start a new diagram
         </button>
-        <label class="keel-btn keel-btn--lg keel-file-button">
+        <button type="button" class="keel-btn keel-btn--lg" (click)="openDemo()">
+          See it on an example
+        </button>
+        <label class="keel-btn keel-btn--ghost keel-btn--lg keel-file-button">
           Open a file
           <input
             class="keel-visually-hidden"
@@ -62,6 +59,16 @@
       </ul>
     }
   </main>
+
+  <section class="steps" aria-label="How it works">
+    @for (step of pitch().steps; track step.title; let i = $index) {
+      <div class="step">
+        <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
+        <h2>{{ step.title }}</h2>
+        <p>{{ step.body }}</p>
+      </div>
+    }
+  </section>
 
   @if (workspaces().length > 0) {
     <section class="workspaces" aria-label="Your workspaces">
@@ -86,26 +93,21 @@
   }
 
   <section class="features" aria-label="What Keel does">
-    <div class="feature">
-      <span class="keel-kind-dot" style="background: var(--keel-kind-service)"></span>
-      <h2>Real-time, together</h2>
-      <p>Every edit syncs instantly over a CRDT. Undo only ever touches your own changes.</p>
-    </div>
-    <div class="feature">
-      <span class="keel-kind-dot" style="background: var(--keel-kind-datastore)"></span>
-      <h2>A structured graph, not a drawing</h2>
-      <p>
-        Nodes are typed and edges carry sync/async, timeouts, retries, and idempotency, so the
-        canvas can reason about the design, not just render it.
-      </p>
-    </div>
-    <div class="feature">
-      <span class="keel-kind-dot" style="background: var(--keel-kind-gateway)"></span>
-      <h2>Caught before it ships</h2>
-      <p>
-        13 rules flag single points of failure, missing timeouts, retry storms, and more on
-        every keystroke, plus an AI second opinion for judgment calls a rule can't express.
-      </p>
-    </div>
+    @for (feature of features; track feature.title) {
+      <div class="feature">
+        <span class="keel-kind-dot" [style.background]="'var(' + feature.dot + ')'"></span>
+        <h2>{{ feature.title }}</h2>
+        <p>{{ feature.body }}</p>
+      </div>
+    }
   </section>
+
+  <footer class="footer">
+    <span>Keel checks designs; it does not replace your monitoring.</span>
+    <span class="footer-links">
+      <a href="https://github.com/devprotim/keel/blob/main/docs/getting-started.md">Getting started</a>
+      <a href="https://github.com/devprotim/keel/tree/main/apps/collector">Collector</a>
+      <a href="https://github.com/devprotim/keel/tree/main/packages/action">GitHub Action</a>
+    </span>
+  </footer>
 </div>
