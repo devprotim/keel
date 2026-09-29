@@ -20,6 +20,7 @@ Status: **draft for review.** It describes what the code does today, as of 2026-
 | Invite links, collector tokens | Postgres, **as SHA-256 hashes only** | Invites 7 days; tokens until revoked or the room is made open | Nobody can read them back |
 | Alert destinations: Slack webhook URL, PagerDuty integration key, thresholds | Postgres (`room_alert_configs`), never in the room document | Until alerting is turned off for the room | The server only. The API returns them masked. |
 | Open alerts: finding title, detail, cited ids, first and last seen | Postgres (`room_alert_state`) | Until the alert resolves | The server. The API returns titles and severities. |
+| Billing: plan, subscription status, Stripe customer, subscription and item ids, period end | Postgres (`workspace_billing`), written only by Stripe's webhook | As long as the workspace | The server. Owners see the plan and status. Card details never reach Keel: payment happens on Stripe's hosted pages. |
 | Request logs: method, URL (room ids replaced by a one-way tag), client IP | The host's log stream (Render) | The host's log retention. *To decide.* | Operators |
 
 Keel does not store passwords, email addresses, or OAuth access tokens. GitHub sign-in asks only for `read:user`, and the access token is used once to read the public profile, then discarded.
@@ -43,4 +44,4 @@ Keel does not store passwords, email addresses, or OAuth access tokens. GitHub s
 2. **Retention.** Decide how long an untouched room lives. `rooms.updated_at` already records last activity, so a scheduled purge is straightforward once a period is chosen.
 3. **Backups.** Render Postgres backups are plan-dependent. Whatever the plan keeps is also how long "deleted" data survives. State it once chosen.
 4. **Approver names.** Approvals record a display name per field. For a guest that is a random name. For a signed-in user it is their GitHub name, which stays in the room after they leave. Decide whether that needs saying at sign-in.
-5. **Subprocessors.** List the hosting provider (Render), the AI providers (Anthropic, Google), and the font and avatar CDNs, with links to their terms.
+5. **Subprocessors.** List the hosting provider (Render), the AI providers (Anthropic, Google), Stripe (billing, when enabled), and the font and avatar CDNs, with links to their terms.

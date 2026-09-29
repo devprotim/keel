@@ -14,6 +14,11 @@ export interface AlertRouteDeps {
   authorize: (request: FastifyRequest, roomId: string, need: 'view' | 'edit') => Promise<boolean>;
   roomUrl: (roomId: string) => string;
   limit: RouteShorthandOptions;
+  /**
+   * Null when this room's plan includes PagerDuty, otherwise the refusal to
+   * send. Optional so tests and billing-free setups allow it.
+   */
+  pagerDutyAllowed?: (roomId: string) => Promise<object | null>;
 }
 
 /**
@@ -78,6 +83,12 @@ export function registerAlertRoutes(app: FastifyInstance, deps: AlertRouteDeps):
     const merged = merge(existing, patch.data);
     const parsed = AlertConfigSchema.safeParse(merged);
     if (!parsed.success) return reply.status(400).send({ error: 'invalid alert config', issues: parsed.error.issues });
+
+    // Adding PagerDuty is a plan feature. One set up before the plan changed keeps working.
+    if (parsed.data.pagerduty && !existing?.pagerduty && deps.pagerDutyAllowed) {
+      const refusal = await deps.pagerDutyAllowed(roomId);
+      if (refusal) return reply.status(402).send(refusal);
+    }
 
     await store.putConfig(roomId, parsed.data);
     // Evaluate straight away, so what is already wrong is announced now rather

@@ -71,6 +71,12 @@
   </section>
 
   @if (workspaces().length > 0) {
+    @if (billingReturn() === 'success') {
+      <p class="billing-note" role="status">Thanks. Your plan updates as soon as Stripe confirms the payment, usually within a few seconds.</p>
+    }
+    @if (billingError(); as message) {
+      <p class="billing-note error" role="alert">{{ message }}</p>
+    }
     <section class="workspaces" aria-label="Your workspaces">
       @for (w of workspaces(); track w.workspace.id) {
         <div class="keel-island workspace">
@@ -78,6 +84,33 @@
             <h2>{{ w.workspace.name }}</h2>
             <span class="workspace-meta">{{ w.members.length }} {{ w.members.length === 1 ? 'member' : 'members' }} · {{ w.role }}</span>
           </div>
+          @if (w.billing; as billing) {
+            @if (billing.enabled) {
+              <div class="plan" [attr.aria-label]="billing.plan.name + ' plan'">
+                <span class="plan-name">{{ billing.plan.name }} plan</span>
+                @if (billing.status === 'past_due') {
+                  <span class="plan-warning">Payment failed. Update the card to keep this plan.</span>
+                }
+                <span class="plan-usage">{{ usageLine(billing) }}</span>
+                @if (billing.canManage) {
+                  <span class="plan-actions">
+                    @if (billing.plan.id === 'free') {
+                      @for (option of billing.purchasable; track option.id) {
+                        <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="upgrade(w.workspace.id, option.id)">
+                          Upgrade to {{ option.name }}
+                        </button>
+                      }
+                    }
+                    @if (billing.hasCustomer) {
+                      <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="manageBilling(w.workspace.id)">
+                        Manage billing
+                      </button>
+                    }
+                  </span>
+                }
+              </div>
+            }
+          }
           @if (w.rooms.length === 0) {
             <p class="workspace-empty">No diagrams yet. Open one and use Share → Make private to add it here.</p>
           } @else {

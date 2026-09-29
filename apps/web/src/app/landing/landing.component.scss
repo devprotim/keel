@@ -309,3 +309,51 @@
   font-size: 12px;
 }
 
+
+.plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--keel-space-2);
+  margin-top: var(--keel-space-2);
+  padding-top: var(--keel-space-2);
+  border-top: 1px solid var(--keel-border);
+  font-size: 12px;
+}
+
+.plan-name {
+  font-weight: 600;
+  color: var(--keel-text);
+}
+
+.plan-usage {
+  color: var(--keel-text-muted);
+}
+
+.plan-warning {
+  flex-basis: 100%;
+  color: var(--keel-severity-warning);
+}
+
+.plan-actions {
+  display: flex;
+  gap: var(--keel-space-1);
+  margin-left: auto;
+}
+
+.plan-button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.billing-note {
+  max-width: 960px;
+  margin: 0 auto var(--keel-space-2);
+  padding: 0 var(--keel-space-4);
+  color: var(--keel-text-muted);
+  font-size: 13px;
+
+  &.error {
+    color: var(--keel-severity-error);
+  }
+}

@@ -107,6 +107,20 @@ const schema = z.object({
   /** Signs the session cookie. Required once any OAuth provider is enabled. */
   SESSION_SECRET: z.string().min(32).optional(),
 
+  // Billing (task 13). All absent: billing is off and every workspace is
+  // unlimited, the same "absent credentials disable the feature" rule as
+  // review and sign-in. Prices are Stripe Price ids, so amounts live in Stripe.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  STRIPE_PRICE_TEAM: z.string().min(1).optional(),
+  STRIPE_PRICE_BUSINESS: z.string().min(1).optional(),
+  /** Where Stripe's API lives. Only the end-to-end tests change it, to a local fake. */
+  STRIPE_API_URL: z.string().url().default('https://api.stripe.com'),
+  /** Charge per editor (viewers are free). Packaging is an open decision; per seat is the default. */
+  BILLING_PER_SEAT: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   /** Base URL used to build OAuth callback URIs; can't be derived from a request behind a proxy. */
   PUBLIC_URL: z.string().url().default('http://localhost:8787'),
 });
@@ -132,6 +146,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const anyOAuthProvider =
     (data.GITHUB_CLIENT_ID && data.GITHUB_CLIENT_SECRET) || (data.GOOGLE_CLIENT_ID && data.GOOGLE_CLIENT_SECRET);
   if (anyOAuthProvider && !data.SESSION_SECRET) oauthIssues.push('SESSION_SECRET is required once a login provider is enabled');
+  const anyPrice = data.STRIPE_PRICE_TEAM || data.STRIPE_PRICE_BUSINESS;
+  if (data.STRIPE_SECRET_KEY && !data.STRIPE_WEBHOOK_SECRET) oauthIssues.push('STRIPE_WEBHOOK_SECRET is required when STRIPE_SECRET_KEY is set');
+  if (data.STRIPE_SECRET_KEY && !anyPrice) oauthIssues.push('STRIPE_PRICE_TEAM or STRIPE_PRICE_BUSINESS is required when STRIPE_SECRET_KEY is set');
+  if (!data.STRIPE_SECRET_KEY && (data.STRIPE_WEBHOOK_SECRET || anyPrice)) oauthIssues.push('STRIPE_SECRET_KEY is required to use the other STRIPE_ settings');
   if (oauthIssues.length > 0) {
     throw new Error(`Invalid environment configuration:\n${oauthIssues.map((m) => `  ${m}`).join('\n')}`);
   }

@@ -17,6 +17,16 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Billing (docs/pricing/stripe-setup.md). All unset: billing is off and
+      # nothing is limited.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_TEAM
+        sync: false
+      - key: STRIPE_PRICE_BUSINESS
+        sync: false
       # Durable storage. Unset, rooms live in memory and a redeploy loses them.
       # Which Render Postgres plan to use (and its backup/retention policy) is
       # still an open decision, so the database is not declared here yet. Once

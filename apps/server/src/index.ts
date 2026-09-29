@@ -2,14 +2,15 @@ import pg from 'pg';
 import { buildApp } from './app.ts';
 import { loadConfig, type Config } from './config.ts';
 import { MemoryAccessStore, PostgresAccessStore, type AccessStore } from './access/store.ts';
+import { MemoryBillingStore, PostgresBillingStore, type BillingStore } from './billing/store.ts';
 import { MemoryAlertStore, PostgresAlertStore, type AlertStore } from './alerts/store.ts';
 import { PostgresDocStore } from './store/postgres-store.ts';
 import { fromPgPool } from './store/sql.ts';
 import { MemoryDocStore, type DocStore } from './store/store.ts';
 
 const config = loadConfig();
-const { store, alertStore, accessStore } = await openStores(config);
-const app = await buildApp({ config, store, alertStore, accessStore });
+const { store, alertStore, accessStore, billingStore } = await openStores(config);
+const app = await buildApp({ config, store, alertStore, accessStore, billingStore });
 
 if (store.kind === 'memory' && config.NODE_ENV === 'production') {
   app.log.warn('DATABASE_URL is not set: rooms are kept in memory and will be lost on restart');
@@ -38,11 +39,17 @@ interface Stores {
   store: DocStore;
   alertStore: AlertStore;
   accessStore: AccessStore;
+  billingStore: BillingStore;
 }
 
 async function openStores(config: Config): Promise<Stores> {
   if (!config.DATABASE_URL) {
-    return { store: new MemoryDocStore(), alertStore: new MemoryAlertStore(), accessStore: new MemoryAccessStore() };
+    return {
+      store: new MemoryDocStore(),
+      alertStore: new MemoryAlertStore(),
+      accessStore: new MemoryAccessStore(),
+      billingStore: new MemoryBillingStore(),
+    };
   }
 
   const pool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DATABASE_POOL_MAX });
@@ -55,5 +62,6 @@ async function openStores(config: Config): Promise<Stores> {
     store: await PostgresDocStore.open(db),
     alertStore: new PostgresAlertStore(db),
     accessStore: new PostgresAccessStore(db),
+    billingStore: new PostgresBillingStore(db),
   };
 }

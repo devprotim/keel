@@ -40,6 +40,28 @@ export interface WorkspaceDetail {
   invites?: { id: string; role: Role; expiresAt: string }[];
 }
 
+export type PlanId = 'free' | 'team' | 'business';
+
+export interface Plan {
+  id: PlanId;
+  name: string;
+  limits: { editors: number | null; rooms: number | null; collectors: number | null; pagerDuty: boolean };
+}
+
+/** A workspace's plan and how much of it is used. `enabled: false` means billing is off on this server. */
+export type Billing =
+  | { enabled: false }
+  | {
+      enabled: true;
+      plan: Plan;
+      status: string | null;
+      periodEnd: string | null;
+      usage: { editors: number; viewers: number; rooms: number; collectors: number };
+      canManage: boolean;
+      hasCustomer: boolean;
+      purchasable: Plan[];
+    };
+
 export interface IngestToken {
   id: string;
   name: string;
@@ -124,6 +146,20 @@ export class AccessService {
     return this.#send('DELETE', `/api/rooms/${encodeURIComponent(roomId)}/ingest-tokens/${tokenId}`);
   }
 
+  billing(workspaceId: string): Promise<Billing> {
+    return this.#get(`/api/workspaces/${workspaceId}/billing`);
+  }
+
+  /** A Stripe Checkout URL for upgrading. The caller navigates to it. */
+  checkout(workspaceId: string, plan: Exclude<PlanId, 'free'>): Promise<{ url: string }> {
+    return this.#send('POST', `/api/workspaces/${workspaceId}/billing/checkout`, { plan });
+  }
+
+  /** A Stripe billing portal URL, for changing plan, card or cancelling. */
+  billingPortal(workspaceId: string): Promise<{ url: string }> {
+    return this.#send('POST', `/api/workspaces/${workspaceId}/billing/portal`);
+  }
+
   #get<T>(path: string): Promise<T> {
     return firstValueFrom(this.#http.get<T>(`${this.#api}${path}`));
   }
@@ -139,7 +175,7 @@ export function describeError(error: unknown, fallback: string): string {
     if (error.status === 429) return 'Too many changes. Wait a minute and try again.';
     const body = error.error as { error?: string; issues?: { message?: string }[] } | null;
     const reason = body?.issues?.[0]?.message ?? body?.error;
-    if (reason) return reason.charAt(0).toUpperCase() + reason.slice(1) + '.';
+    if (reason) return reason.charAt(0).toUpperCase() + reason.slice(1) + (/[.!?]$/.test(reason) ? '' : '.');
   }
   return fallback;
 }

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptio
 import { z } from 'zod';
 import type { SessionUser } from '../auth/session.ts';
 import { CLOSE_ACCESS_CHANGED, roomAccess } from './policy.ts';
+import { allows, overLimit, UNLIMITED, type Plan, type PlanLimits } from '../billing/plans.ts';
 import { ROLES, type AccessStore, type Role } from './store.ts';
 
 export interface AccessRouteDeps {
@@ -18,6 +19,10 @@ export interface AccessRouteDeps {
   limit: RouteShorthandOptions;
   /** For the access check every board load makes. */
   readLimit: RouteShorthandOptions;
+  /** What a workspace's plan allows. Absent means unlimited (billing off, tests). */
+  limits?: (workspaceId: string) => Promise<{ plan: Plan | null; limits: PlanLimits }>;
+  /** The number of owners and editors changed: per-seat billing updates its quantity. */
+  onMembersChanged?: (workspaceId: string) => void;
 }
 
 const NameSchema = z.string().trim().min(1).max(80);
@@ -46,6 +51,13 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
   const workspaceRole = async (workspaceId: string, user: SessionUser) => store.roleOf(workspaceId, user.id);
 
   const roomsOf = async (workspaceId: string) => (await store.roomsIn(workspaceId)).map((r) => r.roomId);
+  const limitsOf = async (workspaceId: string) => (deps.limits ? deps.limits(workspaceId) : { plan: null, limits: UNLIMITED });
+  /** The refusal when the workspace has no room for one more owner or editor, else null. */
+  const editorLimit = async (workspaceId: string) => {
+    const { plan, limits } = await limitsOf(workspaceId);
+    const editors = (await store.members(workspaceId)).filter((m) => m.role !== 'viewer').length;
+    return allows(limits, 'editors', editors) ? null : overLimit(plan, 'editors');
+  };
 
   // --- Rooms ---------------------------------------------------------------
 
@@ -85,6 +97,14 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     const target = await workspaceRole(body.data.workspaceId, user);
     if (target !== 'owner' && target !== 'editor') {
       return reply.status(403).send({ error: 'you can only move rooms into workspaces you can edit' });
+    }
+
+    const placed = await store.placementOf(roomId);
+    if (placed?.workspaceId !== body.data.workspaceId) {
+      const { plan, limits } = await limitsOf(body.data.workspaceId);
+      if (!allows(limits, 'rooms', (await store.roomsIn(body.data.workspaceId)).length)) {
+        return reply.status(402).send(overLimit(plan, 'rooms'));
+      }
     }
 
     await store.placeRoom({ roomId, workspaceId: body.data.workspaceId, name: body.data.name, movedBy: user.id, movedAt: new Date().toISOString() });
@@ -168,6 +188,14 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     if (!ctx) return reply;
     const body = z.object({ name: NameSchema }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'invalid request', issues: body.error.issues });
+    const placement = await store.placementOf(ctx.roomId);
+    if (placement) {
+      const { plan, limits } = await limitsOf(placement.workspaceId);
+      const tokens = await Promise.all((await roomsOf(placement.workspaceId)).map((id) => store.ingestTokens(id)));
+      if (!allows(limits, 'collectors', tokens.reduce((sum, list) => sum + list.length, 0))) {
+        return reply.status(402).send(overLimit(plan, 'collectors'));
+      }
+    }
     const { token, secret } = await store.createIngestToken(ctx.roomId, body.data.name, ctx.user.id);
     // The only time the secret is ever returned.
     return reply.status(201).send({ token, secret });
@@ -254,11 +282,17 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     const target = UserIdSchema.safeParse((request.params as { userId?: unknown }).userId);
     const body = z.object({ role: RoleSchema }).safeParse(request.body);
     if (!target.success || !body.success) return reply.status(400).send({ error: 'invalid request' });
-    if (!(await store.roleOf(ctx.workspaceId, target.data))) return reply.status(404).send({ error: 'not a member' });
+    const was = await store.roleOf(ctx.workspaceId, target.data);
+    if (!was) return reply.status(404).send({ error: 'not a member' });
     if (await wouldLeaveNoOwner(ctx.workspaceId, target.data, body.data.role)) {
       return reply.status(409).send({ error: 'a workspace needs at least one owner' });
     }
+    if (was === 'viewer' && body.data.role !== 'viewer') {
+      const refusal = await editorLimit(ctx.workspaceId);
+      if (refusal) return reply.status(402).send(refusal);
+    }
     await store.setRole(ctx.workspaceId, target.data, body.data.role);
+    if ((was === 'viewer') !== (body.data.role === 'viewer')) deps.onMembersChanged?.(ctx.workspaceId);
     await deps.disconnect(await roomsOf(ctx.workspaceId), CLOSE_ACCESS_CHANGED, 'access changed');
     return { role: body.data.role };
   });
@@ -273,7 +307,9 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     if (await wouldLeaveNoOwner(ctx.workspaceId, target.data, null)) {
       return reply.status(409).send({ error: 'a workspace needs at least one owner' });
     }
+    const removedEditor = (await store.roleOf(ctx.workspaceId, target.data)) !== 'viewer';
     await store.removeMember(ctx.workspaceId, target.data);
+    if (removedEditor) deps.onMembersChanged?.(ctx.workspaceId);
     await deps.disconnect(await roomsOf(ctx.workspaceId), CLOSE_ACCESS_CHANGED, 'access changed');
     return reply.status(204).send();
   });
@@ -323,7 +359,14 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     const current = await store.roleOf(invite.workspaceId, user.id);
     const rank: Record<Role, number> = { owner: 0, editor: 1, viewer: 2 };
     const role = current && rank[current] <= rank[invite.role] ? current : invite.role;
+    // Viewers are free on every plan; only a new editor counts against it.
+    const becomesEditor = role !== 'viewer' && (!current || current === 'viewer');
+    if (becomesEditor) {
+      const refusal = await editorLimit(invite.workspaceId);
+      if (refusal) return reply.status(402).send(refusal);
+    }
     await store.setRole(invite.workspaceId, user.id, role);
+    if (becomesEditor) deps.onMembersChanged?.(invite.workspaceId);
     return { workspaceId: invite.workspaceId, role };
   });
 }
