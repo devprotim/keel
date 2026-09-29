@@ -12,3 +12,6 @@ coverage/
 playwright-report/
 test-results/
 blob-report/
+
+# Interview notes: what people said in confidence. Readouts are fine to commit.
+docs/research/notes/
