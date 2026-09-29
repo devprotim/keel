@@ -1,0 +1,116 @@
+:host {
+  display: block;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  padding: var(--keel-space-1) var(--keel-space-1) var(--keel-space-2);
+}
+
+.intro {
+  flex: 1;
+  margin: 0;
+  color: var(--keel-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.small {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule {
+  margin-bottom: var(--keel-space-2);
+  padding: var(--keel-space-2) var(--keel-space-3);
+  border: 1px solid var(--keel-border);
+  border-radius: var(--keel-radius);
+  background: var(--keel-surface);
+
+  &.muted {
+    opacity: 0.6;
+  }
+
+  &.noisy {
+    border-left: 3px solid var(--keel-severity-warning);
+  }
+}
+
+.rule-head {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+}
+
+.rule-name {
+  color: var(--keel-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: help;
+}
+
+.firing {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 100px;
+  background: var(--keel-n-100);
+  color: var(--keel-text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.rule-id {
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-mono);
+  font-size: 10.5px;
+}
+
+.measured {
+  margin: 4px 0 0;
+  color: var(--keel-text-muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.noisy-note {
+  margin: 4px 0 0;
+  color: var(--keel-severity-warning);
+  font-size: 11.5px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-3);
+  margin-top: var(--keel-space-2);
+}
+
+.severity {
+  flex: 1;
+
+  .keel-select {
+    width: 100%;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 12px;
+  }
+}
+
+.mute {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--keel-text);
+  font-size: 12px;
+  cursor: pointer;
+}

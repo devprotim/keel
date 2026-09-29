@@ -97,6 +97,14 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - Observations carry `errorRate` (0 to 1) for nodes and edges; the collector computes it from span status (caller side for edges, server side for nodes).
 - The canvas shows health as border colour, a "0/3 ready" pill, edge width by traffic, a "rps · p99 · err" edge label, and calls production makes that the diagram does not draw as dashed info-coloured edges. Unreported elements are faded. `GraphDoc.toEvents()` is cached, since every drag frame notifies the doc observer.
 
+### Tuning (`packages/shared/src/tuning.ts`)
+
+- Three room-level levers, stored in the room doc so every canvas and the server's alerts agree: `ruleSettings` (per rule: severity override or `muted`), `labels` (per `findingKey`: `real` or `noise`, with the rule id so counts survive a fix), and `findingHistory` (per finding key: `openedAt`, `resolvedAt`, `occurrences`).
+- `validate(graph, { ruleSettings, labels })`: muted rules do not run, overrides replace severity before traffic demotion, findings labelled noise move to `report.dismissed` and out of counts and score, real ones get `verdict: 'real'`. `readRoom` returns both so `AlertWorker` tunes identically.
+- `CollabService` reconciles `findingHistory` against what fires (`reconcileHistory`), debounced 2s and only after the first socket sync. The writes are not tagged local, so they never enter anyone's undo stack; settings and labels are, so they undo. `ruleStats` turns history and labels into per-rule firing, noise rate and median time open (the Rules tab, `panels/rules.component.ts`, with an Export labels download for the cross-room "what is noise" decision).
+- `findingKey` (rule + sorted cited ids) is the same key as alerts and the CI action use.
+- `suggestNodes` turns refs a fresh source reports that no node carries into "Link to <box>" (an unlinked box whose name plainly means it) or "Add as <kind>" suggestions in the Live data section.
+
 ### Drift alerts (`apps/server/src/alerts/`)
 
 - `AlertWorker` runs in-process: an observations push debounces an evaluation of that room (`ALERT_DEBOUNCE_MS`), and a sweep re-evaluates every configured room every `ALERT_SWEEP_SECONDS`, because a collector going silent (stale evidence) produces no push to react to. Evaluations of one room are serialised.

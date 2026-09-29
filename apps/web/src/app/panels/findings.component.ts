@@ -1,8 +1,18 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, output, signal } from '@angular/core';
-import { formatAge, formatRps, type Finding, type ObservationSet, type Severity } from '@keel/shared';
+import {
+  createNode,
+  formatAge,
+  formatRps,
+  type Finding,
+  type NodeSuggestion,
+  type ObservationSet,
+  type Severity,
+  type Verdict,
+} from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
 import { ChangeReviewService } from './change-review.service';
 import { ChangesComponent } from './changes.component';
+import { RulesComponent } from './rules.component';
 import { ReviewService } from './review.service';
 
 interface FindingRow {
@@ -13,7 +23,7 @@ interface FindingRow {
 @Component({
   selector: 'keel-findings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChangesComponent],
+  imports: [ChangesComponent, RulesComponent],
   templateUrl: './findings.component.html',
   styleUrl: './findings.component.scss',
 })
@@ -35,7 +45,7 @@ export class FindingsComponent {
    * Findings, or the changes since approval. Showing the changes is review
    * mode: the canvas swaps severity for the diff while it is open.
    */
-  readonly tab = signal<'findings' | 'changes'>('findings');
+  readonly tab = signal<'findings' | 'changes' | 'rules'>('findings');
   readonly changeCount = computed(() => this.collab.changes().length);
 
   readonly report = computed(() => this.collab.report());
@@ -60,6 +70,8 @@ export class FindingsComponent {
   );
 
   readonly ruleRows = computed<FindingRow[]>(() => this.report().findings.map(toRow));
+  readonly dismissed = computed(() => this.report().dismissed);
+  readonly showDismissed = signal(false);
   readonly aiRows = computed<FindingRow[]>(() => this.review.findings().map(toRow));
   readonly totalCount = computed(() => this.ruleRows().length + this.aiRows().length);
 
@@ -138,6 +150,32 @@ export class FindingsComponent {
 
   approveAll(): void {
     this.collab.approveAll();
+  }
+
+  label(finding: Finding, verdict: Verdict): void {
+    this.collab.label(finding, verdict);
+  }
+
+  restore(finding: Finding): void {
+    this.collab.clearLabel(finding);
+  }
+
+  suggestionsFor(source: string): readonly NodeSuggestion[] {
+    return this.collab.nodeSuggestions().filter((s) => s.source === source);
+  }
+
+  /** Link a reported name to its box, or draw the box production runs, right of the diagram. */
+  applySuggestion(suggestion: NodeSuggestion): void {
+    if (suggestion.type === 'link') {
+      this.collab.batch(() => this.collab.updateNode(suggestion.nodeId, { ref: suggestion.ref }));
+      return;
+    }
+    const nodes = this.collab.graph().nodes;
+    const right = nodes.length === 0 ? 0 : Math.max(...nodes.map((n) => n.x + n.w)) + 80;
+    const top = nodes.length === 0 ? 0 : Math.min(...nodes.map((n) => n.y));
+    const node = createNode(suggestion.kind, right, top);
+    this.collab.addNode({ ...node, label: suggestion.label, ref: suggestion.ref });
+    this.revealed.emit(node.id);
   }
 
   removeSource(source: string): void {

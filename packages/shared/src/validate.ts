@@ -9,6 +9,7 @@ import { graphFingerprint, indexGraph } from './graph.js';
 import type { DesignIntent } from './intent.js';
 import { realityFindings } from './reality.js';
 import { RULES } from './rules.js';
+import { findingKey, mutedRuleIds, type FindingLabels, type RuleSettings } from './tuning.js';
 import type { ArchGraph, Finding, GraphIndex, Rule, Severity } from './types.js';
 
 export interface ValidationReport {
@@ -24,6 +25,12 @@ export interface ValidationReport {
   fingerprint: string;
   /** Resolved observations, present when any were supplied. */
   evidence?: Evidence;
+  /**
+   * Findings someone labelled noise. Still true, just not counted: they are
+   * left out of `findings`, `counts` and `score`, and listed here so they can
+   * be reviewed and restored.
+   */
+  dismissed: Finding[];
 }
 
 const SEVERITY_ORDER: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
@@ -42,6 +49,10 @@ export interface ValidateOptions {
   now?: number;
   /** Freshness window for observations. */
   evidenceMaxAgeMs?: number;
+  /** The room's severity overrides and mutes. See tuning.ts. */
+  ruleSettings?: RuleSettings;
+  /** Findings people labelled real or noise, by `findingKey`. */
+  labels?: FindingLabels;
 }
 
 /**
@@ -54,7 +65,7 @@ export interface ValidateOptions {
  * rule.
  */
 export function validate(graph: ArchGraph, options: ValidateOptions = {}): ValidationReport {
-  const disabled = new Set(options.disabledRuleIds ?? []);
+  const disabled = new Set([...(options.disabledRuleIds ?? []), ...mutedRuleIds(options.ruleSettings)]);
   const rules = (options.rules ?? RULES).filter((rule) => !disabled.has(rule.id));
   const index = indexGraph(graph);
   const maxAgeMs = options.evidenceMaxAgeMs ?? DEFAULT_EVIDENCE_MAX_AGE_MS;
@@ -90,9 +101,26 @@ export function validate(graph: ArchGraph, options: ValidateOptions = {}): Valid
     }).filter((finding) => !disabled.has(finding.ruleId)),
   );
 
+  // The room's own severity first, so traffic can still demote a dead path from it.
+  for (const finding of findings) {
+    const override = options.ruleSettings?.[finding.ruleId]?.severity;
+    if (override) finding.severity = override;
+  }
+
   if (evidence) weighByTraffic(findings, graph, evidence);
 
-  findings.sort((a, b) => {
+  const dismissed: Finding[] = [];
+  const kept: Finding[] = [];
+  for (const finding of findings) {
+    const label = options.labels?.[findingKey(finding)];
+    if (label?.verdict === 'noise') dismissed.push(finding);
+    else {
+      if (label?.verdict === 'real') finding.verdict = 'real';
+      kept.push(finding);
+    }
+  }
+
+  kept.sort((a, b) => {
     const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     if (bySeverity !== 0) return bySeverity;
     const byTraffic = compareTraffic(a.trafficRps, b.trafficRps);
@@ -101,14 +129,15 @@ export function validate(graph: ArchGraph, options: ValidateOptions = {}): Valid
   });
 
   const counts: Record<Severity, number> = { error: 0, warning: 0, info: 0 };
-  for (const finding of findings) counts[finding.severity] += 1;
+  for (const finding of kept) counts[finding.severity] += 1;
 
   return {
-    findings,
+    findings: kept,
     counts,
-    score: score(graph, findings),
+    score: score(graph, kept),
     fingerprint: graphFingerprint(graph),
     ...(evidence ? { evidence } : {}),
+    dismissed,
   };
 }
 
@@ -130,10 +159,6 @@ function runRules(rules: readonly Rule[], graph: ArchGraph, index: GraphIndex): 
   }
   return findings;
 }
-
-/** Identity of a finding independent of its wording, which embeds values that differ between runs. */
-const findingKey = (finding: Finding): string =>
-  `${finding.ruleId}|${[...finding.nodeIds].sort().join(',')}|${[...finding.edgeIds].sort().join(',')}`;
 
 const SEVERITY_DOWN: Record<Severity, Severity> = { error: 'warning', warning: 'info', info: 'info' };
 

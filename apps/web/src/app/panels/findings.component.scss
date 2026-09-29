@@ -314,6 +314,92 @@
   font-size: 11px;
 }
 
+// --- Tuning ------------------------------------------------------------------
+
+.verdict {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.verdict-btn {
+  padding: 1px 8px;
+  border: 0;
+  border-radius: var(--keel-radius-sm);
+  background: none;
+  color: var(--keel-text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--keel-n-100);
+    color: var(--keel-text);
+  }
+
+  &.on {
+    color: var(--keel-severity-ok);
+    font-weight: 600;
+  }
+}
+
+.finding-badge.confirmed {
+  border-color: var(--keel-severity-ok);
+  color: var(--keel-severity-ok);
+}
+
+.dismissed-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  margin: var(--keel-space-2) var(--keel-space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--keel-text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dismissed {
+  margin: 0;
+  padding: 0 var(--keel-space-1);
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--keel-space-2);
+    padding: 4px 0;
+    color: var(--keel-text-muted);
+    font-size: 12px;
+  }
+}
+
+.dismissed-title {
+  flex: 1;
+  text-decoration: line-through;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  grid-column: 1 / -1;
+
+  code {
+    font-family: var(--keel-font-mono);
+    font-size: 11px;
+  }
+}
+
+.suggestion-action {
+  padding: 2px 8px;
+  font-size: 11.5px;
+}
+
 // --- Collapsed pill --------------------------------------------------------
 
 .pill {

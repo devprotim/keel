@@ -114,6 +114,8 @@ export interface Finding {
    * running (and approve that), or approve the diagram as drawn.
    */
   fix?: 'accept-observed' | 'approve';
+  /** Someone in the room confirmed this is a real problem (tuning.ts). */
+  verdict?: 'real';
 }
 
 /** One field, compared across what is drawn, what runs, and what was approved. */

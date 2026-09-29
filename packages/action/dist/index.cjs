@@ -737,6 +737,33 @@ function readLayout(value) {
 }
 
 // ../shared/dist/reality.js
+var REALITY_CHECKS = [
+  {
+    id: "observed-drift",
+    name: "Running system differs from the diagram",
+    rationale: "A number typed into a diagram is a claim. When the running system reports a different value, every rule that trusted the claim was checking a system that does not exist."
+  },
+  {
+    id: "unapproved-change",
+    name: "Change without approval",
+    rationale: "Without a record of what was approved, an intended change and an accident look identical. A baseline is what makes drift actionable."
+  },
+  {
+    id: "timeout-below-latency",
+    name: "Timeout below observed latency",
+    rationale: "A timeout shorter than the real p99 fails healthy requests every day, and retries turn each of those failures into extra load on the dependency that was already slow."
+  },
+  {
+    id: "undiagrammed-dependency",
+    name: "Dependency missing from the diagram",
+    rationale: "A call that runs in production but is not drawn is invisible to every rule. The riskiest dependency is usually the one nobody remembered to draw."
+  },
+  {
+    id: "stale-evidence",
+    name: "Stale observations",
+    rationale: "Evidence older than the freshness window is not applied, so the components it covered fall back to trusting what was typed."
+  }
+];
 var NODE_OBSERVABLE = ["replicas", "hasReplica", "hasBackup", "hasDlq"];
 var EDGE_OBSERVABLE = ["timeoutMs", "retries", "circuitBreaker"];
 function realityFindings(input) {
@@ -1052,11 +1079,24 @@ function formatAge(ms) {
 }
 var capitalise = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
+// ../shared/dist/tuning.js
+function findingKey(finding) {
+  return `${finding.ruleId}|${[...finding.nodeIds].sort().join(",")}|${[...finding.edgeIds].sort().join(",")}`;
+}
+var TUNABLE_CHECKS = [
+  ...RULES.map((rule) => ({ id: rule.id, name: rule.name, rationale: rule.rationale, reality: false })),
+  ...REALITY_CHECKS.map((check) => ({ ...check, reality: true }))
+];
+function mutedRuleIds(settings) {
+  return Object.entries(settings ?? {}).filter(([, setting]) => setting.muted).map(([id]) => id);
+}
+var HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1e3;
+
 // ../shared/dist/validate.js
 var SEVERITY_ORDER = { error: 0, warning: 1, info: 2 };
 var SEVERITY_WEIGHT = { error: 3, warning: 1, info: 0 };
 function validate(graph, options = {}) {
-  const disabled = new Set(options.disabledRuleIds ?? []);
+  const disabled = /* @__PURE__ */ new Set([...options.disabledRuleIds ?? [], ...mutedRuleIds(options.ruleSettings)]);
   const rules = (options.rules ?? RULES).filter((rule) => !disabled.has(rule.id));
   const index = indexGraph(graph);
   const maxAgeMs = options.evidenceMaxAgeMs ?? DEFAULT_EVIDENCE_MAX_AGE_MS;
@@ -1078,9 +1118,26 @@ function validate(graph, options = {}) {
     intent: options.intent ?? {},
     maxAgeMs
   }).filter((finding) => !disabled.has(finding.ruleId)));
+  for (const finding of findings) {
+    const override = options.ruleSettings?.[finding.ruleId]?.severity;
+    if (override)
+      finding.severity = override;
+  }
   if (evidence)
     weighByTraffic(findings, graph, evidence);
-  findings.sort((a, b) => {
+  const dismissed = [];
+  const kept = [];
+  for (const finding of findings) {
+    const label = options.labels?.[findingKey(finding)];
+    if (label?.verdict === "noise")
+      dismissed.push(finding);
+    else {
+      if (label?.verdict === "real")
+        finding.verdict = "real";
+      kept.push(finding);
+    }
+  }
+  kept.sort((a, b) => {
     const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     if (bySeverity !== 0)
       return bySeverity;
@@ -1090,14 +1147,15 @@ function validate(graph, options = {}) {
     return a.ruleId.localeCompare(b.ruleId) || a.title.localeCompare(b.title);
   });
   const counts = { error: 0, warning: 0, info: 0 };
-  for (const finding of findings)
+  for (const finding of kept)
     counts[finding.severity] += 1;
   return {
-    findings,
+    findings: kept,
     counts,
-    score: score(graph, findings),
+    score: score(graph, kept),
     fingerprint: graphFingerprint(graph),
-    ...evidence ? { evidence } : {}
+    ...evidence ? { evidence } : {},
+    dismissed
   };
 }
 function runRules(rules, graph, index) {
@@ -1118,7 +1176,6 @@ function runRules(rules, graph, index) {
   }
   return findings;
 }
-var findingKey = (finding) => `${finding.ruleId}|${[...finding.nodeIds].sort().join(",")}|${[...finding.edgeIds].sort().join(",")}`;
 var SEVERITY_DOWN = { error: "warning", warning: "info", info: "info" };
 function weighByTraffic(findings, graph, evidence) {
   const declaredCritical = new Set(graph.nodes.filter((n) => n.critical).map((n) => n.id));

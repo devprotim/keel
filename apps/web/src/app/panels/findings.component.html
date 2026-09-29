@@ -44,11 +44,25 @@
           <span class="count">{{ changeCount() }}</span>
         }
       </button>
+      <button
+        type="button"
+        role="tab"
+        class="tab"
+        [class.active]="tab() === 'rules'"
+        [attr.aria-selected]="tab() === 'rules'"
+        (click)="tab.set('rules')"
+      >
+        Rules
+      </button>
     </div>
 
     @if (tab() === 'changes') {
       <div class="keel-panel__body" role="tabpanel" aria-label="Changes since approval">
         <keel-changes (revealed)="revealed.emit($event)" />
+      </div>
+    } @else if (tab() === 'rules') {
+      <div class="keel-panel__body" role="tabpanel" aria-label="Rules">
+        <keel-rules />
       </div>
     } @else {
 
@@ -104,6 +118,22 @@
             <span class="source-unmatched">
               Not on the diagram: {{ source.unmatchedRefs.join(', ') }}
             </span>
+          }
+          @if (!readOnly()) {
+            @for (suggestion of suggestionsFor(source.source); track suggestion.ref) {
+              <div class="suggestion">
+                <code>{{ suggestion.ref }}</code>
+                @if (suggestion.type === 'link') {
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)">
+                    Link to {{ suggestion.nodeLabel }}
+                  </button>
+                } @else {
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)">
+                    Add as {{ suggestion.kind }}
+                  </button>
+                }
+              </div>
+            }
           }
         </div>
       }
@@ -176,6 +206,9 @@
                 @if (row.finding.observed) {
                   <span class="finding-badge" title="Raised by observed values, not by what the diagram declares">LIVE</span>
                 }
+                @if (row.finding.verdict === 'real') {
+                  <span class="finding-badge confirmed" title="Someone in this room confirmed it is a real problem">CONFIRMED</span>
+                }
                 @if (trafficLabel(row.finding); as traffic) {
                   <span class="finding-traffic">{{ traffic }}</span>
                 }
@@ -188,7 +221,48 @@
                 {{ label }}
               </button>
             }
+            @if (!readOnly()) {
+              <div class="verdict" role="group" [attr.aria-label]="'Is this a real problem? ' + row.finding.title">
+                <button
+                  type="button"
+                  class="verdict-btn"
+                  [class.on]="row.finding.verdict === 'real'"
+                  [attr.aria-pressed]="row.finding.verdict === 'real'"
+                  title="Confirm this is a real problem"
+                  (click)="label(row.finding, 'real')"
+                >
+                  Real
+                </button>
+                <button
+                  type="button"
+                  class="verdict-btn"
+                  title="Not a real problem here: dismiss it and count it against the rule"
+                  (click)="label(row.finding, 'noise')"
+                >
+                  Noise
+                </button>
+              </div>
+            }
           </div>
+        }
+      }
+
+      @if (dismissed().length > 0) {
+        <button type="button" class="dismissed-toggle" [attr.aria-expanded]="showDismissed()" (click)="showDismissed.set(!showDismissed())">
+          {{ showDismissed() ? '▾' : '▸' }} Dismissed as noise
+          <span class="count">{{ dismissed().length }}</span>
+        </button>
+        @if (showDismissed()) {
+          <ul class="dismissed" aria-label="Dismissed as noise">
+            @for (finding of dismissed(); track finding.ruleId + finding.title) {
+              <li>
+                <span class="dismissed-title">{{ finding.title }}</span>
+                @if (!readOnly()) {
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="restore(finding)">Restore</button>
+                }
+              </li>
+            }
+          </ul>
         }
       }
 

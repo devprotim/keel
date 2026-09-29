@@ -1,10 +1,14 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   applyEvidence,
   buildTimeline,
   emptyGraph,
+  findingKey,
   hasUnapprovedChanges,
   incidentView,
+  reconcileHistory,
+  ruleStats,
+  suggestNodes,
   reviewChanges,
   validate,
   type ArchEdge,
@@ -12,7 +16,15 @@ import {
   type ArchNode,
   type DesignIntent,
   type FieldDelta,
+  type Finding,
+  type FindingHistory,
+  type FindingLabels,
   type IncidentView,
+  type NodeSuggestion,
+  type RuleSetting,
+  type RuleSettings,
+  type RuleStats,
+  type Verdict,
   type ObservationEvent,
   type ObservationSet,
   type ReviewChange,
@@ -54,6 +66,11 @@ export class CollabService {
   readonly #observations = signal<readonly ObservationSet[]>([]);
   readonly #intent = signal<DesignIntent>({});
   readonly #events = signal<readonly ObservationEvent[]>([]);
+  readonly #ruleSettings = signal<RuleSettings>({});
+  readonly #labels = signal<FindingLabels>({});
+  readonly #findingHistory = signal<FindingHistory>({});
+  /** The socket's first sync has landed, so the document is the room's, not a partial copy. */
+  readonly #synced = signal(false);
   /**
    * Coarse wall clock for evidence freshness. Observations go stale with time
    * alone, with no edit to trigger revalidation, so the report needs a tick.
@@ -137,7 +154,32 @@ export class CollabService {
    * the whole graph, and doing that per frame while panning would be pure waste.
    */
   readonly report = computed<ValidationReport>(() =>
-    validate(this.#graph(), { observations: this.#observations(), intent: this.#intent(), now: this.#now() }),
+    validate(this.#graph(), {
+      observations: this.#observations(),
+      intent: this.#intent(),
+      now: this.#now(),
+      ruleSettings: this.#ruleSettings(),
+      labels: this.#labels(),
+    }),
+  );
+
+  readonly ruleSettings = this.#ruleSettings.asReadonly();
+  readonly labels = this.#labels.asReadonly();
+
+  /** Per rule: how often it fires, how people labelled it, how long its findings stay open. */
+  readonly ruleStats = computed<readonly RuleStats[]>(() =>
+    ruleStats(
+      [...this.report().findings, ...this.report().dismissed],
+      this.#labels(),
+      this.#findingHistory(),
+      this.#ruleSettings(),
+      { now: this.#now() },
+    ),
+  );
+
+  /** What to do about names the running system reports that no box carries. */
+  readonly nodeSuggestions = computed<readonly NodeSuggestion[]>(() =>
+    suggestNodes(this.#graph(), this.report().evidence),
   );
 
   /**
@@ -165,8 +207,27 @@ export class CollabService {
 
     const clock = setInterval(() => this.#now.set(Date.now()), 60_000);
 
+    // Keep the room's finding history in step with what fires. Debounced so a
+    // finding that flickers while someone types a number is not an occurrence,
+    // and only once synced, so a half-loaded document does not "resolve"
+    // everything. Every client does this; the writes are idempotent, so two
+    // open canvases agree rather than fight.
+    let reconcile: ReturnType<typeof setTimeout> | null = null;
+    effect(() => {
+      const report = this.report();
+      if (!this.#synced() || this.#readOnly()) return;
+      const firing = [...report.findings, ...report.dismissed];
+      if (reconcile) clearTimeout(reconcile);
+      reconcile = setTimeout(() => {
+        reconcile = null;
+        const change = reconcileHistory(untracked(this.#findingHistory), firing, Date.now());
+        if (Object.keys(change.set).length > 0 || change.drop.length > 0) this.#doc.writeFindingHistory(change);
+      }, 2000);
+    });
+
     inject(DestroyRef).onDestroy(() => {
       clearInterval(clock);
+      if (reconcile) clearTimeout(reconcile);
       globalThis.removeEventListener('online', goOnline);
       globalThis.removeEventListener('offline', goOffline);
       this.disconnect();
@@ -220,6 +281,7 @@ export class CollabService {
     });
     this.#provider.on('sync', (synced: boolean) => {
       if (synced) this.#refusal.set(null);
+      if (synced) this.#synced.set(true);
     });
     this.#provider.on('connection-error', () => this.#socketStatus.set('disconnected'));
 
@@ -270,6 +332,10 @@ export class CollabService {
     this.#observations.set([]);
     this.#intent.set({});
     this.#events.set([]);
+    this.#ruleSettings.set({});
+    this.#labels.set({});
+    this.#findingHistory.set({});
+    this.#synced.set(false);
     this.#peers.set([]);
     this.#socketStatus.set('connecting');
     this.#refusal.set(null);
@@ -407,6 +473,32 @@ export class CollabService {
     this.#step(() => this.#doc.acceptObserved(deltas, this.#displayName()));
   }
 
+  // --- Tuning ---------------------------------------------------------------
+
+  setRuleSetting(ruleId: string, setting: RuleSetting): void {
+    if (this.#readOnly()) return;
+    this.#step(() => this.#doc.setRuleSetting(ruleId, setting));
+  }
+
+  /** Mark a finding real or noise. Marking it with the verdict it already has clears it. */
+  label(finding: Finding, verdict: Verdict): void {
+    if (this.#readOnly()) return;
+    const key = findingKey(finding);
+    const current = this.#labels()[key];
+    this.#step(() =>
+      this.#doc.setLabel(
+        key,
+        current?.verdict === verdict ? null : { verdict, ruleId: finding.ruleId, by: this.#displayName(), at: new Date().toISOString() },
+      ),
+    );
+  }
+
+  /** Take a finding's label off, bringing a dismissed one back. */
+  clearLabel(finding: Finding): void {
+    if (this.#readOnly()) return;
+    this.#step(() => this.#doc.setLabel(findingKey(finding), null));
+  }
+
   undo(): void {
     if (this.#readOnly()) return;
     this.#undoManager?.undo();
@@ -450,6 +542,9 @@ export class CollabService {
     this.#intent.set(this.#doc.toIntent());
     // Same array when the log did not change, so the signal does not fire.
     this.#events.set(this.#doc.toEvents());
+    this.#ruleSettings.set(this.#doc.toRuleSettings());
+    this.#labels.set(this.#doc.toLabels());
+    this.#findingHistory.set(this.#doc.toFindingHistory());
   };
 
   readonly #syncUndoState = (): void => {

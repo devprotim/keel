@@ -658,3 +658,36 @@ describe('GraphDoc events', () => {
     expect(doc.toEvents().map((e) => e.kind)).toEqual(['source']);
   });
 });
+
+describe('GraphDoc tuning', () => {
+  const at = '2026-09-29T12:00:00Z';
+
+  it('undoes a label or a rule setting like any other edit', () => {
+    const doc = new GraphDoc();
+    const undo = doc.createUndoManager(0);
+    doc.setLabel('spof|a|', { verdict: 'noise', ruleId: 'spof', by: 'ada', at });
+    doc.setRuleSetting('orphan-node', { muted: true });
+    expect(doc.toLabels()).toEqual({ 'spof|a|': { verdict: 'noise', ruleId: 'spof', by: 'ada', at } });
+    expect(doc.toRuleSettings()).toEqual({ 'orphan-node': { muted: true } });
+
+    undo.undo();
+    expect(doc.toRuleSettings()).toEqual({});
+    undo.undo();
+    expect(doc.toLabels()).toEqual({});
+  });
+
+  it('keeps finding history out of anyone’s undo stack', () => {
+    const doc = new GraphDoc();
+    const undo = doc.createUndoManager(0);
+    doc.writeFindingHistory({ set: { 'spof|a|': { ruleId: 'spof', openedAt: at, occurrences: 1 } }, drop: [] });
+    expect(undo.canUndo()).toBe(false);
+    expect(doc.toFindingHistory()).toEqual({ 'spof|a|': { ruleId: 'spof', openedAt: at, occurrences: 1 } });
+  });
+
+  it('clears a rule setting that no longer says anything', () => {
+    const doc = new GraphDoc();
+    doc.setRuleSetting('orphan-node', { severity: 'info' });
+    doc.setRuleSetting('orphan-node', {});
+    expect(doc.ruleSettings.has('orphan-node')).toBe(false);
+  });
+});
