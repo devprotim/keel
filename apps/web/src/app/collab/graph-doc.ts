@@ -5,6 +5,9 @@ import {
   readElementIntent,
   readNode,
   readObservationSet,
+  restoredElement,
+  revertPatch,
+  unapprovedFields,
   type ArchEdge,
   type ArchGraph,
   type ArchNode,
@@ -270,10 +273,16 @@ export class GraphDoc {
    * An id that is no longer on the diagram approves its removal, which drops
    * it from the baseline.
    */
-  approve(ids: readonly string[], by: string, at: string = new Date().toISOString()): void {
+  approve(
+    ids: readonly string[],
+    by: string,
+    at: string = new Date().toISOString(),
+    fields?: readonly string[],
+  ): void {
     const graph = this.toGraph();
     const intent = this.toIntent();
     const edgeLabel = edgeLabeller(graph);
+    const present = new Set([...graph.nodes.map((n) => n.id), ...graph.edges.map((e) => e.id)]);
 
     this.transact(() => {
       for (const id of ids) {
@@ -281,13 +290,94 @@ export class GraphDoc {
         const edge = node ? undefined : graph.edges.find((e) => e.id === id);
         if (!node && !edge) {
           this.intent.delete(id);
+          // Deleting a node took its edges with it; approving the one approves
+          // the other, or the edges would linger as removals of nothing.
+          if (intent[id]?.kind === 'node') {
+            for (const [edgeId, approved] of Object.entries(intent)) {
+              if (approved.kind !== 'edge' || present.has(edgeId)) continue;
+              const ends = [approved.fields['source']?.value, approved.fields['target']?.value];
+              if (ends.includes(id)) this.intent.delete(edgeId);
+            }
+          }
           continue;
         }
 
+        const options = { by, at, ...(fields ? { fields } : {}) };
         const next = node
-          ? approveElement(node, 'node', intent[id], { by, at })
-          : approveElement(edge!, 'edge', intent[id], { by, at, label: edgeLabel(edge!) });
+          ? approveElement(node, 'node', intent[id], options)
+          : approveElement(edge!, 'edge', intent[id], { ...options, label: edgeLabel(edge!) });
         this.#writeIntent(id, next);
+      }
+    });
+  }
+
+  /**
+   * Put these elements back to what was approved, the reverse of `approve`.
+   *
+   * - A changed element has the given fields (default: every unapproved one)
+   *   set back to their approved values.
+   * - An element that was never approved is deleted.
+   * - An approved element that was deleted is rebuilt from its approval. A
+   *   node brings back its removed edges whose other end is still there,
+   *   since deleting the node took them; an edge brings back removed ends.
+   *
+   * One transaction, so a rejection is one undo step. The baseline itself is
+   * never touched: rejecting is an edit to the diagram, not an approval.
+   */
+  reject(targets: readonly { id: string; fields?: readonly string[] }[]): void {
+    const intent = this.toIntent();
+
+    this.transact(() => {
+      const restore = (id: string): void => {
+        if (this.nodes.has(id) || this.edges.has(id)) return;
+        const approved = intent[id];
+        const element = approved ? restoredElement(id, approved) : null;
+        if (!approved || !element) return;
+        if (approved.kind === 'edge') {
+          const edge = element as ArchEdge;
+          for (const end of [edge.source, edge.target]) {
+            if (!this.nodes.has(end) && intent[end]?.kind === 'node') restore(end);
+          }
+          if (!this.nodes.has(edge.source) || !this.nodes.has(edge.target)) return;
+          this.edges.set(id, toYMap(edge as unknown as Record<string, unknown>));
+          return;
+        }
+        this.nodes.set(id, toYMap(element as unknown as Record<string, unknown>));
+      };
+
+      const restoredNodes: string[] = [];
+      for (const { id, fields } of targets) {
+        const target = this.nodes.get(id) ?? this.edges.get(id);
+        const approved = intent[id];
+
+        if (target && !approved) {
+          if (this.nodes.has(id)) this.removeNodes([id]);
+          else this.edges.delete(id);
+        } else if (target && approved) {
+          const element = this.nodes.has(id) ? readNode(target) : readEdge(target);
+          if (!element) continue;
+          const patch = revertPatch(approved, fields ?? unapprovedFields(element, approved));
+          for (const end of ['source', 'target'] as const) {
+            // Never point an edge at a component that is not there.
+            if (typeof patch[end] === 'string' && !this.nodes.has(patch[end])) delete patch[end];
+          }
+          applyPatch(target, patch);
+        } else if (!target && approved) {
+          restore(id);
+          if (approved.kind === 'node') restoredNodes.push(id);
+        }
+      }
+
+      for (const nodeId of restoredNodes) {
+        for (const [edgeId, approved] of Object.entries(intent)) {
+          if (approved.kind !== 'edge' || this.edges.has(edgeId)) continue;
+          const source = approved.fields['source']?.value;
+          const target = approved.fields['target']?.value;
+          if (source !== nodeId && target !== nodeId) continue;
+          if (typeof source === 'string' && typeof target === 'string' && this.nodes.has(source) && this.nodes.has(target)) {
+            restore(edgeId);
+          }
+        }
       }
     });
   }
@@ -357,6 +447,10 @@ export class GraphDoc {
     }
     if (target.get('_kind') !== next.kind) target.set('_kind', next.kind);
     if (target.get('_label') !== next.label) target.set('_label', next.label);
+    // Presentation, so last approval wins; a whole plain value, not merged per key.
+    if (next.layout && JSON.stringify(target.get('_layout')) !== JSON.stringify(next.layout)) {
+      target.set('_layout', { ...next.layout });
+    }
     for (const [field, approved] of Object.entries(next.fields)) {
       const current = target.get(field) as ApprovedField | undefined;
       // Unchanged approvals are not rewritten, so re-approving an element does

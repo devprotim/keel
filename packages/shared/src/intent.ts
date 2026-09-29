@@ -26,6 +26,23 @@ export interface ElementIntent {
   /** Label at approval time, so a removed element can still be named. */
   label: string;
   fields: Record<string, ApprovedField>;
+  /**
+   * How the element was drawn when last approved. Presentation only, never
+   * compared, so moving a box is still not a change; kept so rejecting a
+   * removal can put the element back where it was. Absent on baselines
+   * approved before review mode existed.
+   */
+  layout?: ApprovedLayout;
+}
+
+export interface ApprovedLayout {
+  label?: string;
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  tech?: string;
+  notes?: string;
 }
 
 /** Approved baseline, keyed by node or edge id. Empty means nothing has been approved yet. */
@@ -92,6 +109,7 @@ export function approveElement(
     kind,
     label: label ?? element.label ?? existing?.label ?? element.id,
     fields: { ...existing?.fields },
+    layout: layoutOf(element),
   };
 
   for (const field of fields) {
@@ -107,6 +125,39 @@ export function approveElement(
     };
   }
   return next;
+}
+
+/**
+ * Read a stored layout, keeping only well-typed fields. Shared by the file
+ * parser and the document reader, which both take this from untrusted data.
+ */
+export function readLayout(value: unknown): ApprovedLayout | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const layout: ApprovedLayout = {};
+  for (const key of ['label', 'tech', 'notes'] as const) {
+    if (typeof record[key] === 'string') layout[key] = record[key];
+  }
+  for (const key of ['x', 'y', 'w', 'h'] as const) {
+    const n = record[key];
+    if (typeof n === 'number' && Number.isFinite(n)) layout[key] = n;
+  }
+  return layout;
+}
+
+/** The presentation fields worth restoring. Nodes have a position; edges only a label. */
+export function layoutOf(element: ArchNode | ArchEdge): ApprovedLayout {
+  const layout: ApprovedLayout = {};
+  if (element.label !== undefined) layout.label = element.label;
+  if ('x' in element) {
+    layout.x = element.x;
+    layout.y = element.y;
+    layout.w = element.w;
+    layout.h = element.h;
+    if (element.tech !== undefined) layout.tech = element.tech;
+    if (element.notes !== undefined) layout.notes = element.notes;
+  }
+  return layout;
 }
 
 /** Fields of an element whose declared value differs from the approved one. */

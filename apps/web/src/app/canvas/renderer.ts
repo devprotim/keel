@@ -109,6 +109,15 @@ export function drawContent(ctx: CanvasRenderingContext2D, frame: ContentFrame):
   ctx.translate(viewport.panX, viewport.panY);
   ctx.scale(viewport.zoom, viewport.zoom);
 
+  // Removed elements sit underneath, faded, so what is still there reads first.
+  if (frame.scene.ghosts) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    for (const edge of frame.scene.ghosts.edges) drawEdge(ctx, edge, frame);
+    for (const node of frame.scene.ghosts.nodes) drawNode(ctx, node, frame);
+    ctx.restore();
+  }
+
   // Edges first so nodes paint over the lines that terminate on them.
   for (const edge of frame.scene.edges) drawEdge(ctx, edge, frame);
   for (const node of frame.scene.nodes) drawNode(ctx, node, frame);
@@ -199,13 +208,21 @@ const EDGE_DASH: Record<EdgeKind, number[]> = {
 function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: ContentFrame): void {
   const { theme } = frame;
   const selected = frame.selection.has(edge.edge.id);
-  const color = edge.severity ? theme.severity[edge.severity] : selected ? theme.selection : theme.edge;
-  const lineWidth = selected ? 2.5 : edge.severity ? 2 : 1.5;
+  const flagged = edge.diff ?? edge.severity;
+  const color = edge.diff
+    ? theme.diff[edge.diff]
+    : edge.severity
+      ? theme.severity[edge.severity]
+      : selected
+        ? theme.selection
+        : theme.edge;
+  const lineWidth = selected ? 2.5 : flagged ? 2 : 1.5;
 
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
-  ctx.setLineDash(EDGE_DASH[edge.edge.kind]);
+  // A removed edge is always dashed; its own kind no longer matters.
+  ctx.setLineDash(edge.diff === 'removed' ? [4, 4] : EDGE_DASH[edge.edge.kind]);
 
   ctx.beginPath();
   ctx.moveTo(edge.from.x, edge.from.y);
@@ -283,9 +300,9 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
-  ctx.strokeStyle = severityOrDefault(sceneNode.severity, selected, theme);
-  ctx.lineWidth = selected || sceneNode.severity ? 2 : 1;
-  if (node.kind === 'external') ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = sceneNode.diff ? theme.diff[sceneNode.diff] : severityOrDefault(sceneNode.severity, selected, theme);
+  ctx.lineWidth = selected || sceneNode.severity || sceneNode.diff ? 2 : 1;
+  if (node.kind === 'external' || sceneNode.diff === 'removed') ctx.setLineDash([6, 4]);
   traceNodeShape(ctx, rect);
   ctx.stroke();
   ctx.setLineDash([]);
@@ -303,8 +320,10 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
 
   drawNodeContent(ctx, sceneNode, theme);
 
-  if (sceneNode.severity) {
-    drawSeverityBadge(ctx, rect, theme.severity[sceneNode.severity]);
+  if (sceneNode.diff) {
+    drawBadge(ctx, rect, theme.diff[sceneNode.diff], DIFF_MARK[sceneNode.diff]);
+  } else if (sceneNode.severity) {
+    drawBadge(ctx, rect, theme.severity[sceneNode.severity], '!');
   }
 
   ctx.restore();
@@ -574,7 +593,10 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return low > 0 ? `${text.slice(0, low)}…` : '';
 }
 
-function drawSeverityBadge(ctx: CanvasRenderingContext2D, rect: Rect, color: string): void {
+/** The mark in a node's corner badge in review mode, as a code diff marks lines. */
+const DIFF_MARK: Record<'added' | 'removed' | 'changed', string> = { added: '+', removed: '−', changed: '~' };
+
+function drawBadge(ctx: CanvasRenderingContext2D, rect: Rect, color: string, mark: string): void {
   const radius = 7;
   const cx = rect.x + rect.w - radius - 6;
   const cy = rect.y + radius + 6;
@@ -589,7 +611,7 @@ function drawSeverityBadge(ctx: CanvasRenderingContext2D, rect: Rect, color: str
   ctx.font = '700 10px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('!', cx, cy + 0.5);
+  ctx.fillText(mark, cx, cy + 0.5);
   ctx.restore();
 }
 

@@ -717,6 +717,22 @@ function declaredField(element, field) {
 function intentFieldsFor(kind) {
   return kind === "node" ? NODE_INTENT_FIELDS : EDGE_INTENT_FIELDS;
 }
+function readLayout(value) {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return void 0;
+  const record = value;
+  const layout = {};
+  for (const key of ["label", "tech", "notes"]) {
+    if (typeof record[key] === "string")
+      layout[key] = record[key];
+  }
+  for (const key of ["x", "y", "w", "h"]) {
+    const n = record[key];
+    if (typeof n === "number" && Number.isFinite(n))
+      layout[key] = n;
+  }
+  return layout;
+}
 
 // ../shared/dist/reality.js
 var NODE_OBSERVABLE = ["replicas", "hasReplica", "hasBackup", "hasDlq"];
@@ -1135,6 +1151,10 @@ function score(graph, findings) {
 // ../shared/dist/factory.js
 var DEFAULT_NODE_SIZE = { w: 184, h: 84 };
 
+// ../shared/dist/review.js
+var NODE_KIND_SET = new Set(NODE_KINDS);
+var EDGE_KIND_SET = new Set(EDGE_KINDS);
+
 // ../shared/dist/diagram-file.js
 var DIAGRAM_FORMAT = "keel-diagram";
 var DIAGRAM_VERSION = 1;
@@ -1325,6 +1345,9 @@ function readIntent(value, fail) {
       label: typeof entry["label"] === "string" ? entry["label"] : id,
       fields
     };
+    const layout = readLayout(entry["layout"]);
+    if (layout)
+      element.layout = layout;
     intent[id] = element;
   }
   return intent;
@@ -1345,8 +1368,8 @@ var isFieldValue = (value) => value === null || ["string", "number", "boolean"].
 var positive = (value, fallback) => value > 0 ? value : fallback;
 
 // ../shared/dist/doc-schema.js
-var NODE_KIND_SET = new Set(NODE_KINDS);
-var EDGE_KIND_SET = new Set(EDGE_KINDS);
+var NODE_KIND_SET2 = new Set(NODE_KINDS);
+var EDGE_KIND_SET2 = new Set(EDGE_KINDS);
 
 // src/check.ts
 var SEVERITY_RANK = { error: 0, warning: 1, info: 2 };

@@ -23,6 +23,12 @@ export interface CanvasTheme {
 
   kindAccent: Record<NodeKind, string>;
   severity: Record<Severity, string>;
+  /**
+   * Review mode's diff colours. The severity hues, deliberately: review mode
+   * replaces severity on the canvas while it is open, so green, red and amber
+   * mean added, removed and changed there, the way they do in a code diff.
+   */
+  diff: Record<'added' | 'removed' | 'changed', string>;
 
   edge: string;
   edgeText: string;
@@ -54,6 +60,7 @@ const FALLBACK: CanvasTheme = {
     external: '#94a3b8',
   },
   severity: { error: '#dc2626', warning: '#d97706', info: '#2563eb' },
+  diff: { added: '#059669', removed: '#dc2626', changed: '#d97706' },
   edge: '#98a2b3',
   edgeText: '#6b7280',
   arrow: '#98a2b3',
@@ -105,6 +112,11 @@ export function readTheme(element: HTMLElement): CanvasTheme {
       error: read('--keel-severity-error', FALLBACK.severity.error),
       warning: read('--keel-severity-warning', FALLBACK.severity.warning),
       info: read('--keel-severity-info', FALLBACK.severity.info),
+    },
+    diff: {
+      added: read('--keel-severity-ok', FALLBACK.diff.added),
+      removed: read('--keel-severity-error', FALLBACK.diff.removed),
+      changed: read('--keel-severity-warning', FALLBACK.diff.changed),
     },
     edge: read('--keel-edge', FALLBACK.edge),
     edgeText: read('--keel-edge-text', FALLBACK.edgeText),

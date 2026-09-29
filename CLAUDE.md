@@ -83,6 +83,13 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - **Every AI finding must cite a real node/edge id.** `groundFindings()` discards any finding citing nothing or citing an id that doesn't exist in the graph — this is what makes a finding clickable instead of something to fact-check by hand. This filter runs for every provider; don't bypass it when adding one.
 - Anthropic wins if both `ANTHROPIC_API_KEY` and `GEMINI_API_KEY` are set (`selectProvider` in `app.ts`).
 
+### Review mode (`packages/shared/src/review.ts`)
+
+- The Changes tab of the review dock (`panels/changes.component.ts`) is review mode: `reviewChanges(graph, intent)` diffs the diagram against the approved baseline into added / removed / changed elements, field by field (only the tracked `*_INTENT_FIELDS`, so moving a box is never a change). Empty when nothing is approved yet.
+- Each change is approved (`GraphDoc.approve`, optionally `fields`) or rejected (`GraphDoc.reject`): revert fields to approved values, delete an unapproved addition, or rebuild an approved element that was deleted (`restoredElement`). Rejecting a deleted node also brings back its deleted edges; a deleted edge brings back its deleted ends; approving a node's removal also drops its edges from the baseline. All one transaction, so one undo step.
+- Rebuilding needs the presentation fields the baseline never compared, so every approval also stores `layout` (label, position, size, tech, notes) in the intent record's `_layout` key. Baselines from before that restore at the origin and draw no ghost.
+- While the tab is open (`ChangeReviewService.active`), the canvas draws the diff instead of severity: green/red/amber borders and +/−/~ badges from the severity tokens, and removed elements as faded dashed ghosts (`Scene.ghosts`) that are not hit-testable.
+
 ### Drift alerts (`apps/server/src/alerts/`)
 
 - `AlertWorker` runs in-process: an observations push debounces an evaluation of that room (`ALERT_DEBOUNCE_MS`), and a sweep re-evaluates every configured room every `ALERT_SWEEP_SECONDS`, because a collector going silent (stale evidence) produces no push to react to. Evaluations of one room are serialised.

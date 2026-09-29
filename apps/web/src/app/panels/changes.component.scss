@@ -1,0 +1,231 @@
+:host {
+  display: block;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--keel-space-2);
+  padding: var(--keel-space-3) var(--keel-space-2);
+  color: var(--keel-text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+
+  p {
+    margin: 0;
+  }
+}
+
+.clean {
+  color: var(--keel-severity-ok);
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  padding: var(--keel-space-1) var(--keel-space-1) var(--keel-space-2);
+}
+
+.legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--keel-space-3);
+  margin-right: auto;
+  color: var(--keel-text-muted);
+  font-size: 12px;
+
+  .mark {
+    margin-right: 4px;
+  }
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+// The diff marks: the same hues the canvas uses for review mode.
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+
+  &.added {
+    background: var(--keel-severity-ok);
+  }
+  &.removed {
+    background: var(--keel-severity-error);
+  }
+  &.changed {
+    background: var(--keel-severity-warning);
+  }
+}
+
+.small {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tiny {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+.approve {
+  color: var(--keel-accent);
+}
+
+.changes,
+.fields {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change {
+  margin-bottom: var(--keel-space-2);
+  padding: var(--keel-space-2) var(--keel-space-3) var(--keel-space-3);
+  border: 1px solid var(--keel-border);
+  border-left-width: 3px;
+  border-radius: var(--keel-radius);
+  background: var(--keel-surface);
+
+  &.added {
+    border-left-color: var(--keel-severity-ok);
+  }
+  &.removed {
+    border-left-color: var(--keel-severity-error);
+  }
+  &.changed {
+    border-left-color: var(--keel-severity-warning);
+  }
+}
+
+.change-head {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+  width: 100%;
+  padding: var(--keel-space-1) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:not(:disabled):hover .change-label {
+    color: var(--keel-accent);
+  }
+}
+
+.change-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--keel-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-what {
+  margin-left: auto;
+  color: var(--keel-text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.summary {
+  margin: 2px 0 0 24px;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-mono);
+  font-size: 11px;
+}
+
+.fields {
+  margin: var(--keel-space-1) 0 0 24px;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px var(--keel-space-2);
+  padding: 5px 0;
+  border-top: 1px solid var(--keel-border);
+  font-size: 12px;
+
+  &:first-child {
+    border-top: 0;
+  }
+}
+
+.field-name {
+  color: var(--keel-text);
+  font-weight: 500;
+}
+
+.field-diff {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  grid-column: 1;
+  color: var(--keel-text-muted);
+  font-family: var(--keel-font-mono);
+  font-size: 11.5px;
+}
+
+.was {
+  color: var(--keel-severity-error);
+  text-decoration: line-through;
+}
+
+.now {
+  color: var(--keel-severity-ok);
+  text-decoration: none;
+}
+
+.field-actions {
+  display: inline-flex;
+  gap: 2px;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.field-meta {
+  grid-column: 1;
+  color: var(--keel-text-muted);
+  font-size: 11px;
+}
+
+.blocked {
+  margin: var(--keel-space-1) 0 0 24px;
+  color: var(--keel-text-muted);
+  font-size: 11.5px;
+}
+
+.change-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--keel-space-2);
+  margin-top: var(--keel-space-2);
+}

@@ -26,6 +26,7 @@ import {
 import { EDGE_HIT_TOLERANCE, hitTest, nodesInRect } from '../core/hit-test';
 import { buildScene } from '../core/scene';
 import { FALLBACK_THEME, readTheme, type CanvasTheme } from '../core/theme';
+import { ChangeReviewService } from '../panels/change-review.service';
 import { drawContent, drawOverlay, resizeCanvas, type RemoteCursor } from './renderer';
 
 /** Pointer gesture in progress. Idle is represented by null. */
@@ -52,6 +53,7 @@ export const NODE_DRAG_MIME = 'application/x-keel-node-kind';
 })
 export class CanvasComponent {
   private readonly collab = inject(CollabService);
+  private readonly changeReview = inject(ChangeReviewService);
 
   private readonly hostRef = viewChild.required<ElementRef<HTMLDivElement>>('host');
   private readonly contentRef = viewChild.required<ElementRef<HTMLCanvasElement>>('content');
@@ -79,7 +81,13 @@ export class CanvasComponent {
   private contentCtx: CanvasRenderingContext2D | null = null;
   private overlayCtx: CanvasRenderingContext2D | null = null;
 
-  readonly scene = computed(() => buildScene(this.collab.graph(), this.collab.report()));
+  readonly scene = computed(() =>
+    buildScene(
+      this.collab.graph(),
+      this.collab.report(),
+      this.changeReview.active() ? { changes: this.collab.changes(), intent: this.collab.intent() } : null,
+    ),
+  );
 
   private readonly cursors = computed<RemoteCursor[]>(() =>
     this.collab.peers().map((peer) => ({
@@ -90,12 +98,19 @@ export class CanvasComponent {
     })),
   );
 
-  readonly accessibleNodes = computed(() =>
-    this.collab.graph().nodes.map((node) => ({
-      id: node.id,
-      description: `${node.label}, ${node.kind}, ${node.replicas} ${node.replicas === 1 ? 'instance' : 'instances'}`,
-    })),
-  );
+  readonly accessibleNodes = computed(() => {
+    // In review mode the mirror says what the colours say.
+    const diffs = new Map(this.changeReview.active() ? this.collab.changes().map((c) => [c.id, c.type]) : []);
+    return this.collab.graph().nodes.map((node) => {
+      const diff = diffs.get(node.id);
+      return {
+        id: node.id,
+        description:
+          `${node.label}, ${node.kind}, ${node.replicas} ${node.replicas === 1 ? 'instance' : 'instances'}` +
+          (diff === 'added' ? ', added since approval' : diff === 'changed' ? ', changed since approval' : ''),
+      };
+    });
+  });
 
   /** Whether the pointer is over a node it could connect from right now. */
   readonly connectHover = computed(() => this.hoveredId() !== null && this.connectModifierHeld());

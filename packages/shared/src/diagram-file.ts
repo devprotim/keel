@@ -1,5 +1,5 @@
 import { DEFAULT_NODE_SIZE } from './factory.js';
-import { EDGE_INTENT_FIELDS, NODE_INTENT_FIELDS, type ApprovedField, type DesignIntent, type ElementIntent } from './intent.js';
+import { EDGE_INTENT_FIELDS, NODE_INTENT_FIELDS, readLayout, type ApprovedField, type DesignIntent, type ElementIntent } from './intent.js';
 import { EDGE_KINDS, NODE_KINDS, type ArchEdge, type ArchGraph, type ArchNode, type EdgeKind, type NodeKind } from './types.js';
 
 /**
@@ -238,6 +238,9 @@ function readIntent(value: unknown, fail: Fail): DesignIntent {
       label: typeof entry['label'] === 'string' ? entry['label'] : id,
       fields,
     };
+    // Presentation only, so a malformed layout is dropped rather than failing the file.
+    const layout = readLayout(entry['layout']);
+    if (layout) element.layout = layout;
     intent[id] = element;
   }
   return intent;
