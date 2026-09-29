@@ -626,3 +626,35 @@ describe('GraphDoc review', () => {
     expect(doc.toIntent()['b']?.layout).toMatchObject({ label: 'b', x: 300, y: 60 });
   });
 });
+
+describe('GraphDoc events', () => {
+  const at = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
+  it('logs what a pushed observation set changed, like the server does', () => {
+    const doc = new GraphDoc();
+    doc.setObservations({ source: 'k8s', observedAt: at(2), nodes: [{ ref: 'a', replicas: 3 }] });
+    doc.setObservations({ source: 'k8s', observedAt: at(1), nodes: [{ ref: 'a', replicas: 1 }] });
+
+    expect(doc.toEvents().map((e) => [e.kind, e.field, e.from, e.to])).toEqual([
+      ['source', 'present', false, true],
+      ['node', 'replicas', 3, 1],
+    ]);
+  });
+
+  it('returns the same log object until the log changes', () => {
+    const doc = new GraphDoc();
+    doc.setObservations({ source: 'k8s', observedAt: at(1), nodes: [] });
+    const first = doc.toEvents();
+    doc.addNode(node('a'));
+    expect(doc.toEvents()).toBe(first);
+    doc.setObservations({ source: 'otel', observedAt: at(0), nodes: [] });
+    expect(doc.toEvents()).not.toBe(first);
+  });
+
+  it('drops events past the retention window', () => {
+    const doc = new GraphDoc();
+    doc.events.push([{ at: at(60 * 24 * 8), source: 'k8s', kind: 'node', ref: 'a', field: 'replicas', from: 1, to: 2 }]);
+    doc.setObservations({ source: 'k8s', observedAt: at(0), nodes: [] });
+    expect(doc.toEvents().map((e) => e.kind)).toEqual(['source']);
+  });
+});

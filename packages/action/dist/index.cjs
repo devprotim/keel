@@ -565,7 +565,8 @@ function resolveEvidence(graph, sets, options = {}) {
         hasReplica: observation.hasReplica,
         hasBackup: observation.hasBackup,
         hasDlq: observation.hasDlq,
-        rps: observation.rps
+        rps: observation.rps,
+        errorRate: observation.errorRate
       });
       for (const node of targets) {
         matchedNodeIds.add(node.id);
@@ -587,7 +588,8 @@ function resolveEvidence(graph, sets, options = {}) {
         retries: observation.retries,
         circuitBreaker: observation.circuitBreaker,
         p99Ms: observation.p99Ms,
-        rps: observation.rps
+        rps: observation.rps,
+        errorRate: observation.errorRate
       });
       for (const from of sources) {
         for (const to of targets) {
@@ -1154,6 +1156,9 @@ var DEFAULT_NODE_SIZE = { w: 184, h: 84 };
 // ../shared/dist/review.js
 var NODE_KIND_SET = new Set(NODE_KINDS);
 var EDGE_KIND_SET = new Set(EDGE_KINDS);
+
+// ../shared/dist/incident.js
+var EVENT_RETENTION_MS = 7 * 24 * 60 * 60 * 1e3;
 
 // ../shared/dist/diagram-file.js
 var DIAGRAM_FORMAT = "keel-diagram";

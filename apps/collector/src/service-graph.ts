@@ -37,6 +37,7 @@ interface PendingCall {
   service: string;
   peer: string | null;
   durationMs: number;
+  error: boolean;
   expiresAt: number;
 }
 interface PendingServe {
@@ -46,6 +47,8 @@ interface PendingServe {
 
 interface EdgeWindow {
   count: number;
+  /** Calls that failed, by the caller's span status. */
+  errors: number;
   samples: number[];
 }
 
@@ -65,6 +68,7 @@ export class ServiceGraph {
 
   #edges = new Map<string, EdgeWindow>();
   #served = new Map<string, number>();
+  #servedErrors = new Map<string, number>();
   /**
    * Only services seen *serving* are reported as nodes. A cron job that only
    * calls out, or a database named by its callers, has no request rate this
@@ -93,6 +97,7 @@ export class ServiceGraph {
 
       if (span.kind === 'server' || span.kind === 'consumer') {
         this.#served.set(span.service, (this.#served.get(span.service) ?? 0) + 1);
+        if (span.error) this.#servedErrors.set(span.service, (this.#servedErrors.get(span.service) ?? 0) + 1);
         this.#lastSeenNode.set(span.service, now);
         if (!span.parentSpanId) continue;
 
@@ -100,7 +105,7 @@ export class ServiceGraph {
         const call = this.#calls.get(key);
         if (call) {
           this.#calls.delete(key);
-          this.#record(call.service, span.service, call.durationMs, now);
+          this.#record(call.service, span.service, call.durationMs, call.error, now);
         } else {
           this.#serves.set(key, { service: span.service, expiresAt: now + this.#options.pairTimeoutMs });
         }
@@ -109,12 +114,13 @@ export class ServiceGraph {
         const serve = this.#serves.get(key);
         if (serve) {
           this.#serves.delete(key);
-          this.#record(span.service, serve.service, span.durationMs, now);
+          this.#record(span.service, serve.service, span.durationMs, span.error, now);
         } else {
           this.#calls.set(key, {
             service: span.service,
             peer: span.peer,
             durationMs: span.durationMs,
+            error: span.error,
             expiresAt: now + this.#options.pairTimeoutMs,
           });
         }
@@ -140,7 +146,11 @@ export class ServiceGraph {
         this.#lastSeenNode.delete(ref);
         continue;
       }
-      nodes.push({ ref, rps: rate(this.#served.get(ref) ?? 0) });
+      const served = this.#served.get(ref) ?? 0;
+      const node: NodeObservation = { ref, rps: rate(served) };
+      // Sampling scales counts, not ratios, so the error rate needs no correction.
+      if (served > 0) node.errorRate = round((this.#servedErrors.get(ref) ?? 0) / served, 4);
+      nodes.push(node);
     }
 
     const edges: EdgeObservation[] = [];
@@ -153,11 +163,13 @@ export class ServiceGraph {
       const window = this.#edges.get(key);
       const edge: EdgeObservation = { source, target, rps: rate(window?.count ?? 0) };
       if (window && window.samples.length > 0) edge.p99Ms = round(percentile(window.samples, 0.99), 1);
+      if (window && window.count > 0) edge.errorRate = round(window.errors / window.count, 4);
       edges.push(edge);
     }
 
     this.#edges = new Map();
     this.#served = new Map();
+    this.#servedErrors = new Map();
     this.#windowStart = now;
 
     nodes.sort((a, b) => a.ref.localeCompare(b.ref));
@@ -165,15 +177,16 @@ export class ServiceGraph {
     return { nodes, edges, windowSeconds: round(windowSeconds, 3) };
   }
 
-  #record(source: string, target: string, durationMs: number, now: number): void {
+  #record(source: string, target: string, durationMs: number, error: boolean, now: number): void {
     if (source === target) return;
     const key = `${source}\u0000${target}`;
     let window = this.#edges.get(key);
     if (!window) {
-      window = { count: 0, samples: [] };
+      window = { count: 0, errors: 0, samples: [] };
       this.#edges.set(key, window);
     }
     window.count += 1;
+    if (error) window.errors += 1;
     // Reservoir sampling keeps the percentile honest under heavy traffic
     // without the window's memory growing with it.
     if (window.samples.length < this.#options.maxSamples) window.samples.push(durationMs);
@@ -189,7 +202,7 @@ export class ServiceGraph {
     for (const [key, call] of this.#calls) {
       if (call.expiresAt > now) continue;
       this.#calls.delete(key);
-      if (call.peer) this.#record(call.service, call.peer, call.durationMs, now);
+      if (call.peer) this.#record(call.service, call.peer, call.durationMs, call.error, now);
     }
     for (const [key, serve] of this.#serves) {
       if (serve.expiresAt <= now) this.#serves.delete(key);

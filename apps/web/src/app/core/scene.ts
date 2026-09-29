@@ -1,5 +1,16 @@
-import type { ArchEdge, ArchGraph, ArchNode, DesignIntent, ReviewChange, Severity, ValidationReport } from '@keel/shared';
-import { restoredElement, worstSeverityForNode } from '@keel/shared';
+import type {
+  ArchEdge,
+  ArchGraph,
+  ArchNode,
+  DesignIntent,
+  Evidence,
+  Health,
+  IncidentView,
+  ReviewChange,
+  Severity,
+  ValidationReport,
+} from '@keel/shared';
+import { formatRps, restoredElement, worstSeverityForNode } from '@keel/shared';
 import { borderPoint, rectCenter, type Point, type Rect } from './geometry';
 
 /**
@@ -21,6 +32,15 @@ export interface SceneNode {
   severity: Severity | null;
   /** Review mode only: how this node differs from the approved design. */
   diff?: DiffState;
+  /** Incident mode only: live health, and a short badge such as "0/3 ready". */
+  health?: Health;
+  liveBadge?: string;
+}
+
+/** What incident mode needs to draw live health. */
+export interface SceneLive {
+  incident: IncidentView;
+  evidence: Evidence | null;
 }
 
 export type DiffState = 'added' | 'removed' | 'changed';
@@ -41,6 +61,14 @@ export interface SceneEdge {
   mid: Point;
   severity: Severity | null;
   diff?: DiffState;
+  /** Incident mode only. */
+  health?: Health;
+  /** Incident mode: throughput, latency and errors in one line, in place of the label. */
+  liveLabel?: string;
+  /** Incident mode: stroke width, by traffic. */
+  weight?: number;
+  /** Incident mode: a call the running system makes that the diagram does not draw. */
+  undiagrammed?: boolean;
 }
 
 export interface Scene {
@@ -68,10 +96,15 @@ export function nodeRect(node: ArchNode): Rect {
  * completes. A diagram that will not draw until it has been analysed would flash
  * empty on every load.
  */
-export function buildScene(graph: ArchGraph, report?: ValidationReport | null, review?: SceneReview | null): Scene {
-  // Review mode shows the diff instead of findings: two colour languages on
-  // one canvas would leave "red" meaning either removed or broken.
-  const severityReport = review ? null : report;
+export function buildScene(
+  graph: ArchGraph,
+  report?: ValidationReport | null,
+  review?: SceneReview | null,
+  live?: SceneLive | null,
+): Scene {
+  // Review and incident mode each replace findings on the canvas: two colour
+  // languages at once would leave "red" meaning either removed, down or broken.
+  const severityReport = review || live ? null : report;
   const diffs = new Map<string, DiffState>(review?.changes.map((c) => [c.id, c.type]));
   const byNodeId = new Map<string, SceneNode>();
   const nodes: SceneNode[] = [];
@@ -102,8 +135,61 @@ export function buildScene(graph: ArchGraph, report?: ValidationReport | null, r
 
   const scene: Scene = { nodes, edges, byNodeId };
   if (review) scene.ghosts = ghostsOf(review, byNodeId);
+  if (live) applyLive(scene, live);
   return scene;
 }
+
+/**
+ * Health onto every element, traffic into edge weights and labels, and the
+ * calls production makes that the diagram does not draw as extra edges.
+ */
+function applyLive(scene: Scene, { incident, evidence }: SceneLive): void {
+  let busiest = 0;
+  for (const edge of scene.edges) busiest = Math.max(busiest, evidence?.traffic[edge.edge.id] ?? 0);
+
+  for (const sceneNode of scene.nodes) {
+    const report = incident.byId[sceneNode.node.id];
+    if (!report) continue;
+    sceneNode.health = report.health;
+    if (report.ready && report.ready.observed < report.ready.declared) {
+      sceneNode.liveBadge = `${report.ready.observed}/${report.ready.declared} ready`;
+    } else if (report.errorRate !== undefined && report.errorRate > 0 && report.health !== 'healthy') {
+      sceneNode.liveBadge = `${percent(report.errorRate)} err`;
+    }
+  }
+
+  for (const sceneEdge of scene.edges) {
+    const report = incident.byId[sceneEdge.edge.id];
+    if (!report) continue;
+    sceneEdge.health = report.health;
+    sceneEdge.weight = weightOf(report.rps, busiest);
+    const parts: string[] = [];
+    if (report.rps !== undefined) parts.push(formatRps(report.rps));
+    if (report.p99Ms !== undefined) parts.push(`p99 ${Math.round(report.p99Ms)} ms`);
+    if (report.errorRate !== undefined && report.errorRate > 0) parts.push(`${percent(report.errorRate)} err`);
+    if (parts.length > 0) sceneEdge.liveLabel = parts.join(' · ');
+  }
+
+  const extra: SceneEdge[] = [];
+  for (const call of evidence?.undiagrammed ?? []) {
+    const edge: ArchEdge = { id: `undiagrammed:${call.sourceId}:${call.targetId}`, source: call.sourceId, target: call.targetId, kind: 'sync' };
+    const sceneEdge = edgeBetween(edge, scene.byNodeId.get(call.sourceId), scene.byNodeId.get(call.targetId));
+    if (!sceneEdge) continue;
+    sceneEdge.undiagrammed = true;
+    sceneEdge.weight = weightOf(call.rps, busiest);
+    sceneEdge.liveLabel = call.rps !== undefined ? `not drawn · ${formatRps(call.rps)}` : 'not drawn';
+    extra.push(sceneEdge);
+  }
+  if (extra.length > 0) scene.ghosts = { nodes: [], edges: extra };
+}
+
+/** 1.5px for an idle call up to 6px for the busiest, on a square-root scale so quiet calls stay visible. */
+function weightOf(rps: number | undefined, busiest: number): number {
+  if (rps === undefined || busiest <= 0) return 1.5;
+  return 1.5 + 4.5 * Math.sqrt(Math.min(rps / busiest, 1));
+}
+
+const percent = (rate: number): string => `${Math.round(rate * 1000) / 10}%`;
 
 /**
  * Removed elements where they were approved. A node approved before layouts

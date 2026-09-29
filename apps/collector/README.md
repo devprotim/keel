@@ -7,7 +7,7 @@ Two sources, each pushed as its own observation set (`POST /api/rooms/:roomId/ob
 | Source | What it reports | How |
 |---|---|---|
 | `kubernetes` | Ready replicas per component, plus opt-in flags | Lists Deployments and StatefulSets every push interval |
-| `otel` | Who calls whom, requests per second, caller-side p99 latency, and requests per second per serving component | Receives OTLP/HTTP JSON traces and folds them into a service graph |
+| `otel` | Who calls whom, requests per second, caller-side p99 latency and error rate, and requests per second and error rate per serving component (errors from span status) | Receives OTLP/HTTP JSON traces and folds them into a service graph |
 
 What Keel does with these: rules run against the observed values where they differ from the drawn ones (a box that says 3 replicas while 1 is ready is a single point of failure), drift and unapproved-change checks compare the three, a call seen in traces but not drawn is flagged, and components with no traffic have their findings demoted. See `packages/shared/src/evidence.ts`.
 

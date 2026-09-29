@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, output, signal } from '@angular/core';
 import { formatAge, formatRps, type Finding, type ObservationSet, type Severity } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
 import { ChangeReviewService } from './change-review.service';
@@ -88,6 +88,8 @@ export class FindingsComponent {
 
     const changeReview = inject(ChangeReviewService);
     effect(() => changeReview.active.set(this.expanded() && this.tab() === 'changes'));
+    // The dock leaves the page in incident mode, and review mode with it.
+    inject(DestroyRef).onDestroy(() => changeReview.active.set(false));
   }
 
   showChanges(): void {

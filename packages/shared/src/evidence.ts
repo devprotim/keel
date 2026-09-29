@@ -25,6 +25,8 @@ export interface NodeObservation {
   hasDlq?: boolean;
   /** Requests (or messages) per second handled, averaged over the window. */
   rps?: number;
+  /** Share of the requests it handled that failed, 0 to 1. */
+  errorRate?: number;
 }
 
 /** One dependency as the running system reports it, keyed by both ends' refs. */
@@ -38,6 +40,8 @@ export interface EdgeObservation {
   /** Observed p99 latency of the call. */
   p99Ms?: number;
   rps?: number;
+  /** Share of calls that failed, as the caller saw them, 0 to 1. */
+  errorRate?: number;
 }
 
 /** Everything one source reported at one point in time. Replaced wholesale on each push. */
@@ -162,6 +166,7 @@ export function resolveEvidence(
         hasBackup: observation.hasBackup,
         hasDlq: observation.hasDlq,
         rps: observation.rps,
+        errorRate: observation.errorRate,
       });
       for (const node of targets) {
         matchedNodeIds.add(node.id);
@@ -182,6 +187,7 @@ export function resolveEvidence(
         circuitBreaker: observation.circuitBreaker,
         p99Ms: observation.p99Ms,
         rps: observation.rps,
+        errorRate: observation.errorRate,
       });
       for (const from of sources) {
         for (const to of targets) {

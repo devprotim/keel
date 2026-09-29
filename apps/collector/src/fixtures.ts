@@ -8,6 +8,8 @@ export interface SpanSpec {
   startMs?: number;
   durationMs: number;
   attributes?: Record<string, string>;
+  /** Mark the span failed (OTLP status code 2). */
+  error?: boolean;
 }
 
 export function otlpExport(spans: readonly SpanSpec[]): unknown {
@@ -32,6 +34,7 @@ export function otlpExport(spans: readonly SpanSpec[]): unknown {
               startTimeUnixNano: start.toString(),
               endTimeUnixNano: end.toString(),
               attributes: Object.entries(span.attributes ?? {}).map(([key, value]) => ({ key, value: { stringValue: value } })),
+              ...(span.error ? { status: { code: 2 } } : {}),
             };
           }),
         },

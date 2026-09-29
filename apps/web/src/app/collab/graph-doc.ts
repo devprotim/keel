@@ -1,5 +1,8 @@
 import {
   approveElement,
+  diffObservationSets,
+  eventsToDrop,
+  readObservationEvent,
   type ApprovedField,
   readEdge,
   readElementIntent,
@@ -14,6 +17,7 @@ import {
   type DesignIntent,
   type ElementIntent,
   type FieldDelta,
+  type ObservationEvent,
   type ObservationSet,
 } from '@keel/shared';
 import * as Y from 'yjs';
@@ -65,6 +69,11 @@ export class GraphDoc {
    */
   get observations(): Y.Map<unknown> {
     return this.doc.getMap<unknown>('observations');
+  }
+
+  /** What each observations push changed, oldest first. See incident.ts. */
+  get events(): Y.Array<unknown> {
+    return this.doc.getArray<unknown>('events');
   }
 
   /**
@@ -243,12 +252,44 @@ export class GraphDoc {
     return sets.sort((a, b) => a.source.localeCompare(b.source));
   }
 
-  /** Replace one source's observations, as the server's ingest route does. */
-  setObservations(set: ObservationSet): void {
+  /**
+   * Replace one source's observations and log what changed, exactly as the
+   * server's ingest route does (apps/server collab/room-reader.ts).
+   */
+  setObservations(set: ObservationSet, now: number = Date.now()): void {
     this.transact(() => {
+      const events = diffObservationSets(readObservationSet(this.observations.get(set.source)), set);
       this.observations.set(set.source, JSON.parse(JSON.stringify(set)) as unknown);
+      if (events.length > 0) this.events.push(events);
+      const drop = eventsToDrop(this.events.toArray(), now);
+      if (drop > 0) this.events.delete(0, drop);
     });
   }
+
+  /**
+   * The event log, skipping anything malformed.
+   *
+   * Cached until the log itself changes: every edit (each frame of a drag)
+   * notifies the same observer, and re-reading 500 events per frame for a log
+   * that did not move would be pure waste. Entries are never edited in place,
+   * only appended and trimmed from the front, so length and ends identify it.
+   */
+  toEvents(): readonly ObservationEvent[] {
+    const raw = this.events.toArray();
+    const key = [raw.length, raw[0], raw[raw.length - 1]] as const;
+    const cached = this.#eventsCache;
+    if (cached && cached.key[0] === key[0] && cached.key[1] === key[1] && cached.key[2] === key[2]) return cached.events;
+
+    const events: ObservationEvent[] = [];
+    for (const value of raw) {
+      const event = readObservationEvent(value);
+      if (event) events.push(event);
+    }
+    this.#eventsCache = { key, events };
+    return events;
+  }
+
+  #eventsCache: { key: readonly [number, unknown, unknown]; events: readonly ObservationEvent[] } | null = null;
 
   removeObservations(source: string): void {
     this.transact(() => {
@@ -467,12 +508,14 @@ export class GraphDoc {
     this.edges.observeDeep(handler);
     this.observations.observeDeep(handler);
     this.intent.observeDeep(handler);
+    this.events.observe(handler);
 
     return () => {
       this.nodes.unobserveDeep(handler);
       this.edges.unobserveDeep(handler);
       this.observations.unobserveDeep(handler);
       this.intent.unobserveDeep(handler);
+      this.events.unobserve(handler);
     };
   }
 }

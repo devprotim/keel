@@ -27,8 +27,22 @@ describe('ServiceGraph', () => {
     advance(10_000);
 
     const snapshot = g.snapshot();
-    expect(snapshot.edges).toEqual([{ source: 'checkout', target: 'pricing', rps: 10, p99Ms: 99 }]);
-    expect(snapshot.nodes).toEqual([{ ref: 'pricing', rps: 10 }]);
+    expect(snapshot.edges).toEqual([{ source: 'checkout', target: 'pricing', rps: 10, p99Ms: 99, errorRate: 0 }]);
+    expect(snapshot.nodes).toEqual([{ ref: 'pricing', rps: 10, errorRate: 0 }]);
+  });
+
+  it('reports the share of calls that failed, as the caller saw them and as the callee served them', () => {
+    const { g, feed, advance } = graph();
+    for (let i = 0; i < 20; i += 1) {
+      const [client, server] = call(i);
+      // A quarter of the calls fail on the caller's side; a tenth fail inside pricing.
+      feed([{ ...client!, error: i % 4 === 0 }, { ...server!, error: i % 10 === 0 }]);
+    }
+    advance(1000);
+
+    const snapshot = g.snapshot();
+    expect(snapshot.edges[0]?.errorRate).toBe(0.25);
+    expect(snapshot.nodes[0]?.errorRate).toBe(0.1);
   });
 
   it('pairs halves that arrive in either order, in separate exports', () => {
