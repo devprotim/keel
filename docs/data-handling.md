@@ -1,12 +1,12 @@
 # Data handling (draft)
 
-Status: **draft for review.** It describes what the code does today, as of 2026-09-28. The wording a user sees (a privacy page, a notice at sign-in) is not written yet, and the retention periods marked *to decide* are open questions, not commitments.
+Status: **draft for review.** It describes what the code does today, as of 2026-09-29. The wording a user sees (a privacy page, a notice at sign-in) is not written yet, and the retention periods marked *to decide* are open questions, not commitments.
 
 ## What Keel stores
 
 | Data | Where | How long | Who can read it |
 |---|---|---|---|
-| Diagram content: component names, kinds, technology, notes, runtime names, dependency settings | Postgres (`rooms`, `room_updates`) when `DATABASE_URL` is set, otherwise server memory until restart | Indefinitely. There is no deletion yet. *To decide.* | Anyone with the room link |
+| Diagram content: component names, kinds, technology, notes, runtime names, dependency settings | Postgres (`rooms`, `room_updates`) when `DATABASE_URL` is set, otherwise server memory until restart | Until an owner of its workspace deletes it, which removes the content and leaves only the room id and deletion time, so offline copies are not synced back. A link room has no one who may delete it, so it stays indefinitely. *Retention to decide.* | Anyone with the room link |
 | The same diagram, a local copy | The browser's IndexedDB (`keel:<roomId>`), for offline editing | Until the user clears site data | That browser's user |
 | Approvals (the baseline) | In the room document, with the approver's display name and time for each field, plus the element's name, notes and position at approval (so a rejected deletion can be restored) | As long as the room | Anyone with the room link |
 | Observations (replica counts, request rates, latencies, error rates, config flags) | In the room document, one set per source, replaced on each push | As long as the room. Sets older than 24h stop being applied but are not deleted. | Anyone with the room link |
@@ -39,7 +39,7 @@ Keel does not store passwords, email addresses, or OAuth access tokens. GitHub s
 
 ## Gaps before this can be published
 
-1. **Deletion.** There is no way to delete a room, or to ask for one to be deleted. The minimum is an operator procedure (a single `DELETE FROM rooms WHERE room_id = $1` cascades to the log). A user-facing control needs workspaces (task 7), so that "who may delete" has an answer.
+1. **Deletion.** Owners can delete a workspace room (task 7), and browsers drop their offline copy when they next open it. Nobody can delete a link room, since nobody owns one; asking for one to be deleted still needs an operator procedure (delete through `PostgresDocStore.delete`, which keeps the tombstone). Decide whether link rooms should be deletable, for example by moving them into a workspace first.
 2. **Retention.** Decide how long an untouched room lives. `rooms.updated_at` already records last activity, so a scheduled purge is straightforward once a period is chosen.
 3. **Backups.** Render Postgres backups are plan-dependent. Whatever the plan keeps is also how long "deleted" data survives. State it once chosen.
 4. **Approver names.** Approvals record a display name per field. For a guest that is a random name. For a signed-in user it is their GitHub name, which stays in the room after they leave. Decide whether that needs saying at sign-in.
