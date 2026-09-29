@@ -123,6 +123,24 @@ export const MIGRATIONS: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    id: 5,
+    name: 'workspace billing',
+    statements: [
+      // Written only by the Stripe webhook. No row is the free plan.
+      `CREATE TABLE workspace_billing (
+        workspace_id    uuid PRIMARY KEY REFERENCES workspaces (id) ON DELETE CASCADE,
+        plan            text NOT NULL CHECK (plan IN ('free', 'team', 'business')),
+        status          text NOT NULL,
+        customer_id     text NOT NULL,
+        subscription_id text,
+        item_id         text,
+        period_end      timestamptz,
+        updated_at      timestamptz NOT NULL DEFAULT now()
+      )`,
+      `CREATE INDEX workspace_billing_customer ON workspace_billing (customer_id)`,
+    ],
+  },
 ];
 
 /**

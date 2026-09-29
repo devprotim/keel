@@ -163,6 +163,13 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - New rooms show a first-run checklist (`panels/onboarding.component.ts`) in the inspector's corner, hidden while something is selected or in incident mode. Steps are read from the room where possible; "read a finding" and "shared" are per-browser milestones in `OnboardingService` (localStorage).
 - User-facing guide: `docs/getting-started.md`. Interview kit for the open human decisions: `docs/research/`.
 
+### Billing (`apps/server/src/billing/`)
+
+- Plans and limits in one table (`plans.ts`): free / team / business, limiting owners+editors (viewers are always free), diagrams per workspace, collector tokens, and PagerDuty. Link rooms are unlimited except PagerDuty. Prices are Stripe Price ids in config (`STRIPE_PRICE_TEAM`/`_BUSINESS`), never amounts in code. All `STRIPE_*` unset means billing off and `UNLIMITED` everywhere; half a config fails the boot.
+- `BillingService` answers limits (`limitsFor`, `limitsForRoom`); the access routes refuse with **402** and `overLimit()`'s body when moving a room in, accepting an editor invite, promoting a viewer, or issuing a collector token would exceed it; the alerts PUT refuses a new PagerDuty channel. `BILLING_PER_SEAT` charges per editor and `syncSeats` keeps the Stripe quantity in step when the editor count changes.
+- Stripe over REST, no SDK (`stripe.ts`): Checkout and portal sessions, subscription item quantity, and `verifyStripeSignature` (HMAC-SHA256 of `t.body`, 5-minute tolerance). The webhook route parses its body as a string (scoped content-type parser) so the signature checks the exact bytes. Only the webhook writes `workspace_billing` (migration 5); events are applied as state, not deltas, so redelivery and reordering are safe.
+- e2e runs billing against `e2e/fake-stripe.mjs` via `STRIPE_API_URL`. Docs: `docs/pricing/` (competitors, scenarios, Stripe setup).
+
 ## Routing
 
 The room id lives in the URL (`apps/web/src/app/app.routes.ts`). For a link room it *is* the sharing mechanism; a workspace room also needs membership, which comes from an `/invite/:token` link. `/` is the landing page, which lists a signed-in user's workspaces and their diagrams.

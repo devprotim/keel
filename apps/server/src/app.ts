@@ -21,6 +21,11 @@ import { registerAlertRoutes } from './alerts/routes.ts';
 import { MemoryAlertStore, type AlertStore } from './alerts/store.ts';
 import { AlertWorker } from './alerts/worker.ts';
 import { registerAuth } from './auth/routes.ts';
+import { registerBillingRoutes } from './billing/routes.ts';
+import { BillingService } from './billing/service.ts';
+import { overLimit } from './billing/plans.ts';
+import { MemoryBillingStore, type BillingStore } from './billing/store.ts';
+import { StripeRestApi, type StripeApi } from './billing/stripe.ts';
 import { TokenBucket } from './collab/rate-limit.ts';
 import { RoomManager } from './collab/room-manager.ts';
 import { recordObservations } from './collab/room-reader.ts';
@@ -175,6 +180,10 @@ export interface AppDeps {
   alertSend?: Send;
   /** Workspaces, membership and tokens. Defaults to memory. */
   accessStore?: AccessStore;
+  /** Which plan each workspace is on. Defaults to memory. */
+  billingStore?: BillingStore;
+  /** Overrides the Stripe client built from config. Tests pass a fake. */
+  stripeApi?: StripeApi;
 }
 
 export async function buildApp({
@@ -184,6 +193,8 @@ export async function buildApp({
   alertStore,
   alertSend,
   accessStore,
+  billingStore,
+  stripeApi,
 }: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     // Behind a proxy, request.ip is the proxy unless this is on, and every
@@ -277,8 +288,34 @@ export async function buildApp({
   const accessFor = async (request: FastifyRequest, roomId: string) =>
     roomAccess(access, roomId, (await auth.readUser(request))?.id ?? null);
 
+  const billing = new BillingService({
+    store: billingStore ?? new MemoryBillingStore(),
+    access,
+    stripe: stripeApi ?? (config.STRIPE_SECRET_KEY ? new StripeRestApi(config.STRIPE_SECRET_KEY, fetch, config.STRIPE_API_URL) : null),
+    config: {
+      prices: {
+        ...(config.STRIPE_PRICE_TEAM ? { team: config.STRIPE_PRICE_TEAM } : {}),
+        ...(config.STRIPE_PRICE_BUSINESS ? { business: config.STRIPE_PRICE_BUSINESS } : {}),
+      },
+      perSeat: config.BILLING_PER_SEAT,
+    },
+  });
+  registerBillingRoutes(app, {
+    billing,
+    access,
+    readUser: (request) => auth.readUser(request),
+    webhookSecret: config.STRIPE_WEBHOOK_SECRET ?? null,
+    publicUrl: config.PUBLIC_URL,
+    limit: perMinute(config.RATE_LIMIT_ACCESS_PER_MIN),
+    log: app.log,
+  });
+
   registerAccessRoutes(app, {
     store: access,
+    limits: (workspaceId) => billing.limitsFor(workspaceId),
+    onMembersChanged: (workspaceId) => {
+      billing.syncSeats(workspaceId).catch((error: unknown) => app.log.warn({ err: error }, 'seat sync failed'));
+    },
     readUser: (request) => auth.readUser(request),
     parseRoomId,
     disconnect: async (roomIds, code, reason) => {
@@ -321,6 +358,10 @@ export async function buildApp({
     authorize: async (request, roomId, need) => {
       const granted = await accessFor(request, roomId);
       return need === 'edit' ? granted.canEdit : granted.canView;
+    },
+    pagerDutyAllowed: async (roomId) => {
+      const { plan, limits } = await billing.limitsForRoom(roomId);
+      return limits.pagerDuty ? null : overLimit(plan, 'pagerDuty');
     },
     limit: perMinute(config.RATE_LIMIT_ALERTS_PER_MIN),
   });

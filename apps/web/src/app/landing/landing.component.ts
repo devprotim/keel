@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { AccessService, type WorkspaceDetail } from '../access/access.service';
+import { AccessService, describeError, type Billing, type PlanId, type WorkspaceDetail } from '../access/access.service';
 import { AuthService } from '../auth/auth.service';
 import { CollabService } from '../collab/collab.service';
 import { demoRoom } from '../core/demo';
@@ -35,8 +35,13 @@ export class LandingComponent {
   protected readonly features = FEATURES;
 
   protected readonly importErrors = signal<readonly string[]>([]);
-  /** A signed-in visitor's workspaces, each with its diagrams. */
-  protected readonly workspaces = signal<readonly WorkspaceDetail[]>([]);
+  /** A signed-in visitor's workspaces, each with its diagrams and plan. */
+  protected readonly workspaces = signal<readonly (WorkspaceDetail & { billing: Billing | null })[]>([]);
+  protected readonly billingError = signal<string | null>(null);
+  /** Back from Stripe Checkout. The plan changes when Stripe's webhook lands, usually within seconds. */
+  protected readonly billingReturn = toSignal(
+    inject(ActivatedRoute).queryParamMap.pipe(map((params) => params.get('billing'))),
+  );
 
   constructor() {
     void this.auth.refresh();
@@ -44,14 +49,58 @@ export class LandingComponent {
       if (this.auth.user()) untracked(() => void this.loadWorkspaces());
       else this.workspaces.set([]);
     });
+
+    // After Checkout, look again once Stripe has had a moment to confirm.
+    effect((onCleanup) => {
+      if (this.billingReturn() !== 'success' || !this.auth.user()) return;
+      const timer = setTimeout(() => void this.loadWorkspaces(), 3000);
+      onCleanup(() => clearTimeout(timer));
+    });
   }
 
   private async loadWorkspaces(): Promise<void> {
     try {
       const summaries = await this.access.workspaces();
-      this.workspaces.set(await Promise.all(summaries.map((w) => this.access.workspace(w.id))));
+      this.workspaces.set(
+        await Promise.all(
+          summaries.map(async (w) => ({
+            ...(await this.access.workspace(w.id)),
+            billing: await this.access.billing(w.id).catch(() => null),
+          })),
+        ),
+      );
     } catch {
       // The list is a convenience; the landing page works without it.
+    }
+  }
+
+  /** "2 of 3 editors · 1 of 3 diagrams", for a plan's limited dimensions. */
+  protected usageLine(billing: Billing | null): string {
+    if (!billing?.enabled) return '';
+    const of = (used: number, limit: number | null, noun: string) => (limit === null ? `${used} ${noun}` : `${used} of ${limit} ${noun}`);
+    return [
+      of(billing.usage.editors, billing.plan.limits.editors, 'editors'),
+      `${billing.usage.viewers} viewers`,
+      of(billing.usage.rooms, billing.plan.limits.rooms, 'diagrams'),
+    ].join(' · ');
+  }
+
+  protected async upgrade(workspaceId: string, plan: PlanId): Promise<void> {
+    if (plan === 'free') return;
+    this.billingError.set(null);
+    try {
+      location.assign((await this.access.checkout(workspaceId, plan)).url);
+    } catch (error) {
+      this.billingError.set(describeError(error, 'Could not open checkout.'));
+    }
+  }
+
+  protected async manageBilling(workspaceId: string): Promise<void> {
+    this.billingError.set(null);
+    try {
+      location.assign((await this.access.billingPortal(workspaceId)).url);
+    } catch (error) {
+      this.billingError.set(describeError(error, 'Could not open billing.'));
     }
   }
 
