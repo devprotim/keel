@@ -4,13 +4,17 @@ import {
   eventsToDrop,
   readEdge,
   readElementIntent,
+  readFindingLabel,
   readNode,
   readObservationSet,
+  readRuleSetting,
   type ArchEdge,
   type ArchGraph,
   type ArchNode,
   type DesignIntent,
+  type FindingLabels,
   type ObservationSet,
+  type RuleSettings,
 } from '@keel/shared';
 import * as Y from 'yjs';
 
@@ -18,6 +22,9 @@ export interface RoomContents {
   graph: ArchGraph;
   observations: ObservationSet[];
   intent: DesignIntent;
+  /** The room's tuning, so alerts respect the same mutes and dismissals the canvas does. */
+  ruleSettings: RuleSettings;
+  labels: FindingLabels;
 }
 
 /**
@@ -47,10 +54,21 @@ export function readRoom(doc: Y.Doc): RoomContents {
     if (element) intent[id] = element;
   }
 
+  const ruleSettings: RuleSettings = {};
+  for (const [id, value] of doc.getMap(DOC_MAPS.ruleSettings).entries()) {
+    const setting = readRuleSetting(value);
+    if (setting) ruleSettings[id] = setting;
+  }
+  const labels: FindingLabels = {};
+  for (const [key, value] of doc.getMap(DOC_MAPS.labels).entries()) {
+    const label = readFindingLabel(value);
+    if (label) labels[key] = label;
+  }
+
   nodes.sort((a, b) => a.id.localeCompare(b.id));
   edges.sort((a, b) => a.id.localeCompare(b.id));
   observations.sort((a, b) => a.source.localeCompare(b.source));
-  return { graph: { nodes, edges }, observations, intent };
+  return { graph: { nodes, edges }, observations, intent, ruleSettings, labels };
 }
 
 /**

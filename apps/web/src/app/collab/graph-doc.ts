@@ -2,7 +2,10 @@ import {
   approveElement,
   diffObservationSets,
   eventsToDrop,
+  readFindingLabel,
+  readFindingRecord,
   readObservationEvent,
+  readRuleSetting,
   type ApprovedField,
   readEdge,
   readElementIntent,
@@ -17,8 +20,13 @@ import {
   type DesignIntent,
   type ElementIntent,
   type FieldDelta,
+  type FindingHistory,
+  type FindingLabel,
+  type FindingLabels,
   type ObservationEvent,
   type ObservationSet,
+  type RuleSetting,
+  type RuleSettings,
 } from '@keel/shared';
 import * as Y from 'yjs';
 
@@ -71,6 +79,21 @@ export class GraphDoc {
     return this.doc.getMap<unknown>('observations');
   }
 
+  /** Per-room severity overrides and mutes, one plain value per rule id. See tuning.ts. */
+  get ruleSettings(): Y.Map<unknown> {
+    return this.doc.getMap<unknown>('ruleSettings');
+  }
+
+  /** Real-or-noise labels, one plain value per finding key. */
+  get labels(): Y.Map<unknown> {
+    return this.doc.getMap<unknown>('labels');
+  }
+
+  /** When each finding opened and resolved, one plain value per finding key. */
+  get findingHistory(): Y.Map<unknown> {
+    return this.doc.getMap<unknown>('findingHistory');
+  }
+
   /** What each observations push changed, oldest first. See incident.ts. */
   get events(): Y.Array<unknown> {
     return this.doc.getArray<unknown>('events');
@@ -107,7 +130,9 @@ export class GraphDoc {
     // Intent is in scope so "accept the observed value", which edits a field
     // and approves it in one transaction, undoes as one step rather than
     // leaving an approval behind for a value that is gone.
-    return new Y.UndoManager([this.nodes, this.edges, this.intent], {
+    // Tuning is in scope too, so a finding marked noise by mistake is one Ctrl+Z
+    // away. The finding history is not: it is bookkeeping, not an edit.
+    return new Y.UndoManager([this.nodes, this.edges, this.intent, this.ruleSettings, this.labels], {
       trackedOrigins: new Set([LOCAL_ORIGIN]),
       // Edits within this window coalesce into one undo step, so dragging a box
       // is one undo rather than one per animation frame. Tests pass 0 to get
@@ -294,6 +319,62 @@ export class GraphDoc {
   removeObservations(source: string): void {
     this.transact(() => {
       this.observations.delete(source);
+    });
+  }
+
+  // --- Tuning -----------------------------------------------------------------
+
+  toRuleSettings(): RuleSettings {
+    const settings: RuleSettings = {};
+    for (const [id, value] of this.ruleSettings.entries()) {
+      const setting = readRuleSetting(value);
+      if (setting) settings[id] = setting;
+    }
+    return settings;
+  }
+
+  /** Set or clear one rule's setting. An empty setting clears it. */
+  setRuleSetting(ruleId: string, setting: RuleSetting): void {
+    this.transact(() => {
+      if (!setting.severity && !setting.muted) this.ruleSettings.delete(ruleId);
+      else this.ruleSettings.set(ruleId, { ...setting });
+    });
+  }
+
+  toLabels(): FindingLabels {
+    const labels: FindingLabels = {};
+    for (const [key, value] of this.labels.entries()) {
+      const label = readFindingLabel(value);
+      if (label) labels[key] = label;
+    }
+    return labels;
+  }
+
+  /** Label a finding real or noise, or clear its label with null. */
+  setLabel(key: string, label: FindingLabel | null): void {
+    this.transact(() => {
+      if (label) this.labels.set(key, { ...label });
+      else this.labels.delete(key);
+    });
+  }
+
+  toFindingHistory(): FindingHistory {
+    const history: FindingHistory = {};
+    for (const [key, value] of this.findingHistory.entries()) {
+      const record = readFindingRecord(value);
+      if (record) history[key] = record;
+    }
+    return history;
+  }
+
+  /**
+   * Apply a `reconcileHistory` result. Not tagged local: it is bookkeeping every
+   * client does, never an edit of this user's to undo.
+   */
+  writeFindingHistory({ set, drop }: { set: FindingHistory; drop: readonly string[] }): void {
+    this.doc.transact(() => {
+      for (const [key, record] of Object.entries(set)) this.findingHistory.set(key, { ...record });
+      for (const key of drop) this.findingHistory.delete(key);
     });
   }
 
@@ -509,6 +590,9 @@ export class GraphDoc {
     this.observations.observeDeep(handler);
     this.intent.observeDeep(handler);
     this.events.observe(handler);
+    this.ruleSettings.observe(handler);
+    this.labels.observe(handler);
+    this.findingHistory.observe(handler);
 
     return () => {
       this.nodes.unobserveDeep(handler);
@@ -516,6 +600,9 @@ export class GraphDoc {
       this.observations.unobserveDeep(handler);
       this.intent.unobserveDeep(handler);
       this.events.unobserve(handler);
+      this.ruleSettings.unobserve(handler);
+      this.labels.unobserve(handler);
+      this.findingHistory.unobserve(handler);
     };
   }
 }

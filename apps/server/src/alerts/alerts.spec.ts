@@ -98,6 +98,20 @@ describe('drift alerts', () => {
     expect(sent.length).toBe(before);
   });
 
+  it('stays quiet about a finding the room labelled noise, or a rule it muted', async () => {
+    const doc = new Y.Doc();
+    const updates: Uint8Array[] = [];
+    doc.on('update', (u: Uint8Array) => updates.push(u));
+    doc.getMap('labels').set('observed-drift|orders|', { verdict: 'noise', ruleId: 'observed-drift', by: 'dev', at: '2026-09-29T00:00:00Z' });
+    doc.getMap('ruleSettings').set('spof-single-instance', { muted: true });
+    for (const update of updates) await docs.appendUpdate(ROOM, update);
+
+    await configure({ slack: { webhookUrl: SLACK } });
+    await push(1);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(sent.map((s) => s.event.alert.ruleId)).toEqual([]);
+  });
+
   it('resolves once production matches again', async () => {
     await configure({ slack: { webhookUrl: SLACK }, resolveAfterMinutes: 0 });
     await push(1);

@@ -101,8 +101,9 @@ export class AlertWorker {
     if (!config) return null;
 
     const now = this.#now();
-    const { graph, observations, intent } = await rooms.read(roomId, readRoom);
-    const report = validate(graph, { observations, intent, now });
+    const { graph, observations, intent, ruleSettings, labels } = await rooms.read(roomId, readRoom);
+    // Tuned like the canvas: a muted rule or a finding labelled noise never pages.
+    const report = validate(graph, { observations, intent, now, ruleSettings, labels });
 
     const result = await evaluateAlerts({
       roomId,

@@ -31,6 +31,12 @@ export const DOC_MAPS = {
    * EVENT_RETENTION_MS (incident.ts).
    */
   events: 'events',
+  /** One plain RuleSetting per rule id. */
+  ruleSettings: 'ruleSettings',
+  /** One plain FindingLabel per finding key. */
+  labels: 'labels',
+  /** One plain FindingRecord per finding key: when it opened and resolved. */
+  findingHistory: 'findingHistory',
 } as const;
 
 /** The one method the readers need. `Y.Map` has it. */
