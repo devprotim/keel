@@ -1,5 +1,5 @@
 import type { EdgeObservation, NodeObservation, ObservationSet } from './evidence.js';
-import { intentFieldsFor, type ApprovedField, type ElementIntent } from './intent.js';
+import { intentFieldsFor, readLayout, type ApprovedField, type ElementIntent } from './intent.js';
 import { EDGE_KINDS, NODE_KINDS, type ArchEdge, type ArchNode, type EdgeKind, type NodeKind } from './types.js';
 
 /**
@@ -23,7 +23,7 @@ export const DOC_MAPS = {
   edges: 'edges',
   /** One plain ObservationSet per source. */
   observations: 'observations',
-  /** One nested map per approved element: `_kind`, `_label`, and one key per field. */
+  /** One nested map per approved element: `_kind`, `_label`, `_layout`, and one key per field. */
   intent: 'intent',
 } as const;
 
@@ -142,7 +142,10 @@ export function readElementIntent(value: FieldReader): ElementIntent | null {
       at: str(approved.at) ?? '',
     };
   }
-  return { kind, label: str(value.get('_label')) ?? '', fields };
+  const element: ElementIntent = { kind, label: str(value.get('_label')) ?? '', fields };
+  const layout = readLayout(value.get('_layout'));
+  if (layout) element.layout = layout;
+  return element;
 }
 
 const str = (value: unknown): string | null => (typeof value === 'string' ? value : null);

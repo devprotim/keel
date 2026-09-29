@@ -502,3 +502,127 @@ describe('GraphDoc evidence and intent', () => {
     expect(doc.toGraph().nodes[0]?.ref).toBe('orders-svc');
   });
 });
+
+describe('GraphDoc review', () => {
+  const at = '2026-09-29T12:00:00Z';
+
+  /** a -> b -> c, approved, with a timeout on each edge. */
+  function approvedChain(): GraphDoc {
+    const doc = new GraphDoc();
+    doc.addNode(node('a', { replicas: 3, x: 40, y: 60 }));
+    doc.addNode(node('b', { kind: 'datastore', hasBackup: true, x: 300, y: 60 }));
+    doc.addNode(node('c', { x: 560, y: 60 }));
+    doc.addEdge({ ...edge('ab', 'a', 'b'), timeoutMs: 500 });
+    doc.addEdge({ ...edge('bc', 'b', 'c'), timeoutMs: 800 });
+    doc.approveAll('ada', at);
+    return doc;
+  }
+
+  it('approves one field and leaves the others pending', () => {
+    const doc = approvedChain();
+    doc.updateNode('a', { replicas: 1, critical: true });
+
+    doc.approve(['a'], 'grace', at, ['replicas']);
+
+    const approved = doc.toIntent()['a']!;
+    expect(approved.fields['replicas']).toEqual({ value: 1, previous: 3, by: 'grace', at });
+    expect(approved.fields['critical']).toMatchObject({ value: false, by: 'ada' });
+  });
+
+  it('rejects one field, putting only that one back', () => {
+    const doc = approvedChain();
+    doc.updateNode('a', { replicas: 1, critical: true });
+
+    doc.reject([{ id: 'a', fields: ['replicas'] }]);
+
+    expect(doc.toGraph().nodes.find((n) => n.id === 'a')).toMatchObject({ replicas: 3, critical: true });
+  });
+
+  it('rejects every unapproved field when none is named, clearing what was cleared', () => {
+    const doc = approvedChain();
+    doc.updateNode('b', { hasBackup: undefined });
+    doc.updateEdge('ab', { timeoutMs: undefined, retries: 4, circuitBreaker: true });
+
+    doc.reject([{ id: 'b' }, { id: 'ab' }]);
+
+    const graph = doc.toGraph();
+    expect(graph.nodes.find((n) => n.id === 'b')?.hasBackup).toBe(true);
+    const ab = graph.edges.find((e) => e.id === 'ab')!;
+    expect(ab.timeoutMs).toBe(500);
+    expect(ab).not.toHaveProperty('retries');
+    expect(ab).not.toHaveProperty('circuitBreaker');
+  });
+
+  it('rejects an addition by deleting it, with its edges', () => {
+    const doc = approvedChain();
+    doc.addNode(node('d'));
+    doc.addEdge(edge('cd', 'c', 'd'));
+
+    doc.reject([{ id: 'd' }]);
+
+    expect(doc.toGraph().nodes.map((n) => n.id)).toEqual(['a', 'b', 'c']);
+    expect(doc.toGraph().edges.map((e) => e.id)).toEqual(['ab', 'bc']);
+  });
+
+  it('rejects a deleted node by rebuilding it where it was, with the edges the delete took', () => {
+    const doc = approvedChain();
+    doc.removeSelection(['b']);
+    expect(doc.toGraph().edges).toEqual([]);
+
+    doc.reject([{ id: 'b' }]);
+
+    const graph = doc.toGraph();
+    expect(graph.nodes.find((n) => n.id === 'b')).toMatchObject({ kind: 'datastore', hasBackup: true, x: 300, y: 60, label: 'b' });
+    expect(graph.edges.map((e) => [e.id, e.timeoutMs])).toEqual([
+      ['ab', 500],
+      ['bc', 800],
+    ]);
+  });
+
+  it('rejects a deleted edge by bringing back the deleted node it needs', () => {
+    const doc = approvedChain();
+    doc.removeSelection(['c']);
+
+    doc.reject([{ id: 'bc' }]);
+
+    expect(doc.toGraph().nodes.map((n) => n.id)).toEqual(['a', 'b', 'c']);
+    expect(doc.toGraph().edges.map((e) => e.id)).toEqual(['ab', 'bc']);
+  });
+
+  it('approves a node removal together with the removals of its edges', () => {
+    const doc = approvedChain();
+    doc.removeSelection(['b']);
+
+    doc.approve(['b'], 'grace', at);
+
+    expect(Object.keys(doc.toIntent()).sort()).toEqual(['a', 'c']);
+  });
+
+  it('rejects as one undo step', () => {
+    const doc = approvedChain();
+    doc.removeSelection(['b']);
+    const undo = doc.createUndoManager(0);
+
+    doc.reject([{ id: 'b' }]);
+    undo.undo();
+
+    expect(doc.toGraph().nodes.map((n) => n.id)).toEqual(['a', 'c']);
+    expect(doc.toGraph().edges).toEqual([]);
+  });
+
+  it('never points an edge at a component that is gone', () => {
+    const doc = approvedChain();
+    doc.addNode(node('b2', { kind: 'datastore' }));
+    doc.updateEdge('ab', { target: 'b2' });
+    doc.removeSelection(['b']);
+
+    doc.reject([{ id: 'ab', fields: ['target'] }]);
+
+    expect(doc.toGraph().edges.find((e) => e.id === 'ab')?.target).toBe('b2');
+  });
+
+  it('keeps where an element was drawn at approval, for a later restore', () => {
+    const doc = approvedChain();
+    expect(doc.toIntent()['b']?.layout).toMatchObject({ label: 'b', x: 300, y: 60 });
+  });
+});

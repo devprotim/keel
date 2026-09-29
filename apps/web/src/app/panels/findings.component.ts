@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, output, signal } from '@angular/core';
 import { formatAge, formatRps, type Finding, type ObservationSet, type Severity } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
+import { ChangeReviewService } from './change-review.service';
+import { ChangesComponent } from './changes.component';
 import { ReviewService } from './review.service';
 
 interface FindingRow {
@@ -11,6 +13,7 @@ interface FindingRow {
 @Component({
   selector: 'keel-findings',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ChangesComponent],
   templateUrl: './findings.component.html',
   styleUrl: './findings.component.scss',
 })
@@ -27,6 +30,13 @@ export class FindingsComponent {
    * there is something to actually read.
    */
   readonly expanded = signal(false);
+
+  /**
+   * Findings, or the changes since approval. Showing the changes is review
+   * mode: the canvas swaps severity for the diff while it is open.
+   */
+  readonly tab = signal<'findings' | 'changes'>('findings');
+  readonly changeCount = computed(() => this.collab.changes().length);
 
   readonly report = computed(() => this.collab.report());
   readonly graphEmpty = computed(() => this.collab.graph().nodes.length === 0);
@@ -75,6 +85,14 @@ export class FindingsComponent {
 
   constructor() {
     void this.review.loadModels();
+
+    const changeReview = inject(ChangeReviewService);
+    effect(() => changeReview.active.set(this.expanded() && this.tab() === 'changes'));
+  }
+
+  showChanges(): void {
+    this.tab.set('changes');
+    this.expanded.set(true);
   }
 
   reveal(row: FindingRow): void {

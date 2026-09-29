@@ -3,6 +3,7 @@ import {
   applyEvidence,
   emptyGraph,
   hasUnapprovedChanges,
+  reviewChanges,
   validate,
   type ArchEdge,
   type ArchGraph,
@@ -10,6 +11,7 @@ import {
   type DesignIntent,
   type FieldDelta,
   type ObservationSet,
+  type ReviewChange,
   type ValidationReport,
 } from '@keel/shared';
 import { IndexeddbPersistence, clearDocument } from 'y-indexeddb';
@@ -85,6 +87,8 @@ export class CollabService {
   readonly intent = this.#intent.asReadonly();
   readonly hasBaseline = computed(() => Object.keys(this.#intent()).length > 0);
   readonly hasUnapprovedChanges = computed(() => hasUnapprovedChanges(this.#graph(), this.#intent()));
+  /** The diagram's changes since approval, field by field. Empty with no baseline. */
+  readonly changes = computed<readonly ReviewChange[]>(() => reviewChanges(this.#graph(), this.#intent()));
   readonly peers = this.#peers.asReadonly();
   /**
    * Connection state, derived from two independent signals.
@@ -363,6 +367,18 @@ export class CollabService {
   approve(ids: readonly string[]): void {
     if (this.#readOnly()) return;
     this.#step(() => this.#doc.approve(ids, this.#displayName()));
+  }
+
+  /** Approve only these fields of one element, as review mode does per field. */
+  approveFields(id: string, fields: readonly string[]): void {
+    if (this.#readOnly()) return;
+    this.#step(() => this.#doc.approve([id], this.#displayName(), undefined, fields));
+  }
+
+  /** Put elements (or some of their fields) back to what was approved. See GraphDoc.reject. */
+  reject(targets: readonly { id: string; fields?: readonly string[] }[]): void {
+    if (this.#readOnly()) return;
+    this.#step(() => this.#doc.reject(targets));
   }
 
   approveAll(): void {

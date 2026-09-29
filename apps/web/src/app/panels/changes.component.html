@@ -1,0 +1,122 @@
+@if (!hasBaseline()) {
+  <div class="empty">
+    <p>Nothing approved yet, so there is nothing to compare against.</p>
+    <p>Approve the design once, and every change after that shows up here to approve or reject.</p>
+    @if (!readOnly() && !graphEmpty()) {
+      <button type="button" class="keel-btn keel-btn--primary" (click)="approveAll()">Approve design</button>
+    }
+  </div>
+} @else if (rows().length === 0) {
+  <div class="empty">
+    <p class="clean">Matches the approved design.</p>
+    <p>Changes to how components run or connect show up here. Moving or renaming a box does not count.</p>
+  </div>
+} @else {
+  <div class="toolbar">
+    <span class="legend" aria-label="Changes by type">
+      @if (counts().removed > 0) {
+        <span class="legend-item"><span class="mark removed" aria-hidden="true">−</span>{{ counts().removed }} removed</span>
+      }
+      @if (counts().added > 0) {
+        <span class="legend-item"><span class="mark added" aria-hidden="true">+</span>{{ counts().added }} added</span>
+      }
+      @if (counts().changed > 0) {
+        <span class="legend-item"><span class="mark changed" aria-hidden="true">~</span>{{ counts().changed }} changed</span>
+      }
+    </span>
+    @if (!readOnly()) {
+      <button type="button" class="keel-btn keel-btn--ghost small" (click)="rejectAll()">Reject all</button>
+      <button type="button" class="keel-btn small" (click)="approveAll()">Approve all</button>
+    }
+  </div>
+
+  <ul class="changes" aria-label="Changes since approval">
+    @for (row of rows(); track row.change.id) {
+      <li class="change {{ row.change.type }}">
+        <button
+          type="button"
+          class="change-head"
+          [disabled]="row.change.type === 'removed'"
+          [title]="row.change.type === 'removed' ? 'Shown faded on the canvas where it was' : 'Show on the canvas'"
+          (click)="reveal(row.change)"
+        >
+          <span class="mark {{ row.change.type }}" aria-hidden="true">{{
+            row.change.type === 'added' ? '+' : row.change.type === 'removed' ? '−' : '~'
+          }}</span>
+          <span class="change-label">{{ row.change.label }}</span>
+          <span class="change-what">{{ row.what }}</span>
+        </button>
+
+        @if (row.summary) {
+          <p class="summary">{{ row.summary }}</p>
+        }
+
+        @if (row.change.type === 'changed') {
+          <ul class="fields">
+            @for (field of row.fields; track field.field) {
+              <li class="field">
+                <span class="field-name">{{ field.label }}</span>
+                <span class="field-diff">
+                  <del class="was" [attr.aria-label]="'approved ' + field.approved">{{ field.approved }}</del>
+                  <span aria-hidden="true">→</span>
+                  <ins class="now" [attr.aria-label]="'now ' + field.current">{{ field.current }}</ins>
+                </span>
+                @if (!readOnly() && row.fields.length > 1) {
+                  <span class="field-actions">
+                    <button
+                      type="button"
+                      class="keel-btn keel-btn--ghost tiny"
+                      [disabled]="field.blocked !== null"
+                      [title]="field.blocked ?? 'Put ' + field.label + ' back to ' + field.approved"
+                      [attr.aria-label]="'Revert ' + field.label + ' on ' + row.change.label"
+                      (click)="reject(row.change, field.field)"
+                    >
+                      Revert
+                    </button>
+                    <button
+                      type="button"
+                      class="keel-btn keel-btn--ghost tiny approve"
+                      [attr.aria-label]="'Approve ' + field.label + ' on ' + row.change.label"
+                      (click)="approve(row.change, field.field)"
+                    >
+                      Approve
+                    </button>
+                  </span>
+                }
+                @if (field.approvedBy) {
+                  <span class="field-meta">{{ field.approvedBy }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+
+        @if (row.change.blocked) {
+          <p class="blocked">{{ row.change.blocked }}</p>
+        }
+
+        @if (!readOnly()) {
+          <div class="change-actions">
+            <button
+              type="button"
+              class="keel-btn small"
+              [disabled]="!!row.change.blocked"
+              [attr.aria-label]="rejectLabel(row.change) + ' ' + row.change.label"
+              (click)="reject(row.change)"
+            >
+              {{ rejectLabel(row.change) }}
+            </button>
+            <button
+              type="button"
+              class="keel-btn small approve"
+              [attr.aria-label]="approveLabel(row.change) + ' ' + row.change.label"
+              (click)="approve(row.change)"
+            >
+              {{ approveLabel(row.change) }}
+            </button>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}
