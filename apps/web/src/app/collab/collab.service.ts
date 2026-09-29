@@ -102,7 +102,10 @@ export class CollabService {
   readonly #avatarUrl = signal<string | null>(null);
   readonly #roomId = signal<string | null>(null);
   /** Diagrams waiting for their room to open, keyed by room id. See queueImport. */
-  readonly #pendingImports = new Map<string, { graph: ArchGraph; intent: DesignIntent }>();
+  readonly #pendingImports = new Map<
+    string,
+    { graph: ArchGraph; intent: DesignIntent; observations: readonly ObservationSet[] }
+  >();
   readonly #importCount = signal(0);
 
   readonly graph = this.#graph.asReadonly();
@@ -304,6 +307,7 @@ export class CollabService {
     if (pending) {
       this.#pendingImports.delete(roomId);
       this.importDiagram(pending.graph, pending.intent);
+      for (const set of pending.observations) this.importObservations(set);
     }
   }
 
@@ -427,8 +431,13 @@ export class CollabService {
    * there is nothing on the server for the import to conflict with, and the
    * CRDT merges it upward either way.
    */
-  queueImport(roomId: string, graph: ArchGraph, intent: DesignIntent = {}): void {
-    this.#pendingImports.set(roomId, { graph, intent });
+  queueImport(
+    roomId: string,
+    graph: ArchGraph,
+    intent: DesignIntent = {},
+    observations: readonly ObservationSet[] = [],
+  ): void {
+    this.#pendingImports.set(roomId, { graph, intent, observations });
   }
 
   // --- Evidence and intent -----------------------------------------------

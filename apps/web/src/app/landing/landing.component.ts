@@ -1,10 +1,14 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 import { AccessService, type WorkspaceDetail } from '../access/access.service';
 import { AuthService } from '../auth/auth.service';
 import { CollabService } from '../collab/collab.service';
+import { demoRoom } from '../core/demo';
 import { readDiagramFile, takePickedFile } from '../core/diagram-import';
 import { newRoomId } from '../core/room-id';
+import { FEATURES, pitchFor } from './pitches';
 
 /**
  * The front door. Shown at `/` instead of minting a room immediately, so a
@@ -24,6 +28,11 @@ export class LandingComponent {
   private readonly collab = inject(CollabService);
 
   private readonly access = inject(AccessService);
+
+  /** `?pitch=<id>` previews another message on the real page; see pitches.ts. */
+  private readonly pitchParam = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((params) => params.get('pitch'))));
+  protected readonly pitch = computed(() => pitchFor(this.pitchParam()));
+  protected readonly features = FEATURES;
 
   protected readonly importErrors = signal<readonly string[]>([]);
   /** A signed-in visitor's workspaces, each with its diagrams. */
@@ -61,6 +70,17 @@ export class LandingComponent {
    */
   protected startDiagram(): void {
     void this.router.navigate(['/', newRoomId()]);
+  }
+
+  /**
+   * The worked example with production reporting in, in a room of its own.
+   * See core/demo.ts for the story it tells.
+   */
+  protected openDemo(): void {
+    const roomId = newRoomId();
+    const demo = demoRoom();
+    this.collab.queueImport(roomId, demo.graph, demo.intent, demo.observations);
+    void this.router.navigate(['/', roomId]);
   }
 
   /**

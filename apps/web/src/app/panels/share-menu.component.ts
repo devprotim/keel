@@ -20,6 +20,7 @@ import {
 } from '../access/access.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { OnboardingService } from './onboarding.service';
 
 const NEW_WORKSPACE = '__new__';
 
@@ -53,6 +54,7 @@ export class ShareMenuComponent {
 
   private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
 
+  private readonly onboarding = inject(OnboardingService);
   readonly open = signal(false);
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
@@ -84,6 +86,7 @@ export class ShareMenuComponent {
       return;
     }
     this.open.set(true);
+    this.onboarding.mark('shared');
     this.error.set(null);
     this.inviteUrl.set(null);
     this.newSecret.set(null);

@@ -156,6 +156,13 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - Room ids are capabilities, so request logs carry a SHA-256 tag instead (`redactRoomIds`/`roomTag` in `app.ts`); don't log a raw `roomId`.
 - `docs/data-handling.md` is the draft inventory of what is stored and where; keep it in step when adding a stored or transmitted field.
 
+### Landing and onboarding
+
+- The landing page's words live in `apps/web/src/app/landing/pitches.ts`: three message directions, `CHOSEN_PITCH` picks the live one (a human decision, see `docs/marketing/landing.md`), and `?pitch=<id>` previews any of them.
+- "See it on an example" queues `demoRoom()` (`core/demo.ts`): the example graph, an approved baseline, and observation sets replayed oldest first so the timeline shows the scale-down behind the story. `CollabService.queueImport` takes observations for this.
+- New rooms show a first-run checklist (`panels/onboarding.component.ts`) in the inspector's corner, hidden while something is selected or in incident mode. Steps are read from the room where possible; "read a finding" and "shared" are per-browser milestones in `OnboardingService` (localStorage).
+- User-facing guide: `docs/getting-started.md`. Interview kit for the open human decisions: `docs/research/`.
+
 ## Routing
 
 The room id lives in the URL (`apps/web/src/app/app.routes.ts`). For a link room it *is* the sharing mechanism; a workspace room also needs membership, which comes from an `/invite/:token` link. `/` is the landing page, which lists a signed-in user's workspaces and their diagrams.

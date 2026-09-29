@@ -13,6 +13,7 @@ import { CollabService } from '../collab/collab.service';
 import { ChangeReviewService } from './change-review.service';
 import { ChangesComponent } from './changes.component';
 import { RulesComponent } from './rules.component';
+import { OnboardingService } from './onboarding.service';
 import { ReviewService } from './review.service';
 
 interface FindingRow {
@@ -30,6 +31,7 @@ interface FindingRow {
 export class FindingsComponent {
   private readonly collab = inject(CollabService);
   protected readonly review = inject(ReviewService);
+  private readonly onboarding = inject(OnboardingService);
 
   readonly revealed = output<string>();
 
@@ -110,6 +112,7 @@ export class FindingsComponent {
   }
 
   reveal(row: FindingRow): void {
+    this.onboarding.mark('read-finding');
     if (row.targetId) this.revealed.emit(row.targetId);
   }
 
