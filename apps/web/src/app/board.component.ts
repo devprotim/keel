@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { EDGE_KINDS, NODE_KINDS, type EdgeKind, type NodeKind } from '@keel/shared';
+import { AccessService, type RoomAccess } from './access/access.service';
 import { AuthService } from './auth/auth.service';
 import { CanvasComponent, NODE_DRAG_MIME } from './canvas/canvas.component';
 import { CollabService } from './collab/collab.service';
@@ -21,6 +22,7 @@ import { AlertsMenuComponent } from './panels/alerts-menu.component';
 import { ExportMenuComponent } from './panels/export-menu.component';
 import { FindingsComponent } from './panels/findings.component';
 import { InspectorComponent } from './panels/inspector.component';
+import { ShareMenuComponent } from './panels/share-menu.component';
 
 /**
  * The board: one room, one diagram, chrome floating over a full-bleed canvas.
@@ -36,13 +38,24 @@ import { InspectorComponent } from './panels/inspector.component';
 @Component({
   selector: 'keel-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AlertsMenuComponent, CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent],
+  imports: [AlertsMenuComponent, CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent, ShareMenuComponent],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss',
 })
 export class BoardComponent {
   protected readonly collab = inject(CollabService);
   protected readonly auth = inject(AuthService);
+  private readonly accessApi = inject(AccessService);
+
+  /**
+   * What this browser may do here, from the server. Null until the first
+   * answer, and left null when the server can't be reached: the room then
+   * opens from its offline copy as it always has, and the socket, which the
+   * server authorises on its own, decides the rest once it connects.
+   */
+  readonly access = signal<RoomAccess | null>(null);
+  readonly deleted = computed(() => this.access()?.deleted === true || this.collab.closedBy() === 'deleted');
+  readonly denied = computed(() => this.access()?.canView === false || this.collab.closedBy() !== null);
 
   /** Bound from the route by withComponentInputBinding. */
   readonly roomId = input.required<string>();
@@ -83,7 +96,14 @@ export class BoardComponent {
   private copyResetHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
-    effect(() => this.collab.connect(this.roomId()));
+    // Re-checked on a room change, on sign-in (a member may have just become
+    // one), and whenever the server closes the socket over access.
+    effect(() => {
+      const roomId = this.roomId();
+      this.auth.user();
+      this.collab.accessChecks();
+      untracked(() => void this.checkAccess(roomId));
+    });
 
     // Frame whatever an import just brought in, including one queued by the
     // landing page before this board existed. Untracked, or the fit would
@@ -118,6 +138,26 @@ export class BoardComponent {
 
   canvas(): CanvasComponent {
     return this.canvasRef();
+  }
+
+  private async checkAccess(roomId: string): Promise<void> {
+    let access: RoomAccess | null = null;
+    try {
+      access = await this.accessApi.roomAccess(roomId);
+    } catch {
+      // Offline or the API is down: fall through and open from the local copy.
+    }
+    if (roomId !== this.roomId()) return;
+    this.access.set(access);
+
+    if ((access && !access.canView) || this.collab.closedBy() !== null) {
+      // A private room this browser can't open must not stay readable from
+      // its offline copy either.
+      await this.collab.forgetLocal(roomId);
+      return;
+    }
+    this.collab.setReadOnly(access ? !access.canEdit : false);
+    this.collab.connect(roomId);
   }
 
   toggleKind(kind: NodeKind): void {

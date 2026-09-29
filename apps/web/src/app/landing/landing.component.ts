@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, effect, inject, signal, untracked } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { AccessService, type WorkspaceDetail } from '../access/access.service';
 import { AuthService } from '../auth/auth.service';
 import { CollabService } from '../collab/collab.service';
 import { readDiagramFile, takePickedFile } from '../core/diagram-import';
@@ -13,6 +14,7 @@ import { newRoomId } from '../core/room-id';
 @Component({
   selector: 'keel-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterLink],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss',
 })
@@ -21,10 +23,27 @@ export class LandingComponent {
   private readonly router = inject(Router);
   private readonly collab = inject(CollabService);
 
+  private readonly access = inject(AccessService);
+
   protected readonly importErrors = signal<readonly string[]>([]);
+  /** A signed-in visitor's workspaces, each with its diagrams. */
+  protected readonly workspaces = signal<readonly WorkspaceDetail[]>([]);
 
   constructor() {
     void this.auth.refresh();
+    effect(() => {
+      if (this.auth.user()) untracked(() => void this.loadWorkspaces());
+      else this.workspaces.set([]);
+    });
+  }
+
+  private async loadWorkspaces(): Promise<void> {
+    try {
+      const summaries = await this.access.workspaces();
+      this.workspaces.set(await Promise.all(summaries.map((w) => this.access.workspace(w.id))));
+    } catch {
+      // The list is a convenience; the landing page works without it.
+    }
   }
 
   protected loginWithGithub(): void {

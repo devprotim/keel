@@ -16,6 +16,8 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.E2E_PORT ?? 8790);
 const baseURL = `http://localhost:${PORT}`;
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+/** Shared with tests/session.ts, which signs cookies the server will accept. */
+export const E2E_SESSION_SECRET = 'e2e-session-secret-at-least-32-characters';
 
 export default defineConfig({
   testDir: './tests',
@@ -64,6 +66,17 @@ export default defineConfig({
       // Far above anything the other specs draw, low enough that security.spec.ts
       // can cross it by typing.
       ROOM_MAX_BYTES: String(256 * 1024),
+      // Every test shares one client address, which no real deployment does.
+      RATE_LIMIT_ACCESS_PER_MIN: '100000',
+      RATE_LIMIT_ACCESS_READ_PER_MIN: '100000',
+      RATE_LIMIT_ALERTS_PER_MIN: '100000',
+      RATE_LIMIT_OBSERVATIONS_PER_MIN: '100000',
+      // Sign-in enabled with placeholder credentials so workspaces.spec.ts can
+      // mint real session cookies (tests/session.ts). No test ever follows the
+      // redirect to GitHub.
+      GITHUB_CLIENT_ID: 'e2e-client-id',
+      GITHUB_CLIENT_SECRET: 'e2e-client-secret',
+      SESSION_SECRET: E2E_SESSION_SECRET,
     },
   },
 });

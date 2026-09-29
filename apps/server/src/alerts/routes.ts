@@ -1,4 +1,4 @@
-import type { FastifyInstance, RouteShorthandOptions } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest, RouteShorthandOptions } from 'fastify';
 import { z } from 'zod';
 import { AlertConfigSchema, maskedConfig, type AlertConfig } from './config.ts';
 import type { Send } from './notifiers.ts';
@@ -10,6 +10,8 @@ export interface AlertRouteDeps {
   worker: AlertWorker;
   send: Send;
   parseRoomId: (raw: unknown) => string | null;
+  /** Whether the caller may see (`view`) or change (`edit`) this room's alerting. */
+  authorize: (request: FastifyRequest, roomId: string, need: 'view' | 'edit') => Promise<boolean>;
   roomUrl: (roomId: string) => string;
   limit: RouteShorthandOptions;
 }
@@ -34,11 +36,23 @@ const PatchSchema = z.object({
 export function registerAlertRoutes(app: FastifyInstance, deps: AlertRouteDeps): void {
   const { store, worker } = deps;
 
-  const room = (params: unknown) => deps.parseRoomId((params as { roomId?: unknown }).roomId);
+  /** The room id, if valid and the caller may act on it; otherwise the reply is already sent. */
+  const room = async (request: FastifyRequest, reply: FastifyReply, need: 'view' | 'edit'): Promise<string | null> => {
+    const roomId = deps.parseRoomId((request.params as { roomId?: unknown }).roomId);
+    if (!roomId) {
+      void reply.status(400).send({ error: 'invalid room id' });
+      return null;
+    }
+    if (!(await deps.authorize(request, roomId, need))) {
+      void reply.status(403).send({ error: 'not allowed' });
+      return null;
+    }
+    return roomId;
+  };
 
   app.get('/api/rooms/:roomId/alerts', deps.limit, async (request, reply) => {
-    const roomId = room(request.params);
-    if (!roomId) return reply.status(400).send({ error: 'invalid room id' });
+    const roomId = await room(request, reply, 'view');
+    if (!roomId) return reply;
     const config = await store.getConfig(roomId);
     const state = config ? await store.getState(roomId) : {};
     return {
@@ -54,8 +68,8 @@ export function registerAlertRoutes(app: FastifyInstance, deps: AlertRouteDeps):
   });
 
   app.put('/api/rooms/:roomId/alerts', deps.limit, async (request, reply) => {
-    const roomId = room(request.params);
-    if (!roomId) return reply.status(400).send({ error: 'invalid room id' });
+    const roomId = await room(request, reply, 'edit');
+    if (!roomId) return reply;
 
     const patch = PatchSchema.safeParse(request.body);
     if (!patch.success) return reply.status(400).send({ error: 'invalid alert config', issues: patch.error.issues });
@@ -73,8 +87,8 @@ export function registerAlertRoutes(app: FastifyInstance, deps: AlertRouteDeps):
   });
 
   app.delete('/api/rooms/:roomId/alerts', deps.limit, async (request, reply) => {
-    const roomId = room(request.params);
-    if (!roomId) return reply.status(400).send({ error: 'invalid room id' });
+    const roomId = await room(request, reply, 'edit');
+    if (!roomId) return reply;
     await store.deleteConfig(roomId);
     return reply.status(204).send();
   });
@@ -85,8 +99,8 @@ export function registerAlertRoutes(app: FastifyInstance, deps: AlertRouteDeps):
    * rules it may still page briefly, which is the point of testing it.
    */
   app.post('/api/rooms/:roomId/alerts/test', deps.limit, async (request, reply) => {
-    const roomId = room(request.params);
-    if (!roomId) return reply.status(400).send({ error: 'invalid room id' });
+    const roomId = await room(request, reply, 'edit');
+    if (!roomId) return reply;
     const config = await store.getConfig(roomId);
     if (!config) return reply.status(404).send({ error: 'no alerting configured for this room' });
 

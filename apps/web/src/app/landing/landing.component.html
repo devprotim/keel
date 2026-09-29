@@ -63,6 +63,28 @@
     }
   </main>
 
+  @if (workspaces().length > 0) {
+    <section class="workspaces" aria-label="Your workspaces">
+      @for (w of workspaces(); track w.workspace.id) {
+        <div class="keel-island workspace">
+          <div class="workspace-head">
+            <h2>{{ w.workspace.name }}</h2>
+            <span class="workspace-meta">{{ w.members.length }} {{ w.members.length === 1 ? 'member' : 'members' }} · {{ w.role }}</span>
+          </div>
+          @if (w.rooms.length === 0) {
+            <p class="workspace-empty">No diagrams yet. Open one and use Share → Make private to add it here.</p>
+          } @else {
+            <ul>
+              @for (room of w.rooms; track room.roomId) {
+                <li><a [routerLink]="['/', room.roomId]">{{ room.name }}</a></li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </section>
+  }
+
   <section class="features" aria-label="What Keel does">
     <div class="feature">
       <span class="keel-kind-dot" style="background: var(--keel-kind-service)"></span>

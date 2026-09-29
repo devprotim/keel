@@ -1,0 +1,29 @@
+<main class="invite">
+  <div class="keel-island card">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <strong>Keel</strong>
+    </div>
+
+    @if (invite(); as i) {
+      <h1 class="title">Join {{ i.workspace.name }}</h1>
+      <p class="body">
+        You have been invited to {{ i.role === 'viewer' ? 'view' : 'view and edit' }} the diagrams in this workspace.
+      </p>
+      @if (auth.user(); as user) {
+        <button type="button" class="keel-btn keel-btn--primary" [disabled]="busy()" (click)="accept()">
+          Join as {{ user.name }}
+        </button>
+      } @else {
+        <button type="button" class="keel-btn keel-btn--primary" (click)="signIn()">Sign in with GitHub to join</button>
+      }
+    } @else if (!error()) {
+      <p class="body">Checking the invite…</p>
+    }
+
+    @if (error(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+      <a class="keel-btn" href="/">Go to Keel</a>
+    }
+  </div>
+</main>

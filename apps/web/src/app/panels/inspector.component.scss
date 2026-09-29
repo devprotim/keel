@@ -25,6 +25,11 @@
 }
 
 .keel-panel__body {
+  // A fieldset, so a viewer's controls can be disabled in one place.
+  min-width: 0;
+  margin: 0;
+  border: 0;
+
   overflow-y: auto;
 }
 

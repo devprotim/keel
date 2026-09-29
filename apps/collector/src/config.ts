@@ -5,6 +5,8 @@
 export interface CollectorConfig {
   keelUrl: string;
   roomIds: string[];
+  /** An ingest token, required when the rooms are in a workspace. One token is per room, so this suits one room. */
+  ingestToken: string | null;
   /** Appended to each source name, so two clusters report as two sources. */
   cluster: string | null;
   pushIntervalMs: number;
@@ -66,6 +68,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): CollectorConfig {
   const config: CollectorConfig = {
     keelUrl: keelUrl ?? '',
     roomIds,
+    ingestToken: read('KEEL_INGEST_TOKEN') ?? null,
     cluster,
     pushIntervalMs: number('KEEL_PUSH_INTERVAL_SECONDS', 30, positive, 'a positive number') * 1000,
     kubernetes: {
@@ -84,6 +87,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): CollectorConfig {
     },
   };
 
+  if (config.ingestToken && roomIds.length > 1) {
+    problems.push('KEEL_INGEST_TOKEN is issued for one room; run one collector per private room, or use link rooms');
+  }
   if (!config.kubernetes.enabled && !config.otlp.enabled) problems.push('Both sources are disabled; nothing to collect');
   if (config.kubernetes.enabled && !config.kubernetes.apiUrl && !env['KUBERNETES_SERVICE_HOST']) {
     problems.push('KEEL_KUBERNETES is on but this is not a pod: set KEEL_KUBERNETES_API_URL (e.g. http://127.0.0.1:8001 from `kubectl proxy`) or KEEL_KUBERNETES=false');

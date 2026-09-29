@@ -22,7 +22,7 @@ if (config.kubernetes.enabled) {
   if (options) kube = new KubeClient(options);
 }
 
-const collector = new Collector({ config, keel: new KeelClient(config.keelUrl), kube, log });
+const collector = new Collector({ config, keel: new KeelClient(config.keelUrl, { token: config.ingestToken }), kube, log });
 await collector.start();
 log(`reporting to ${config.keelUrl} rooms ${config.roomIds.join(', ')} every ${config.pushIntervalMs / 1000}s`);
 

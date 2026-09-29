@@ -52,6 +52,7 @@ Run one replica. Two would each see half the traces and push competing sets.
 |---|---|---|
 | `KEEL_URL` | required | Keel's base URL. |
 | `KEEL_ROOMS` | required | Room ids to report to, comma-separated. |
+| `KEEL_INGEST_TOKEN` | | Required when the room is in a workspace: create one under **Share → Collector tokens**. A token belongs to one room. |
 | `KEEL_CLUSTER` | | Appended to source names (`kubernetes:eu-west`), so two clusters are two sources. |
 | `KEEL_PUSH_INTERVAL_SECONDS` | `30` | Also the window rates are averaged over. |
 | `KEEL_KUBERNETES` | `true` | |
@@ -77,5 +78,5 @@ KEEL_URL=http://localhost:8787 KEEL_ROOMS=<room id> KEEL_KUBERNETES_API_URL=http
 - **JSON only.** OTLP protobuf is refused with a 415 that names the fix (`encoding: json`), so a misconfigured exporter fails loudly instead of silently.
 - **Timeouts, retries and circuit breakers are not observed yet.** Traces can't show a configured timeout. A service-mesh source (Istio `VirtualService` timeouts and retries, `DestinationRule` outlier detection) is the natural next one, and would feed the rules that matter most.
 - **A failed Kubernetes round is skipped, not pushed empty.** An empty set would tell Keel the whole cluster vanished.
-- **The ingest endpoint has no credential** today: the room id is the capability, as it is for the canvas. See `docs/security-audit.md`.
+- **Link rooms take observations from anyone with the room id**, as they take edits. A room in a workspace needs `KEEL_INGEST_TOKEN`.
 - **Not yet tried on a real cluster.** It is tested against a fake API server with real Kubernetes response shapes, and against traces from the real OpenTelemetry JS SDK.

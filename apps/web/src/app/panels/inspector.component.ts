@@ -37,6 +37,8 @@ import { CollabService } from '../collab/collab.service';
 })
 export class InspectorComponent {
   private readonly collab = inject(CollabService);
+  /** A viewer's inspector shows every field, disabled. */
+  readonly readOnly = this.collab.readOnly;
 
   readonly selection = input.required<ReadonlySet<string>>();
   /** The card is a floating overlay now, so it needs its own close affordance. */

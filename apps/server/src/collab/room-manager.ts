@@ -74,7 +74,7 @@ export class RoomManager {
   }
 
   /** Attach a socket to a room, wiring up eviction on the last departure. */
-  async join(roomId: string, socket: Socket, attempt = 0): Promise<Room> {
+  async join(roomId: string, socket: Socket, options: { readOnly?: boolean } = {}, attempt = 0): Promise<Room> {
     const room = await this.get(roomId);
 
     // The room can be evicted while we are awaiting the open above, which would
@@ -85,10 +85,10 @@ export class RoomManager {
       if (attempt >= MAX_JOIN_ATTEMPTS) {
         throw new Error(`room ${roomId} was evicted repeatedly while joining`);
       }
-      return this.join(roomId, socket, attempt + 1);
+      return this.join(roomId, socket, options, attempt + 1);
     }
 
-    room.addConnection(socket);
+    room.addConnection(socket, options);
     return room;
   }
 
@@ -118,6 +118,31 @@ export class RoomManager {
     } finally {
       if (room.isEmpty) this.#scheduleEviction(roomId);
     }
+  }
+
+  /** Close every socket on a room that is resident, so each reconnects and re-authorises. */
+  async disconnect(roomId: string, code: number, reason: string): Promise<void> {
+    const pending = this.#rooms.get(roomId);
+    if (!pending) return;
+    const room = await pending.catch(() => null);
+    if (!room) return;
+    room.disconnectAll(code, reason);
+    if (room.isEmpty) this.#scheduleEviction(roomId);
+  }
+
+  /**
+   * Take a room out of memory for deletion: close its sockets with `code`
+   * and drop the document without flushing it. The caller deletes storage.
+   */
+  async purge(roomId: string, code: number, reason: string): Promise<void> {
+    this.#cancelEviction(roomId);
+    const pending = this.#rooms.get(roomId);
+    if (!pending) return;
+    this.#rooms.delete(roomId);
+    const room = await pending.catch(() => null);
+    if (!room) return;
+    room.disconnectAll(code, reason);
+    await room.discard();
   }
 
   /** Detach a socket, scheduling eviction if it was the last one. */

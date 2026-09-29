@@ -57,6 +57,72 @@ export const MIGRATIONS: readonly Migration[] = [
       )`,
     ],
   },
+  {
+    id: 3,
+    name: 'workspaces and access',
+    statements: [
+      // Identity as the OAuth provider reports it, refreshed on each sign-in,
+      // so member lists can show names for people who are not online.
+      `CREATE TABLE users (
+        id           text PRIMARY KEY,
+        name         text NOT NULL,
+        avatar_url   text,
+        created_at   timestamptz NOT NULL DEFAULT now(),
+        last_seen_at timestamptz NOT NULL DEFAULT now()
+      )`,
+      `CREATE TABLE workspaces (
+        id         uuid PRIMARY KEY,
+        name       text NOT NULL,
+        created_by text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`,
+      `CREATE TABLE workspace_members (
+        workspace_id uuid NOT NULL REFERENCES workspaces (id) ON DELETE CASCADE,
+        user_id      text NOT NULL,
+        role         text NOT NULL CHECK (role IN ('owner', 'editor', 'viewer')),
+        PRIMARY KEY (workspace_id, user_id)
+      )`,
+      `CREATE INDEX workspace_members_user ON workspace_members (user_id)`,
+      // A room is in at most one workspace. No row means a link room.
+      `CREATE TABLE room_workspaces (
+        room_id      text PRIMARY KEY REFERENCES rooms (room_id) ON DELETE CASCADE,
+        workspace_id uuid NOT NULL REFERENCES workspaces (id) ON DELETE CASCADE,
+        name         text NOT NULL,
+        moved_by     text NOT NULL,
+        moved_at     timestamptz NOT NULL
+      )`,
+      `CREATE INDEX room_workspaces_workspace ON room_workspaces (workspace_id)`,
+      // Only hashes of secrets are stored.
+      `CREATE TABLE workspace_invites (
+        id           uuid PRIMARY KEY,
+        workspace_id uuid NOT NULL REFERENCES workspaces (id) ON DELETE CASCADE,
+        role         text NOT NULL CHECK (role IN ('editor', 'viewer')),
+        token_hash   text NOT NULL UNIQUE,
+        created_by   text NOT NULL,
+        expires_at   timestamptz NOT NULL
+      )`,
+      `CREATE TABLE ingest_tokens (
+        id           uuid PRIMARY KEY,
+        room_id      text NOT NULL REFERENCES rooms (room_id) ON DELETE CASCADE,
+        name         text NOT NULL,
+        token_hash   text NOT NULL UNIQUE,
+        created_by   text NOT NULL,
+        created_at   timestamptz NOT NULL DEFAULT now(),
+        last_used_at timestamptz
+      )`,
+    ],
+  },
+  {
+    id: 4,
+    name: 'room deletion',
+    statements: [
+      // Ids are random, so remembering deleted ones never blocks a new room.
+      `CREATE TABLE deleted_rooms (
+        room_id    text PRIMARY KEY,
+        deleted_at timestamptz NOT NULL DEFAULT now()
+      )`,
+    ],
+  },
 ];
 
 /**

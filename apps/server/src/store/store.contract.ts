@@ -77,6 +77,22 @@ export function describeDocStoreContract(name: string, create: () => Promise<Doc
       doc.destroy();
     });
 
+    it('deletes a room outright and remembers that it did', async () => {
+      const doc = new Y.Doc();
+      doc.getMap('nodes').set('a', 1);
+      await store.appendUpdate('doomed', Y.encodeStateAsUpdate(doc));
+      await store.compact('doomed', Y.encodeStateAsUpdate(doc));
+      await store.appendUpdate('doomed', Y.encodeStateAsUpdate(doc));
+      doc.destroy();
+      expect(await store.isDeleted('doomed')).toBe(false);
+
+      await store.delete('doomed');
+      expect(await store.load('doomed')).toEqual({ snapshot: null, updates: [] });
+      expect(await store.exists('doomed')).toBe(false);
+      expect(await store.isDeleted('doomed')).toBe(true);
+      expect((await store.list()).map((r) => r.roomId)).not.toContain('doomed');
+    });
+
     it('lists rooms newest first', async () => {
       await store.appendUpdate('older', new Uint8Array([1]));
       await new Promise((resolve) => setTimeout(resolve, 5));

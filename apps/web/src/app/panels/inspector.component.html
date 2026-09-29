@@ -51,7 +51,7 @@
   }
 
   @if (node(); as selected) {
-    <div class="keel-panel__body">
+    <fieldset class="keel-panel__body read-only-guard" [disabled]="readOnly()">
       <label class="keel-field">
         <span class="keel-field__label">Name</span>
         <input
@@ -182,9 +182,9 @@
           (input)="patchNode(selected.id, { notes: value($event) || undefined })"
         ></textarea>
       </label>
-    </div>
+    </fieldset>
   } @else if (edge(); as selected) {
-    <div class="keel-panel__body">
+    <fieldset class="keel-panel__body read-only-guard" [disabled]="readOnly()">
       <label class="keel-field">
         <span class="keel-field__label">Label</span>
         <input
@@ -272,7 +272,7 @@
           Brokers deliver at least once, so duplicates are normal operation.
         </span>
       }
-    </div>
+    </fieldset>
   } @else {
     <p class="keel-panel__empty">
       {{ emptyMessage() }}
