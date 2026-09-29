@@ -222,6 +222,17 @@
 
     <span class="divider" aria-hidden="true"></span>
 
+    <button
+      type="button"
+      class="keel-btn keel-btn--ghost incident-toggle"
+      [class.on]="incidentMode.active()"
+      [attr.aria-pressed]="incidentMode.active()"
+      title="Incident mode: live health, traffic and recent changes"
+      (click)="incidentMode.toggle()"
+    >
+      Incident
+    </button>
+
     <keel-export-menu [roomId]="roomId()" [theme]="canvas().currentTheme()" />
     @if (!collab.readOnly() && !denied()) {
       <keel-alerts-menu [roomId]="roomId()" />
@@ -229,7 +240,13 @@
   </div>
 
   <!-- The review dock: a collapsed pill by default, expands over the canvas. -->
-  <keel-findings class="findings-slot" (revealed)="canvas().revealNode($event)" />
+  <!-- Incident mode takes the dock's place: during an outage, what is broken
+       right now matters more than what could break. -->
+  @if (incidentMode.active()) {
+    <keel-incident class="findings-slot" (revealed)="canvas().revealNode($event)" />
+  } @else {
+    <keel-findings class="findings-slot" (revealed)="canvas().revealNode($event)" />
+  }
 
   <!-- The inspector: a floating card that exists only while something is
        selected, instead of a permanently-docked panel saying nothing. -->

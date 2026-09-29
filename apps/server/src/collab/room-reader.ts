@@ -1,5 +1,7 @@
 import {
   DOC_MAPS,
+  diffObservationSets,
+  eventsToDrop,
   readEdge,
   readElementIntent,
   readNode,
@@ -49,4 +51,24 @@ export function readRoom(doc: Y.Doc): RoomContents {
   edges.sort((a, b) => a.id.localeCompare(b.id));
   observations.sort((a, b) => a.source.localeCompare(b.source));
   return { graph: { nodes, edges }, observations, intent };
+}
+
+/**
+ * Replace one source's observations, and log what the push changed.
+ *
+ * A set is replaced wholesale, so without the log the previous state would be
+ * gone, and with it the answer to the first question in an incident: what
+ * changed? One transaction, so peers see the new set and its events together.
+ */
+export function recordObservations(doc: Y.Doc, set: ObservationSet, now = Date.now()): void {
+  doc.transact(() => {
+    const sets = doc.getMap(DOC_MAPS.observations);
+    const events = diffObservationSets(readObservationSet(sets.get(set.source)), set);
+    sets.set(set.source, set);
+
+    const log = doc.getArray<unknown>(DOC_MAPS.events);
+    if (events.length > 0) log.push(events);
+    const drop = eventsToDrop(log.toArray(), now);
+    if (drop > 0) log.delete(0, drop);
+  });
 }

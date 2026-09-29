@@ -7,5 +7,6 @@ export * from './evidence.js';
 export * from './intent.js';
 export * from './reality.js';
 export * from './review.js';
+export * from './incident.js';
 export * from './diagram-file.js';
 export * from './doc-schema.js';

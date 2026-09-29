@@ -1,4 +1,4 @@
-import type { EdgeKind, NodeKind, Severity } from '@keel/shared';
+import type { EdgeKind, Health, NodeKind, Severity } from '@keel/shared';
 import {
   rectFromCorners,
   worldToScreen,
@@ -209,20 +209,26 @@ function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: Content
   const { theme } = frame;
   const selected = frame.selection.has(edge.edge.id);
   const flagged = edge.diff ?? edge.severity;
-  const color = edge.diff
-    ? theme.diff[edge.diff]
-    : edge.severity
-      ? theme.severity[edge.severity]
-      : selected
-        ? theme.selection
-        : theme.edge;
-  const lineWidth = selected ? 2.5 : flagged ? 2 : 1.5;
+  const color = edge.undiagrammed
+    ? theme.severity.info
+    : edge.health
+      ? healthColor(edge.health, theme, theme.edge)
+      : edge.diff
+        ? theme.diff[edge.diff]
+        : edge.severity
+          ? theme.severity[edge.severity]
+          : selected
+            ? theme.selection
+            : theme.edge;
+  const lineWidth = edge.weight ?? (selected ? 2.5 : flagged ? 2 : 1.5);
 
   ctx.save();
+  // Incident mode fades what nothing reports on, so the observed paths stand out.
+  if (edge.health === 'unknown') ctx.globalAlpha *= 0.5;
   ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  // A removed edge is always dashed; its own kind no longer matters.
-  ctx.setLineDash(edge.diff === 'removed' ? [4, 4] : EDGE_DASH[edge.edge.kind]);
+  ctx.lineWidth = selected && edge.weight ? edge.weight + 1 : lineWidth;
+  // A removed or undrawn edge is always dashed; its own kind no longer matters.
+  ctx.setLineDash(edge.diff === 'removed' || edge.undiagrammed ? [4, 4] : EDGE_DASH[edge.edge.kind]);
 
   ctx.beginPath();
   ctx.moveTo(edge.from.x, edge.from.y);
@@ -234,15 +240,15 @@ function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: Content
   ctx.setLineDash([]);
   drawArrowhead(ctx, edge.from, edge.to, color, 1);
 
-  if (edge.edge.label) {
-    drawEdgeLabel(ctx, edge, theme);
+  const label = edge.liveLabel ?? edge.edge.label;
+  if (label) {
+    drawEdgeLabel(ctx, edge, label, theme);
   }
 
   ctx.restore();
 }
 
-function drawEdgeLabel(ctx: CanvasRenderingContext2D, edge: SceneEdge, theme: CanvasTheme): void {
-  const label = edge.edge.label ?? '';
+function drawEdgeLabel(ctx: CanvasRenderingContext2D, edge: SceneEdge, label: string, theme: CanvasTheme): void {
   ctx.save();
   ctx.font = '11px Geist, ui-sans-serif, system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -287,6 +293,7 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
   const hovered = frame.hoveredId === node.id;
 
   ctx.save();
+  if (sceneNode.health === 'unknown') ctx.globalAlpha *= 0.55;
 
   // Shadow is applied to the fill only. Leaving it on would smear the border
   // stroke as well, which looks blurry rather than raised.
@@ -300,8 +307,13 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
-  ctx.strokeStyle = sceneNode.diff ? theme.diff[sceneNode.diff] : severityOrDefault(sceneNode.severity, selected, theme);
-  ctx.lineWidth = selected || sceneNode.severity || sceneNode.diff ? 2 : 1;
+  ctx.strokeStyle = sceneNode.health
+    ? healthColor(sceneNode.health, theme, selected ? theme.selection : theme.nodeStroke)
+    : sceneNode.diff
+      ? theme.diff[sceneNode.diff]
+      : severityOrDefault(sceneNode.severity, selected, theme);
+  const live = sceneNode.health === 'down' || sceneNode.health === 'degraded';
+  ctx.lineWidth = live ? 3 : selected || sceneNode.severity || sceneNode.diff || sceneNode.health === 'healthy' ? 2 : 1;
   if (node.kind === 'external' || sceneNode.diff === 'removed') ctx.setLineDash([6, 4]);
   traceNodeShape(ctx, rect);
   ctx.stroke();
@@ -320,7 +332,11 @@ function drawNode(ctx: CanvasRenderingContext2D, sceneNode: SceneNode, frame: Co
 
   drawNodeContent(ctx, sceneNode, theme);
 
-  if (sceneNode.diff) {
+  if (sceneNode.liveBadge && sceneNode.health) {
+    drawPill(ctx, rect, healthColor(sceneNode.health, theme, theme.nodeStroke), sceneNode.liveBadge);
+  } else if (sceneNode.health === 'down' || sceneNode.health === 'degraded') {
+    drawBadge(ctx, rect, healthColor(sceneNode.health, theme, theme.nodeStroke), '!');
+  } else if (sceneNode.diff) {
     drawBadge(ctx, rect, theme.diff[sceneNode.diff], DIFF_MARK[sceneNode.diff]);
   } else if (sceneNode.severity) {
     drawBadge(ctx, rect, theme.severity[sceneNode.severity], '!');
@@ -591,6 +607,41 @@ function truncate(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   }
 
   return low > 0 ? `${text.slice(0, low)}…` : '';
+}
+
+/** Incident mode's colours: the severity hues, plus the ok green for healthy. */
+function healthColor(health: Health, theme: CanvasTheme, fallback: string): string {
+  switch (health) {
+    case 'down':
+      return theme.severity.error;
+    case 'degraded':
+      return theme.severity.warning;
+    case 'healthy':
+      return theme.diff.added;
+    default:
+      return fallback;
+  }
+}
+
+/** A short live reading (such as "0/3 ready") pinned to a node's top-right corner. */
+function drawPill(ctx: CanvasRenderingContext2D, rect: Rect, color: string, text: string): void {
+  ctx.save();
+  ctx.font = '700 10px Geist, ui-sans-serif, system-ui, sans-serif';
+  const width = ctx.measureText(text).width + 12;
+  const height = 17;
+  const x = rect.x + rect.w - width + 6;
+  const y = rect.y - height / 2;
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, height / 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + width / 2, y + height / 2 + 0.5);
+  ctx.restore();
 }
 
 /** The mark in a node's corner badge in review mode, as a code diff marks lines. */

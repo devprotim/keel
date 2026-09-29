@@ -1,0 +1,107 @@
+<section class="keel-panel keel-island incident" aria-label="Incident">
+  <header class="keel-panel__header">
+    <span class="title">
+      <span class="live-dot" [class.off]="view().noData" aria-hidden="true"></span>
+      Incident
+    </span>
+    <button type="button" class="keel-btn keel-btn--ghost keel-btn--icon" aria-label="Leave incident mode" (click)="close()">
+      ✕
+    </button>
+  </header>
+
+  <div class="sources">
+    @if (sources().length === 0) {
+      <span class="note">No live data in this room.</span>
+    }
+    @for (source of sources(); track source.name) {
+      <span class="source" [class.stale]="source.stale">
+        <span class="source-name">{{ source.name }}</span> {{ source.age }}@if (source.stale) {, stale}
+      </span>
+    }
+  </div>
+
+  <div class="keel-panel__body">
+    @if (view().noData) {
+      <div class="empty">
+        <p>Incident mode reads health from what the running system reports, and nothing fresh has arrived.</p>
+        <p>
+          Run the Keel collector in the cluster, or push observations to
+          <code>/api/rooms/&lt;room&gt;/observations</code>. The recent changes below still apply.
+        </p>
+      </div>
+    } @else {
+      <h3 class="section">
+        Look here first
+        <span class="count">{{ hotspots().length }}</span>
+      </h3>
+      @if (hotspots().length === 0) {
+        <p class="all-clear">Everything that reports in looks healthy.</p>
+      }
+      <ul class="rows" aria-label="Look here first">
+        @for (row of hotspots(); track row.report.id) {
+          <li>
+            <button type="button" class="hotspot {{ row.report.health }}" (click)="reveal(row.report.id)">
+              <span class="hotspot-head">
+                <span class="health {{ row.report.health }}">{{ row.report.health }}</span>
+                <span class="hotspot-label">{{ row.report.label }}</span>
+                @if (row.traffic) {
+                  <span class="traffic">{{ row.traffic }}</span>
+                }
+              </span>
+              <span class="reason">{{ row.reason }}</span>
+              @if (row.affects) {
+                <span class="affects">Depends on it: {{ row.affects }}</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+
+      @if (undiagrammed().length > 0) {
+        <h3 class="section">
+          Not on the diagram
+          <span class="count">{{ undiagrammed().length }}</span>
+        </h3>
+        <ul class="rows" aria-label="Calls not on the diagram">
+          @for (call of undiagrammed(); track call.key) {
+            <li>
+              <button type="button" class="undrawn" (click)="reveal(call.sourceId)">
+                <span class="hotspot-label">{{ call.label }}</span>
+                @if (call.traffic) {
+                  <span class="traffic">{{ call.traffic }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    }
+
+    <h3 class="section">
+      Recent changes
+      <span class="count">{{ timeline().length }}</span>
+    </h3>
+    @if (timeline().length === 0) {
+      <p class="note">Nothing changed in the last 24 hours, in production or in the approved design.</p>
+    }
+    <ol class="timeline" aria-label="Recent changes">
+      @for (row of timeline(); track $index) {
+        <li class="event {{ row.entry.kind }}">
+          <time class="when" [attr.datetime]="row.entry.at" [title]="row.entry.at">
+            <span class="clock">{{ row.clock }}</span>
+            <span class="ago">{{ row.ago }}</span>
+          </time>
+          <button
+            type="button"
+            class="what"
+            [disabled]="!row.entry.elementId"
+            (click)="reveal(row.entry.elementId)"
+          >
+            <span class="text">{{ row.entry.text }}</span>
+            <span class="by">{{ row.entry.kind === 'approved' ? 'design' : row.entry.by }}</span>
+          </button>
+        </li>
+      }
+    </ol>
+  </div>
+</section>

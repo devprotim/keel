@@ -25,6 +25,12 @@ export const DOC_MAPS = {
   observations: 'observations',
   /** One nested map per approved element: `_kind`, `_label`, `_layout`, and one key per field. */
   intent: 'intent',
+  /**
+   * A Y.Array of ObservationEvents, oldest first: what each observations push
+   * changed, written by the ingest path. Bounded by MAX_EVENTS and
+   * EVENT_RETENTION_MS (incident.ts).
+   */
+  events: 'events',
 } as const;
 
 /** The one method the readers need. `Y.Map` has it. */

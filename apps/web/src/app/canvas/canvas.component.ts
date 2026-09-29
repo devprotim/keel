@@ -27,6 +27,7 @@ import { EDGE_HIT_TOLERANCE, hitTest, nodesInRect } from '../core/hit-test';
 import { buildScene } from '../core/scene';
 import { FALLBACK_THEME, readTheme, type CanvasTheme } from '../core/theme';
 import { ChangeReviewService } from '../panels/change-review.service';
+import { IncidentModeService } from '../panels/incident-mode.service';
 import { drawContent, drawOverlay, resizeCanvas, type RemoteCursor } from './renderer';
 
 /** Pointer gesture in progress. Idle is represented by null. */
@@ -54,6 +55,7 @@ export const NODE_DRAG_MIME = 'application/x-keel-node-kind';
 export class CanvasComponent {
   private readonly collab = inject(CollabService);
   private readonly changeReview = inject(ChangeReviewService);
+  private readonly incidentMode = inject(IncidentModeService);
 
   private readonly hostRef = viewChild.required<ElementRef<HTMLDivElement>>('host');
   private readonly contentRef = viewChild.required<ElementRef<HTMLCanvasElement>>('content');
@@ -86,6 +88,7 @@ export class CanvasComponent {
       this.collab.graph(),
       this.collab.report(),
       this.changeReview.active() ? { changes: this.collab.changes(), intent: this.collab.intent() } : null,
+      this.incidentMode.active() ? { incident: this.collab.incident(), evidence: this.collab.report().evidence ?? null } : null,
     ),
   );
 
@@ -99,15 +102,18 @@ export class CanvasComponent {
   );
 
   readonly accessibleNodes = computed(() => {
-    // In review mode the mirror says what the colours say.
+    // In review and incident mode the mirror says what the colours say.
     const diffs = new Map(this.changeReview.active() ? this.collab.changes().map((c) => [c.id, c.type]) : []);
+    const health = this.incidentMode.active() ? this.collab.incident().byId : null;
     return this.collab.graph().nodes.map((node) => {
       const diff = diffs.get(node.id);
+      const live = health?.[node.id];
       return {
         id: node.id,
         description:
           `${node.label}, ${node.kind}, ${node.replicas} ${node.replicas === 1 ? 'instance' : 'instances'}` +
-          (diff === 'added' ? ', added since approval' : diff === 'changed' ? ', changed since approval' : ''),
+          (diff === 'added' ? ', added since approval' : diff === 'changed' ? ', changed since approval' : '') +
+          (live ? `, ${live.health === 'unknown' ? 'no live data' : live.health}` : ''),
       };
     });
   });

@@ -273,6 +273,11 @@
   max-width: calc(100% - var(--keel-space-4) * 2);
 }
 
+.incident-toggle.on {
+  background: color-mix(in srgb, var(--keel-severity-error) 14%, transparent);
+  color: var(--keel-severity-error);
+}
+
 .zoom-readout {
   min-width: 40px;
   padding: 0 4px;

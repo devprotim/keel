@@ -6,7 +6,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import staticPlugin from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { DOC_MAPS, validate } from '@keel/shared';
+import { validate } from '@keel/shared';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
@@ -23,6 +23,7 @@ import { AlertWorker } from './alerts/worker.ts';
 import { registerAuth } from './auth/routes.ts';
 import { TokenBucket } from './collab/rate-limit.ts';
 import { RoomManager } from './collab/room-manager.ts';
+import { recordObservations } from './collab/room-reader.ts';
 import type { Room, Socket } from './collab/room.ts';
 import type { Config } from './config.ts';
 import type { DocStore } from './store/store.ts';
@@ -111,6 +112,7 @@ const ObservationSetSchema = z.object({
         hasBackup: z.boolean().optional(),
         hasDlq: z.boolean().optional(),
         rps: Rate.optional(),
+        errorRate: z.number().min(0).max(1).optional(),
       }),
     )
     .max(500)
@@ -125,6 +127,7 @@ const ObservationSetSchema = z.object({
         circuitBreaker: z.boolean().optional(),
         p99Ms: z.number().nonnegative().finite().optional(),
         rps: Rate.optional(),
+        errorRate: z.number().min(0).max(1).optional(),
       }),
     )
     .max(1500)
@@ -386,9 +389,7 @@ export async function buildApp({
       return reply.status(400).send({ error: 'invalid observations', issues: parsed.error.issues });
     }
 
-    await rooms.mutate(roomId.data, (doc) => {
-      doc.getMap(DOC_MAPS.observations).set(parsed.data.source, parsed.data);
-    });
+    await rooms.mutate(roomId.data, (doc) => recordObservations(doc, parsed.data));
     alertWorker.notify(roomId.data);
 
     return reply.status(202).send({

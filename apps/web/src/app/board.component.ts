@@ -21,6 +21,8 @@ import { exampleGraph } from './core/example-graph';
 import { AlertsMenuComponent } from './panels/alerts-menu.component';
 import { ExportMenuComponent } from './panels/export-menu.component';
 import { FindingsComponent } from './panels/findings.component';
+import { IncidentComponent } from './panels/incident.component';
+import { IncidentModeService } from './panels/incident-mode.service';
 import { InspectorComponent } from './panels/inspector.component';
 import { ShareMenuComponent } from './panels/share-menu.component';
 
@@ -38,13 +40,22 @@ import { ShareMenuComponent } from './panels/share-menu.component';
 @Component({
   selector: 'keel-board',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AlertsMenuComponent, CanvasComponent, ExportMenuComponent, FindingsComponent, InspectorComponent, ShareMenuComponent],
+  imports: [
+    AlertsMenuComponent,
+    CanvasComponent,
+    ExportMenuComponent,
+    FindingsComponent,
+    IncidentComponent,
+    InspectorComponent,
+    ShareMenuComponent,
+  ],
   templateUrl: './board.component.html',
   styleUrl: './board.component.scss',
 })
 export class BoardComponent {
   protected readonly collab = inject(CollabService);
   protected readonly auth = inject(AuthService);
+  protected readonly incidentMode = inject(IncidentModeService);
   private readonly accessApi = inject(AccessService);
 
   /**

@@ -90,6 +90,13 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - Rebuilding needs the presentation fields the baseline never compared, so every approval also stores `layout` (label, position, size, tech, notes) in the intent record's `_layout` key. Baselines from before that restore at the origin and draw no ghost.
 - While the tab is open (`ChangeReviewService.active`), the canvas draws the diff instead of severity: green/red/amber borders and +/−/~ badges from the severity tokens, and removed elements as faded dashed ghosts (`Scene.ghosts`) that are not hit-testable.
 
+### Incident mode (`packages/shared/src/incident.ts`)
+
+- The Incident toggle in the view-tools bar (`IncidentModeService`) swaps the review dock for `panels/incident.component.ts` and the canvas's findings for live health. `incidentView(graph, evidence)` gives every element a health (`down` / `degraded` / `healthy` / `unknown`, thresholds in `INCIDENT_THRESHOLDS`, deliberately provisional) and ranks `lookFirst`: down before degraded, then by how many components call it synchronously (`affects`), components before calls, then traffic. A call failing only because its target is down is folded into the target.
+- History: observation sets are replaced wholesale, so every push also appends what it changed (`diffObservationSets`: counts, settings, appear/vanish, error rate crossing 5%, never rps or latency wobble) to the room's `events` Y.Array, capped at 500 and 7 days. The server does it in `recordObservations` (`collab/room-reader.ts`), the client in `GraphDoc.setObservations`, identically. `buildTimeline` merges those with approval times from the baseline.
+- Observations carry `errorRate` (0 to 1) for nodes and edges; the collector computes it from span status (caller side for edges, server side for nodes).
+- The canvas shows health as border colour, a "0/3 ready" pill, edge width by traffic, a "rps · p99 · err" edge label, and calls production makes that the diagram does not draw as dashed info-coloured edges. Unreported elements are faded. `GraphDoc.toEvents()` is cached, since every drag frame notifies the doc observer.
+
 ### Drift alerts (`apps/server/src/alerts/`)
 
 - `AlertWorker` runs in-process: an observations push debounces an evaluation of that room (`ALERT_DEBOUNCE_MS`), and a sweep re-evaluates every configured room every `ALERT_SWEEP_SECONDS`, because a collector going silent (stale evidence) produces no push to react to. Evaluations of one room are serialised.

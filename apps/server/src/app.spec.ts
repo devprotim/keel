@@ -49,6 +49,24 @@ describe('POST /api/rooms/:roomId/observations', () => {
     expect(doc.getMap('observations').get('kubernetes')).toEqual(body);
   });
 
+  it('logs what each push changed, so the room keeps a history of the running system', async () => {
+    const start = Date.now();
+    const at = (minutesAgo: number) => new Date(start - minutesAgo * 60_000).toISOString();
+    const push = (payload: object) => app.inject({ method: 'POST', url: '/api/rooms/room-42/observations', payload });
+    await push({ source: 'kubernetes', observedAt: at(2), nodes: [{ ref: 'orders', replicas: 3 }] });
+    await push({ source: 'kubernetes', observedAt: at(1), nodes: [{ ref: 'orders', replicas: 1 }] });
+    await push({ source: 'kubernetes', observedAt: at(0), nodes: [{ ref: 'orders', replicas: 1 }] });
+
+    const { snapshot, updates } = await store.load('room-42');
+    const doc = new Y.Doc();
+    if (snapshot) Y.applyUpdate(doc, snapshot);
+    for (const update of updates) Y.applyUpdate(doc, update);
+    expect(doc.getArray('events').toArray()).toEqual([
+      { at: at(2), source: 'kubernetes', kind: 'source', ref: '', field: 'present', from: false, to: true },
+      { at: at(1), source: 'kubernetes', kind: 'node', ref: 'orders', field: 'replicas', from: 3, to: 1 },
+    ]);
+  });
+
   it('replaces a source wholesale on the next push', async () => {
     await app.inject({ method: 'POST', url: '/api/rooms/room-42/observations', payload: body });
     await app.inject({

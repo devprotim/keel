@@ -1,8 +1,10 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import {
   applyEvidence,
+  buildTimeline,
   emptyGraph,
   hasUnapprovedChanges,
+  incidentView,
   reviewChanges,
   validate,
   type ArchEdge,
@@ -10,8 +12,11 @@ import {
   type ArchNode,
   type DesignIntent,
   type FieldDelta,
+  type IncidentView,
+  type ObservationEvent,
   type ObservationSet,
   type ReviewChange,
+  type TimelineEntry,
   type ValidationReport,
 } from '@keel/shared';
 import { IndexeddbPersistence, clearDocument } from 'y-indexeddb';
@@ -48,6 +53,7 @@ export class CollabService {
   readonly #graph = signal<ArchGraph>(emptyGraph());
   readonly #observations = signal<readonly ObservationSet[]>([]);
   readonly #intent = signal<DesignIntent>({});
+  readonly #events = signal<readonly ObservationEvent[]>([]);
   /**
    * Coarse wall clock for evidence freshness. Observations go stale with time
    * alone, with no edit to trigger revalidation, so the report needs a tick.
@@ -142,6 +148,14 @@ export class CollabService {
     const evidence = this.report().evidence;
     return evidence ? applyEvidence(this.#graph(), evidence) : this.#graph();
   });
+
+  /** Incident mode: health per element and where to look first. */
+  readonly incident = computed<IncidentView>(() => incidentView(this.#graph(), this.report().evidence ?? null));
+
+  /** Incident mode: what the running system and the approved design did in the last day. */
+  readonly timeline = computed<readonly TimelineEntry[]>(() =>
+    buildTimeline(this.#graph(), this.#events(), this.#intent(), { now: this.#now() }),
+  );
 
   constructor() {
     const goOnline = (): void => this.#browserOnline.set(true);
@@ -255,6 +269,7 @@ export class CollabService {
     this.#graph.set({ nodes: [], edges: [] });
     this.#observations.set([]);
     this.#intent.set({});
+    this.#events.set([]);
     this.#peers.set([]);
     this.#socketStatus.set('connecting');
     this.#refusal.set(null);
@@ -433,6 +448,8 @@ export class CollabService {
     this.#graph.set(this.#doc.toGraph());
     this.#observations.set(this.#doc.toObservations());
     this.#intent.set(this.#doc.toIntent());
+    // Same array when the log did not change, so the signal does not fire.
+    this.#events.set(this.#doc.toEvents());
   };
 
   readonly #syncUndoState = (): void => {
