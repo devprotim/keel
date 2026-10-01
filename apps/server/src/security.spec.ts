@@ -12,9 +12,11 @@ afterEach(async () => {
 });
 
 async function boot(env: Record<string, string> = {}, reviewProvider?: ReviewProvider | null): Promise<FastifyInstance> {
+  const store = new MemoryDocStore();
+  await store.create('room-1');
   const app = await buildApp({
     config: loadConfig({ NODE_ENV: 'test', PERSIST_DEBOUNCE_MS: '5', ...env }),
-    store: new MemoryDocStore(),
+    store,
     ...(reviewProvider !== undefined ? { reviewProvider } : {}),
   });
   await app.ready();

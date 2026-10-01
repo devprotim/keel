@@ -3,7 +3,7 @@ import { Board, newRoomId } from './board.ts';
 
 test('a room refuses to grow past its size cap, and the header says why', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await board.placeNode('service', { x: 400, y: 300 });
 
   // Well past the 256 KiB cap the e2e server runs with.
@@ -25,5 +25,5 @@ test('a foreign page cannot open the collaboration socket', async ({ page, baseU
 
   // The app itself, same origin, is let in.
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
 });

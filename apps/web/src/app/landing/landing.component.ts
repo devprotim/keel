@@ -7,7 +7,6 @@ import { AuthService } from '../auth/auth.service';
 import { CollabService } from '../collab/collab.service';
 import { demoRoom } from '../core/demo';
 import { readDiagramFile, takePickedFile } from '../core/diagram-import';
-import { newRoomId } from '../core/room-id';
 import { FEATURES, pitchFor } from './pitches';
 
 /**
@@ -35,6 +34,9 @@ export class LandingComponent {
   protected readonly features = FEATURES;
 
   protected readonly importErrors = signal<readonly string[]>([]);
+  /** A new room is being made; the buttons that make one wait for it. */
+  protected readonly creating = signal(false);
+  protected readonly createError = signal<string | null>(null);
   /** A signed-in visitor's workspaces, each with its diagrams and plan. */
   protected readonly workspaces = signal<readonly (WorkspaceDetail & { billing: Billing | null })[]>([]);
   protected readonly billingError = signal<string | null>(null);
@@ -104,12 +106,15 @@ export class LandingComponent {
     }
   }
 
-  protected loginWithGithub(): void {
-    this.auth.loginWithGithub(`/${newRoomId()}`);
+  /** Signing in lands in a new room, or back here if one can't be made. */
+  protected async loginWithGithub(): Promise<void> {
+    const roomId = await this.createRoom();
+    this.auth.loginWithGithub(roomId ? `/${roomId}` : '/');
   }
 
-  protected loginWithGoogle(): void {
-    this.auth.loginWithGoogle(`/${newRoomId()}`);
+  protected async loginWithGoogle(): Promise<void> {
+    const roomId = await this.createRoom();
+    this.auth.loginWithGoogle(roomId ? `/${roomId}` : '/');
   }
 
   /**
@@ -117,19 +122,38 @@ export class LandingComponent {
    * Auth never gates a room elsewhere in the app, so the landing CTA
    * shouldn't be the one place that asks for identity first.
    */
-  protected startDiagram(): void {
-    void this.router.navigate(['/', newRoomId()]);
+  protected async startDiagram(): Promise<void> {
+    const roomId = await this.createRoom();
+    if (roomId) void this.router.navigate(['/', roomId]);
   }
 
   /**
    * The worked example with production reporting in, in a room of its own.
    * See core/demo.ts for the story it tells.
    */
-  protected openDemo(): void {
-    const roomId = newRoomId();
+  protected async openDemo(): Promise<void> {
+    const roomId = await this.createRoom();
+    if (!roomId) return;
     const demo = demoRoom();
     this.collab.queueImport(roomId, demo.graph, demo.intent, demo.observations);
     void this.router.navigate(['/', roomId]);
+  }
+
+  /**
+   * The server picks room ids, so a new diagram needs it to be reachable.
+   * Null, with the reason shown, when it isn't.
+   */
+  private async createRoom(): Promise<string | null> {
+    this.createError.set(null);
+    this.creating.set(true);
+    try {
+      return await this.access.createRoom();
+    } catch (error) {
+      this.createError.set(describeError(error, 'Could not create a diagram. Check your connection and try again.'));
+      return null;
+    } finally {
+      this.creating.set(false);
+    }
   }
 
   /**
@@ -147,7 +171,8 @@ export class LandingComponent {
       this.importErrors.set(result.errors);
       return;
     }
-    const roomId = newRoomId();
+    const roomId = await this.createRoom();
+    if (!roomId) return;
     this.collab.queueImport(roomId, result.graph, result.intent);
     void this.router.navigate(['/', roomId]);
   }

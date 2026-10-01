@@ -8,7 +8,7 @@ import { Board, newRoomId } from './board.js';
  */
 test('the checklist follows a first session, and its curl command really connects live data', async ({ page }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
 
   const checklist = page.getByRole('region', { name: 'Get started' });
@@ -39,10 +39,10 @@ test('the checklist follows a first session, and its curl command really connect
 
 test('the checklist can be hidden for good', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await page.getByRole('button', { name: 'Hide the checklist' }).click();
   await expect(page.getByRole('region', { name: 'Get started' })).toBeHidden();
 
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await expect(page.getByRole('region', { name: 'Get started' })).toBeHidden();
 });

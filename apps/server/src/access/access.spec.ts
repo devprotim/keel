@@ -14,6 +14,9 @@ let access: MemoryAccessStore;
 
 beforeEach(async () => {
   access = new MemoryAccessStore();
+  const store = new MemoryDocStore();
+  // Rooms only open once made; these are the ones the tests below use.
+  for (const roomId of ['room-open', 'room-secret', 'room-moving']) await store.create(roomId);
   app = await buildApp({
     config: loadConfig({
       NODE_ENV: 'test',
@@ -23,7 +26,7 @@ beforeEach(async () => {
       GITHUB_CLIENT_SECRET: 'secret',
       PUBLIC_URL: 'https://keel.test',
     }),
-    store: new MemoryDocStore(),
+    store,
     accessStore: access,
   });
   await app.ready();

@@ -20,7 +20,7 @@ test.describe('two people in one room', () => {
   let bob: Board;
 
   test.beforeEach(async ({ browser }) => {
-    [alice, bob] = await twoPeople(browser, newRoomId());
+    [alice, bob] = await twoPeople(browser, await newRoomId());
   });
 
   test.afterEach(async () => {

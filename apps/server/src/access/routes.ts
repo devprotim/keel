@@ -14,6 +14,8 @@ export interface AccessRouteDeps {
   /** Remove a room from memory and storage for good, closing its sockets. */
   deleteRoom: (roomId: string) => Promise<void>;
   isDeleted: (roomId: string) => Promise<boolean>;
+  /** The room was never created through `POST /api/rooms`. */
+  isMissing: (roomId: string) => Promise<boolean>;
   publicUrl: string;
   inviteTtlMs: number;
   limit: RouteShorthandOptions;
@@ -68,6 +70,9 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     if (await deps.isDeleted(roomId)) {
       return { deleted: true, visibility: 'link', role: null, canView: false, canEdit: false, canManage: false, signedIn: user !== null };
     }
+    if (await deps.isMissing(roomId)) {
+      return { missing: true, visibility: 'link', role: null, canView: false, canEdit: false, canManage: false, signedIn: user !== null };
+    }
     const access = await roomAccess(store, roomId, user?.id ?? null);
     return {
       visibility: access.visibility,
@@ -91,6 +96,7 @@ export function registerAccessRoutes(app: FastifyInstance, deps: AccessRouteDeps
     if (!body.success) return reply.status(400).send({ error: 'invalid request', issues: body.error.issues });
     const user = await requireUser(request, reply);
     if (!user) return reply;
+    if (await deps.isMissing(roomId)) return reply.status(404).send({ error: 'no such room' });
 
     const access = await roomAccess(store, roomId, user.id);
     if (!access.canManage) return reply.status(403).send({ error: 'only an owner can move this room' });

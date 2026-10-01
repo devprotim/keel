@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import cors from '@fastify/cors';
@@ -13,7 +13,7 @@ import { AnthropicReviewProvider } from './ai/anthropic-provider.ts';
 import { GeminiReviewProvider } from './ai/gemini-provider.ts';
 import type { ReviewProvider } from './ai/provider.ts';
 import { ArchitectureReviewer } from './ai/review.ts';
-import { CLOSE_DELETED, CLOSE_FORBIDDEN, roomAccess } from './access/policy.ts';
+import { CLOSE_DELETED, CLOSE_FORBIDDEN, CLOSE_NOT_FOUND, roomAccess } from './access/policy.ts';
 import { registerAccessRoutes } from './access/routes.ts';
 import { MemoryAccessStore, type AccessStore } from './access/store.ts';
 import { createSender, type Send } from './alerts/notifiers.ts';
@@ -287,6 +287,8 @@ export async function buildApp({
   /** What the caller may do in a room, from their session. */
   const accessFor = async (request: FastifyRequest, roomId: string) =>
     roomAccess(access, roomId, (await auth.readUser(request))?.id ?? null);
+  /** A room that was never made through `POST /api/rooms`, so a typed URL opens nothing. */
+  const isMissing = async (roomId: string) => !(await store.exists(roomId));
 
   const billing = new BillingService({
     store: billingStore ?? new MemoryBillingStore(),
@@ -329,6 +331,7 @@ export async function buildApp({
       await access.releaseRoom(roomId);
     },
     isDeleted: (roomId) => store.isDeleted(roomId),
+    isMissing,
     publicUrl: config.PUBLIC_URL,
     inviteTtlMs: config.INVITE_TTL_DAYS * 24 * 60 * 60 * 1000,
     limit: perMinute(config.RATE_LIMIT_ACCESS_PER_MIN),
@@ -356,6 +359,7 @@ export async function buildApp({
     roomUrl,
     parseRoomId,
     authorize: async (request, roomId, need) => {
+      if (await isMissing(roomId)) return false;
       const granted = await accessFor(request, roomId);
       return need === 'edit' ? granted.canEdit : granted.canView;
     },
@@ -399,6 +403,18 @@ export async function buildApp({
   });
 
   /**
+   * Make a new room. The server picks the id, so every room id is random and
+   * nobody can create (or land in) `/foo` by typing it. Registered at once,
+   * so the room opens before anyone has drawn in it.
+   */
+  app.post('/api/rooms', perMinute(config.RATE_LIMIT_ACCESS_PER_MIN), async (_request, reply) => {
+    // 48 random bits, the same shape the client used to mint (docs/security-audit.md).
+    const roomId = randomUUID().replace(/-/g, '').slice(0, 12);
+    await store.create(roomId);
+    return reply.status(201).send({ roomId });
+  });
+
+  /**
    * Push what the running system reports into a room.
    *
    * This is what keeps a diagram honest after the day it was drawn: a CI job, a
@@ -415,6 +431,7 @@ export async function buildApp({
     if (!roomId.success) return reply.status(400).send({ error: 'invalid room id' });
 
     if (await store.isDeleted(roomId.data)) return reply.status(410).send({ error: 'this room was deleted' });
+    if (await isMissing(roomId.data)) return reply.status(404).send({ error: 'no such room' });
 
     // A private room takes observations only from a token issued for it (a
     // collector), or from a member who could edit the numbers by hand anyway.
@@ -559,6 +576,10 @@ export async function buildApp({
       .then(async (deleted) => {
         if (deleted) {
           connection.close(CLOSE_DELETED, 'deleted');
+          return null;
+        }
+        if (await isMissing(roomId)) {
+          connection.close(CLOSE_NOT_FOUND, 'not found');
           return null;
         }
         return accessFor(request, roomId);

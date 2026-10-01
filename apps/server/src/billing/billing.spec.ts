@@ -14,6 +14,13 @@ import { signStripePayload, verifyStripeSignature, type CheckoutInput, type Stri
 const SECRET = 's'.repeat(32);
 const WEBHOOK_SECRET = 'whsec_test';
 
+/** Rooms only open once made; these are the ones the tests below use. */
+async function roomStore(): Promise<MemoryDocStore> {
+  const store = new MemoryDocStore();
+  for (const roomId of ['room-open', ...Array.from({ length: 10 }, (_, i) => `room-${i}`)]) await store.create(roomId);
+  return store;
+}
+
 /** Records what would have gone to Stripe. */
 class FakeStripe implements StripeApi {
   checkouts: CheckoutInput[] = [];
@@ -49,7 +56,7 @@ async function start(env: Record<string, string> = {}): Promise<void> {
       STRIPE_PRICE_TEAM: 'price_team',
       ...env,
     }),
-    store: new MemoryDocStore(),
+    store: await roomStore(),
     accessStore: new MemoryAccessStore(),
     billingStore: new MemoryBillingStore(),
     stripeApi: stripe,
@@ -136,7 +143,7 @@ describe('billing', () => {
     await app.close();
     app = await buildApp({
       config: loadConfig({ NODE_ENV: 'test', SESSION_SECRET: SECRET, GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' }),
-      store: new MemoryDocStore(),
+      store: await roomStore(),
     });
     await app.ready();
     const { owner, id } = await workspace();

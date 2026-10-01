@@ -11,7 +11,7 @@ async function person(browser: Browser, baseURL: string, who?: { id: string; nam
 const shareButton = (page: Page) => page.getByRole('button', { name: /^(Share|Private)$/ });
 
 test('a room made private opens only for members, and a viewer can watch but not edit', async ({ browser, baseURL }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const alicePage = await person(browser, baseURL!, { id: 'alice', name: 'Alice' });
   const alice = new Board(alicePage);
   await alice.open(roomId);
@@ -69,7 +69,7 @@ test('a room made private opens only for members, and a viewer can watch but not
 });
 
 test('a collector needs a token to report into a private room', async ({ browser, baseURL, request }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const page = await person(browser, baseURL!, { id: 'carol', name: 'Carol' });
   await new Board(page).open(roomId);
   await shareButton(page).click();
@@ -113,7 +113,7 @@ test('leaving a room for a new one does not carry its diagram along', async ({ p
 });
 
 test('an owner deleting a diagram removes it for everyone, including their offline copies', async ({ browser, baseURL }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const ownerPage = await person(browser, baseURL!, { id: 'dana', name: 'Dana' });
   const owner = new Board(ownerPage);
   await owner.open(roomId);

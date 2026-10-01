@@ -26,7 +26,7 @@ const change = (page: Page, label: string) => changeList(page).locator(':scope >
 
 test('each changed field is approved or reverted on its own', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await approveExample(board);
 
   await changesTab(page).click();
@@ -63,7 +63,7 @@ test('each changed field is approved or reverted on its own', async ({ page }) =
 
 test('a deleted component comes back with its dependencies, and an addition can be removed', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await approveExample(board);
 
   await selectThroughFinding(page, 'Catalog DB has no replication');
@@ -94,7 +94,7 @@ test('a deleted component comes back with its dependencies, and an addition can 
 });
 
 test('a removal can be approved, and a collaborator sees the review live', async ({ browser }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const alice = new Board(await (await browser.newContext()).newPage());
   const bob = new Board(await (await browser.newContext()).newPage());
   await alice.open(roomId);

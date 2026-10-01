@@ -10,6 +10,7 @@ let store: MemoryDocStore;
 
 beforeEach(async () => {
   store = new MemoryDocStore();
+  await store.create('room-42');
   app = await buildApp({
     config: loadConfig({ NODE_ENV: 'test', SESSION_SECRET: 's'.repeat(32), PERSIST_DEBOUNCE_MS: '5' }),
     store,

@@ -15,7 +15,7 @@ function push(request: APIRequestContext, roomId: string, set: Record<string, un
 
 test('observations pushed over HTTP catch wrong numbers, and one click fixes the diagram', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
   await board.reviewPill.click();
@@ -54,7 +54,7 @@ test('observations pushed over HTTP catch wrong numbers, and one click fixes the
 
 test('traffic decides which findings matter', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
   await board.reviewPill.click();
@@ -77,7 +77,7 @@ test('traffic decides which findings matter', async ({ page, request }) => {
 
 test('an approved baseline tells an accident apart from an approved change', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
   await board.reviewPill.click();
@@ -111,7 +111,7 @@ test('an approved baseline tells an accident apart from an approved change', asy
 });
 
 test('the approval baseline syncs to a second collaborator', async ({ browser, request }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const alice = new Board(await (await browser.newContext()).newPage());
   const bob = new Board(await (await browser.newContext()).newPage());
 

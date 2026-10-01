@@ -47,6 +47,7 @@ async function seedDiagram(): Promise<void> {
 
 beforeEach(async () => {
   docs = new MemoryDocStore();
+  await docs.create(ROOM);
   alerts = new MemoryAlertStore();
   sent = [];
   app = await buildApp({

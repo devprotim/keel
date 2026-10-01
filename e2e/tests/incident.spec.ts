@@ -16,7 +16,7 @@ async function push(request: APIRequestContext, roomId: string, set: Record<stri
 
 test('incident mode ranks what is broken and shows what changed just before', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
 
@@ -87,7 +87,7 @@ test('incident mode ranks what is broken and shows what changed just before', as
 
 test('the timeline includes approved design changes alongside production ones', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
 
