@@ -1,0 +1,73 @@
+// Motion: the few animations Keel uses beyond hover/focus colour changes.
+//
+// Each one confirms that something appeared, disappeared or moved somewhere
+// else, and none of them touch the canvas. Durations and curves come from the
+// tokens, and the prefers-reduced-motion rule in styles.scss collapses all of
+// it, so a component only opts in by naming a class.
+
+@keyframes keel-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--keel-pop-shift, -4px)) scale(0.98);
+  }
+}
+
+@keyframes keel-pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--keel-pop-shift, -4px)) scale(0.98);
+  }
+}
+
+@keyframes keel-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes keel-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+// Popovers (share, export, alerts), used with animate.enter / animate.leave.
+// They grow out of their trigger: each panel sets `transform-origin` to the
+// corner nearest its trigger, and one that opens upward sets
+// `--keel-pop-shift: 4px` so it travels up toward the trigger, not down.
+.keel-pop-in {
+  animation: keel-pop-in var(--keel-motion-quick) var(--keel-ease-out) both;
+}
+
+.keel-pop-out {
+  animation: keel-pop-out var(--keel-motion-exit) var(--keel-ease-in) both;
+}
+
+// Toasts rise into place, then fade out where they are.
+.keel-toast-in {
+  animation: keel-toast-in var(--keel-motion-toast) var(--keel-ease-out) both;
+}
+
+.keel-toast-out {
+  animation: keel-fade-out var(--keel-motion-toast-exit) var(--keel-ease-in) both;
+}
+
+// Route transitions (withViewTransitions in app.config.ts): a plain
+// cross-fade. The browser's own fade keyframes are kept; only their timing is
+// ours. The pseudo-elements hang off <html>, so they inherit the tokens. The
+// group's own animation (the browser default is 250ms) is matched so the whole
+// transition ends at once.
+::view-transition-group(root) {
+  animation-duration: var(--keel-motion-route);
+}
+
+::view-transition-old(root) {
+  animation-duration: var(--keel-motion-route);
+  animation-timing-function: var(--keel-ease-in);
+}
+
+::view-transition-new(root) {
+  animation-duration: var(--keel-motion-route);
+  animation-timing-function: var(--keel-ease-out);
+}

@@ -47,9 +47,14 @@ Unchanged.
 - **Border radius:** `--keel-radius-sm` 6px, `--keel-radius` 10px, `--keel-radius-lg` 14px — small, functional, not the rounded-toy look.
 
 ## Motion
-Unchanged.
-- **Approach:** minimal-functional. Only transitions that confirm a state change (hover, active, focus) — 0.12s ease on `background-color`/`border-color`/`color`.
-- **Reduced motion:** already respected globally (`prefers-reduced-motion` collapses all transition/animation durations to ~0).
+- **Approach:** minimal-functional. Motion only confirms that something changed state, appeared, disappeared or moved to another page. The canvas never animates (pan, zoom, drag, remote cursors, findings updating on each edit).
+- **State changes:** hover, active, focus. `--keel-motion-instant` (0.12s) ease on `background-color`/`border-color`/`color`.
+- **Curves:** `--keel-ease-out` `cubic-bezier(0.2, 0, 0, 1)` for anything entering, `--keel-ease-in` `cubic-bezier(0.4, 0, 1, 1)` for anything leaving.
+- **Route transitions:** a plain cross-fade, `--keel-motion-route` (180ms), via the View Transitions API (`withViewTransitions` in `app.config.ts`). Skipped on first load, back/forward, and query-only changes (`core/view-transitions.ts`).
+- **Popovers** (share, export, alerts): `.keel-pop-in` / `.keel-pop-out` with `animate.enter` / `animate.leave`. In over `--keel-motion-quick` (140ms) from scale 0.98 and 4px toward the trigger, out over `--keel-motion-exit` (100ms), reversed. `transform-origin` is the corner nearest the trigger; a panel that opens upward sets `--keel-pop-shift: 4px`.
+- **Toasts:** `.keel-toast-in` / `.keel-toast-out`. Rise 4px into place over `--keel-motion-toast` (120ms), fade out in place over `--keel-motion-toast-exit` (160ms).
+- **Classes and keyframes:** `styles/_motion.scss`. Components opt in by naming a class, never with their own keyframes.
+- **Reduced motion:** respected globally (`prefers-reduced-motion` collapses all transition/animation durations to ~0, and route transitions are skipped outright).
 
 ## Decisions Log
 | Date | Decision | Rationale |
@@ -57,3 +62,4 @@ Unchanged.
 | 2026-09-04 | Created DESIGN.md documenting the existing color/spacing/motion/layout system as-is | These were already well-built in `_tokens.scss`; the gap was a written source of truth, not the tokens themselves |
 | 2026-09-04 | Adopted Geist (UI) + Geist Mono (data/ids) + Cabinet Grotesk (wordmark + panel headers only) | Previous stack was bare system fonts — correct but identical to every other app on the machine. Geist/Geist Mono chosen for screen legibility and native tabular figures given how data-dense the findings panel and inspector are. Cabinet Grotesk scoped to just the wordmark and two panel headers as the one deliberate personality risk, kept small and reversible. |
 | 2026-09-04 | Changed `--keel-kind-service` (was `#4f6bed`) and `--keel-kind-gateway` (was `#059669`) | Both were exact hex duplicates of another token in the same theme: `service` matched `--keel-accent`, so a selected node was indistinguishable from any service-kind node; `gateway` matched `--keel-severity-ok`, so a gateway node visually read as "healthy" regardless of its actual review status. `service` moved to rose (`#db2777`/`#f472b6`), `gateway` to teal (`#0d9488`/`#2dd4bf`) — both unused hue families in the existing kind palette. |
+| 2026-10-01 | Extended Motion beyond hover/focus: route cross-fade, popover fade + scale, toast fade + rise, with motion and easing tokens | Chosen from interactive mocks over the alternatives (fade + lift and brand-anchored routes, fade-only popovers and toasts). Pages, panels and toasts used to appear in one frame, which made it hard to tell what had just opened or where it came from. Durations stay at 100 to 180ms so nothing slows down a dashboard-density tool. |

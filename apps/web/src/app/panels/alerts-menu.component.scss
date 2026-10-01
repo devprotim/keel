@@ -20,6 +20,9 @@
   width: 320px;
   max-width: calc(100vw - var(--keel-space-4) * 2);
   padding: var(--keel-space-4);
+  // Grows out of the trigger below it (see styles/_motion.scss).
+  transform-origin: bottom right;
+  --keel-pop-shift: 4px;
 }
 
 .head {
