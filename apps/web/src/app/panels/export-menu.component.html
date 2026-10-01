@@ -12,7 +12,16 @@
 </button>
 
 @if (open()) {
-  <div #menu class="keel-island menu" role="menu" aria-label="Export" tabindex="-1" (keydown)="onMenuKeydown($event)">
+  <div
+    #menu
+    class="keel-island menu"
+    role="menu"
+    aria-label="Export"
+    tabindex="-1"
+    animate.enter="keel-pop-in"
+    animate.leave="keel-pop-out"
+    (keydown)="onMenuKeydown($event)"
+  >
     <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('png')">
       <span class="item-label">PNG image</span>
       <span class="item-hint">{{ busy() === 'png' ? 'Rendering…' : 'For docs and slides' }}</span>

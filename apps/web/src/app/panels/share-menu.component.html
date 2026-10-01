@@ -12,7 +12,7 @@
 </button>
 
 @if (open() && access(); as a) {
-  <div class="keel-island panel" role="dialog" aria-label="Sharing">
+  <div class="keel-island panel" role="dialog" aria-label="Sharing" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
     @if (a.visibility === 'link') {
       <h2 class="title">Anyone with the link</h2>
       <p class="lede">Anyone who has this link can open and edit the diagram. No sign-in needed.</p>

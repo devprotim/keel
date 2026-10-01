@@ -15,7 +15,7 @@
       {{ roomId() }}
       <span class="room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
       @if (roomIdCopied()) {
-        <span class="copy-toast" role="status">Link copied</span>
+        <span class="copy-toast" role="status" animate.enter="keel-toast-in" animate.leave="keel-toast-out">Link copied</span>
       }
     </button>
     @if (access()?.visibility === 'workspace' && !denied()) {

@@ -14,7 +14,7 @@
 </button>
 
 @if (open()) {
-  <div class="keel-island panel" role="dialog" aria-label="Drift alerts">
+  <div class="keel-island panel" role="dialog" aria-label="Drift alerts" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
     <div class="head">
       <h2 class="title">Drift alerts</h2>
       <span class="state" [class.on]="configured()">{{ summary() }}</span>

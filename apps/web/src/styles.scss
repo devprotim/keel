@@ -17,6 +17,7 @@
 
 @import './styles/tokens';
 @import './styles/components';
+@import './styles/motion';
 
 html,
 body {
@@ -64,5 +65,14 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  // The universal selector above does not match the view-transition
+  // pseudo-elements. Route transitions are skipped outright for reduced motion
+  // (app.config.ts); this is the backstop if one starts anyway.
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
