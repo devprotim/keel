@@ -93,7 +93,7 @@ export class CollabService {
    * The server refused this room outright. Decisive on its own, so a private
    * or deleted room is shut even when the HTTP access check can't be reached.
    */
-  readonly #closedBy = signal<'forbidden' | 'deleted' | null>(null);
+  readonly #closedBy = signal<'forbidden' | 'deleted' | 'missing' | null>(null);
   /** What the browser reports, which is a separate question. */
   readonly #browserOnline = signal(navigator.onLine);
   readonly #canUndo = signal(false);
@@ -273,12 +273,13 @@ export class CollabService {
       this.#socketStatus.set('disconnected');
       const refusal = describeRefusal(event?.code);
       if (refusal) this.#refusal.set(refusal);
-      if (event?.code === CLOSE_FORBIDDEN || event?.code === CLOSE_DELETED) {
+      const closedBy = closeReason(event?.code);
+      if (closedBy) {
         // Retrying would only be refused again, over and over.
         this.#provider?.disconnect();
-        this.#closedBy.set(event.code === CLOSE_DELETED ? 'deleted' : 'forbidden');
+        this.#closedBy.set(closedBy);
       }
-      if (event?.code === CLOSE_ACCESS_CHANGED || event?.code === CLOSE_FORBIDDEN || event?.code === CLOSE_DELETED) {
+      if (event?.code === CLOSE_ACCESS_CHANGED || closedBy) {
         this.#accessChecks.update((n) => n + 1);
       }
     });
@@ -608,3 +609,12 @@ function describeRefusal(code: number | undefined): string | null {
 const CLOSE_ACCESS_CHANGED = 4001;
 const CLOSE_FORBIDDEN = 4003;
 const CLOSE_DELETED = 4004;
+const CLOSE_NOT_FOUND = 4005;
+
+/** The close codes that refuse the room for good, as what `closedBy` reports. */
+function closeReason(code: number | undefined): 'forbidden' | 'deleted' | 'missing' | null {
+  if (code === CLOSE_FORBIDDEN) return 'forbidden';
+  if (code === CLOSE_DELETED) return 'deleted';
+  if (code === CLOSE_NOT_FOUND) return 'missing';
+  return null;
+}

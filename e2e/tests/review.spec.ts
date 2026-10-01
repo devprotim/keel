@@ -3,7 +3,7 @@ import { Board, newRoomId } from './board.ts';
 
 test('without an AI key the review explains it is not configured', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await board.loadExample();
 
   await board.reviewPill.click();
@@ -41,7 +41,7 @@ test('AI findings render in their own section and reveal what they cite', async 
   );
 
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await board.loadExample();
 
   await board.reviewPill.click();

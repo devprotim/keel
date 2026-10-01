@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 import { Board, newRoomId } from './board.ts';
 
 test('a diagram outlives every tab closing and the room being evicted', async ({ browser }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
 
   const first = await browser.newContext();
   const author = new Board(await first.newPage());
@@ -25,7 +25,7 @@ test('a diagram outlives every tab closing and the room being evicted', async ({
 
 test('a reload keeps the diagram', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await board.placeNode('gateway', { x: 400, y: 300 });
   await board.field('Name').fill('Edge');
 

@@ -15,9 +15,14 @@ export interface DocStore {
   appendUpdate(roomId: string, update: Uint8Array): Promise<void>;
   /** Replace snapshot and discard the updates it already contains. */
   compact(roomId: string, snapshot: Uint8Array): Promise<void>;
+  /**
+   * Register an empty room, so it exists before anything is written to it.
+   * A no-op for a room that already exists.
+   */
+  create(roomId: string): Promise<void>;
   /** Room ids known to the store, newest first. */
   list(): Promise<RoomSummary[]>;
-  /** True if the room has ever been persisted. */
+  /** True if the room was created or has ever been persisted. */
   exists(roomId: string): Promise<boolean>;
   /**
    * Delete the room and everything hanging off it, leaving a tombstone. The
@@ -72,14 +77,20 @@ export class MemoryDocStore implements DocStore {
     this.#updatedAt.set(roomId, new Date());
   }
 
+  async create(roomId: string): Promise<void> {
+    if (!this.#updatedAt.has(roomId)) this.#updatedAt.set(roomId, new Date());
+  }
+
   async list(): Promise<RoomSummary[]> {
     return [...this.#updatedAt.entries()]
       .map(([roomId, updatedAt]) => ({ roomId, updatedAt }))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
+  // Every write records updatedAt, and so does create, so it is the set of
+  // rooms that exist, the same as the `rooms` table in Postgres.
   async exists(roomId: string): Promise<boolean> {
-    return this.#snapshots.has(roomId) || (this.#updates.get(roomId)?.length ?? 0) > 0;
+    return this.#updatedAt.has(roomId);
   }
 
   async delete(roomId: string): Promise<void> {

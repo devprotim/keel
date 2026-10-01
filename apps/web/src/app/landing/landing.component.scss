@@ -112,6 +112,12 @@
   text-align: left;
 }
 
+// One sentence rather than a list, so no bullet indent.
+.create-error {
+  padding: 0;
+  text-align: center;
+}
+
 .cta-hint {
   font-size: 12px;
   color: var(--keel-text-muted);

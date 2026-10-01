@@ -107,6 +107,10 @@ export class PostgresDocStore implements DocStore {
     });
   }
 
+  async create(roomId: string): Promise<void> {
+    await this.#db.query('INSERT INTO rooms (room_id) VALUES ($1) ON CONFLICT (room_id) DO NOTHING', [roomId]);
+  }
+
   async list(): Promise<RoomSummary[]> {
     const { rows } = await this.#db.query<{ room_id: string; updated_at: Date | string }>(
       'SELECT room_id, updated_at FROM rooms ORDER BY updated_at DESC',

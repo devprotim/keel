@@ -24,7 +24,7 @@ test.describe('export', () => {
 
   test.beforeEach(async ({ page }) => {
     board = new Board(page);
-    roomId = newRoomId();
+    roomId = await newRoomId();
     await board.open(roomId);
   });
 
@@ -95,7 +95,7 @@ test.describe('export', () => {
 test.describe('import', () => {
   test('a JSON export opens from the landing page as a new room, baseline included', async ({ page }) => {
     const board = new Board(page);
-    const source = newRoomId();
+    const source = await newRoomId();
     await board.open(source);
     await board.loadExample();
     await board.reviewPill.click();
@@ -119,7 +119,7 @@ test.describe('import', () => {
 
   test('a JSON file imports into an empty board', async ({ page }) => {
     const board = new Board(page);
-    await board.open(newRoomId());
+    await board.open(await newRoomId());
     const file = {
       nodes: [
         { id: 'api', kind: 'service', label: 'API', x: 0, y: 0, w: 184, h: 84, replicas: 2 },
@@ -139,7 +139,7 @@ test.describe('import', () => {
 
   test('a broken file is refused with the reason, and nothing is imported', async ({ page }) => {
     const board = new Board(page);
-    await board.open(newRoomId());
+    await board.open(await newRoomId());
     await page.locator('.empty input[type=file]').setInputFiles({
       name: 'broken.json',
       mimeType: 'application/json',

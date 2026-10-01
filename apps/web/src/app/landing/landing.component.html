@@ -33,10 +33,10 @@
 
     <div class="cta-row">
       <div class="cta-buttons">
-        <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" (click)="startDiagram()">
+        <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" [disabled]="creating()" (click)="startDiagram()">
           Start a new diagram
         </button>
-        <button type="button" class="keel-btn keel-btn--lg" (click)="openDemo()">
+        <button type="button" class="keel-btn keel-btn--lg" [disabled]="creating()" (click)="openDemo()">
           See it on an example
         </button>
         <label class="keel-btn keel-btn--ghost keel-btn--lg keel-file-button">
@@ -45,12 +45,16 @@
             class="keel-visually-hidden"
             type="file"
             accept="application/json,.json"
+            [disabled]="creating()"
             (change)="openFile($event)"
           />
         </label>
       </div>
       <span class="cta-hint">No account needed. The link is the invite.</span>
     </div>
+    @if (createError(); as message) {
+      <p class="import-errors create-error" role="alert">{{ message }}</p>
+    }
     @if (importErrors().length > 0) {
       <ul class="import-errors" role="alert">
         @for (message of importErrors(); track message) {

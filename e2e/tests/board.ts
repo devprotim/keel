@@ -1,8 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { baseURL } from '../playwright.config.ts';
 
-/** Fresh random room id in the same 12-hex-char shape as core/room-id.ts. */
-export function newRoomId(): string {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+/** A new room, made the way the landing page makes one: the server picks the id. */
+export async function newRoomId(): Promise<string> {
+  const response = await fetch(`${baseURL}/api/rooms`, { method: 'POST' });
+  expect(response.status).toBe(201);
+  return ((await response.json()) as { roomId: string }).roomId;
 }
 
 /**

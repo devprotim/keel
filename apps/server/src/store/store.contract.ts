@@ -77,6 +77,17 @@ export function describeDocStoreContract(name: string, create: () => Promise<Doc
       doc.destroy();
     });
 
+    it('creates an empty room that exists before anything is written', async () => {
+      await store.create('fresh');
+      expect(await store.exists('fresh')).toBe(true);
+      expect(await store.load('fresh')).toEqual({ snapshot: null, updates: [] });
+
+      // Creating again never touches what the room already holds.
+      await store.appendUpdate('fresh', new Uint8Array([7]));
+      await store.create('fresh');
+      expect((await store.load('fresh')).updates.map((u) => [...u])).toEqual([[7]]);
+    });
+
     it('deletes a room outright and remembers that it did', async () => {
       const doc = new Y.Doc();
       doc.getMap('nodes').set('a', 1);

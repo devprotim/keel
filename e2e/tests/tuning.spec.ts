@@ -12,7 +12,7 @@ const group = (page: Page, title: string) => findings(page).locator('.finding-gr
 const tab = (page: Page, name: RegExp) => findings(page).getByRole('tab', { name });
 
 test('a finding labelled noise is dismissed for everyone, counted, and can come back', async ({ browser }) => {
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   const alice = new Board(await (await browser.newContext()).newPage());
   const bob = new Board(await (await browser.newContext()).newPage());
   await alice.open(roomId);
@@ -50,7 +50,7 @@ test('a finding labelled noise is dismissed for everyone, counted, and can come 
 
 test('a room can lower or mute a rule, and it measures how often rules fire', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await board.loadExample();
   await board.reviewPill.click();
 
@@ -79,7 +79,7 @@ test('a room can lower or mute a rule, and it measures how often rules fire', as
 
 test('names production reports that no box carries come with a suggested fix', async ({ page, request }) => {
   const board = new Board(page);
-  const roomId = newRoomId();
+  const roomId = await newRoomId();
   await board.open(roomId);
   await board.loadExample();
   await board.placeNode('cache', { x: 1300, y: 760 });

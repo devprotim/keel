@@ -70,6 +70,8 @@ export class BoardComponent {
    */
   readonly access = signal<RoomAccess | null>(null);
   readonly deleted = computed(() => this.access()?.deleted === true || this.collab.closedBy() === 'deleted');
+  /** Nobody made this room; its id was typed or mistyped. */
+  readonly missing = computed(() => this.access()?.missing === true || this.collab.closedBy() === 'missing');
   readonly denied = computed(() => this.access()?.canView === false || this.collab.closedBy() !== null);
 
   /** Bound from the route by withComponentInputBinding. */
@@ -165,6 +167,9 @@ export class BoardComponent {
     if (roomId !== this.roomId()) return;
     this.access.set(access);
 
+    // Unlike a private room's, an offline copy is kept: from before rooms had
+    // to be created, it may be the only copy of that diagram there is.
+    if (this.missing()) return;
     if ((access && !access.canView) || this.collab.closedBy() !== null) {
       // A private room this browser can't open must not stay readable from
       // its offline copy either.

@@ -174,6 +174,8 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 
 The room id lives in the URL (`apps/web/src/app/app.routes.ts`). For a link room it *is* the sharing mechanism; a workspace room also needs membership, which comes from an `/invite/:token` link. `/` is the landing page, which lists a signed-in user's workspaces and their diagrams.
 
+Rooms are made by `POST /api/rooms`, which picks a random id and registers it (`DocStore.create`); the client never mints one. An id that was never created is "not found" on every door: the access route returns `missing: true`, the socket closes with 4005, observations get 404, alerts 403. The board shows "No diagram here" and keeps any offline copy rather than deleting it. On the memory store a restart forgets every room, so every link is "not found" afterwards; develop against a database. Tests create rooms through the API (e2e's `newRoomId()`).
+
 ## Design System
 
 Always read DESIGN.md before making any visual or UI decisions. Color, spacing, radii, and motion were already established in `apps/web/src/styles/_tokens.scss`; DESIGN.md documents them as source of truth and adds the typography system (Geist / Geist Mono / Cabinet Grotesk). Do not deviate without explicit user approval. In QA mode, flag any code that doesn't match DESIGN.md.

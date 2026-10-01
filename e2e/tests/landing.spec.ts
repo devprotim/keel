@@ -30,6 +30,20 @@ test('an unknown nested path falls back to the landing page', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Start a new diagram' })).toBeVisible();
 });
 
+test('a typed room id is not found rather than a new room anyone could guess', async ({ page }) => {
+  await page.goto('/foo-typed');
+  await expect(page.getByRole('alert')).toContainText('No diagram here');
+  await expect(page.locator('.presence .status')).not.toHaveText('Live');
+
+  // Nothing was made by visiting it, on the socket or the API.
+  const access = await page.request.get('/api/rooms/foo-typed/access');
+  expect(await access.json()).toMatchObject({ missing: true });
+
+  await page.getByRole('link', { name: 'Start a new diagram' }).click();
+  await page.getByRole('button', { name: 'Start a new diagram' }).click();
+  await new Board(page).expectLive();
+});
+
 test('?pitch= previews another message on the real page', async ({ page }) => {
   await page.goto('/?pitch=incident');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('When it breaks, know where to look and what changed');

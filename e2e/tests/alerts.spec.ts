@@ -3,7 +3,7 @@ import { Board, newRoomId } from './board.ts';
 
 test('drift alerts are configured from the board, and a stored webhook is never shown again', async ({ page }) => {
   const board = new Board(page);
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
 
   await page.getByRole('button', { name: 'Alerts' }).click();
   const panel = page.getByRole('dialog', { name: 'Drift alerts' });

@@ -9,6 +9,8 @@ export type Role = 'owner' | 'editor' | 'viewer';
 export interface RoomAccess {
   /** The room was deleted; nothing more can be done with it. */
   deleted?: boolean;
+  /** No such room: rooms are made through `createRoom()`, not by typing a URL. */
+  missing?: boolean;
   visibility: 'link' | 'workspace';
   role: Role | null;
   canView: boolean;
@@ -77,6 +79,11 @@ export interface IngestToken {
 export class AccessService {
   readonly #http = inject(HttpClient);
   readonly #api = inject(KEEL_CONFIG).apiUrl;
+
+  /** A new room with an id the server picked. */
+  createRoom(): Promise<string> {
+    return this.#send<{ roomId: string }>('POST', '/api/rooms').then((r) => r.roomId);
+  }
 
   roomAccess(roomId: string): Promise<RoomAccess> {
     return this.#get(`/api/rooms/${encodeURIComponent(roomId)}/access`);

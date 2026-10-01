@@ -46,3 +46,5 @@ export const CLOSE_ACCESS_CHANGED = 4001;
 export const CLOSE_FORBIDDEN = 4003;
 /** The room was deleted. A client should drop its offline copy rather than sync it back. */
 export const CLOSE_DELETED = 4004;
+/** No such room: it was never created through `POST /api/rooms`. */
+export const CLOSE_NOT_FOUND = 4005;

@@ -35,22 +35,22 @@ async function makePrivate(page: Page, workspace: { newName?: string; existing?:
 }
 
 test('a free workspace meets its limit, upgrades through Checkout, and the webhook lifts it', async ({ page, context, baseURL }) => {
-  const owner = `owner-${newRoomId()}`;
+  const owner = `owner-${await newRoomId()}`;
   await signIn(context, baseURL!, owner, 'Olga');
   const board = new Board(page);
 
   // Three diagrams fill a free workspace.
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await makePrivate(page, { newName: 'Platform' }, 'One');
-  await expect(page.getByRole('button', { name: 'Private' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Private', exact: true })).toBeVisible();
   const { workspaces } = (await (await page.request.get('/api/workspaces')).json()) as { workspaces: { id: string }[] };
   const workspaceId = workspaces[0]!.id;
   for (const name of ['Two', 'Three']) {
-    expect((await page.request.put(`/api/rooms/${newRoomId()}/workspace`, { data: { workspaceId, name } })).status()).toBe(200);
+    expect((await page.request.put(`/api/rooms/${await newRoomId()}/workspace`, { data: { workspaceId, name } })).status()).toBe(200);
   }
 
   // The fourth is refused, with the reason and the way out.
-  await board.open(newRoomId());
+  await board.open(await newRoomId());
   await makePrivate(page, { existing: 'Platform' }, 'Four');
   await expect(page.getByRole('dialog', { name: 'Sharing' })).toContainText('Free plan workspaces can hold 3 diagrams. Upgrade to add more.');
 
@@ -95,7 +95,7 @@ test('a free workspace meets its limit, upgrades through Checkout, and the webho
   await expect(card).toContainText('3 of 50 diagrams');
 
   // The limit is gone.
-  expect((await page.request.put(`/api/rooms/${newRoomId()}/workspace`, { data: { workspaceId, name: 'Four' } })).status()).toBe(200);
+  expect((await page.request.put(`/api/rooms/${await newRoomId()}/workspace`, { data: { workspaceId, name: 'Four' } })).status()).toBe(200);
 
   // And billing is managed on Stripe's portal.
   await card.getByRole('button', { name: 'Manage billing' }).click();

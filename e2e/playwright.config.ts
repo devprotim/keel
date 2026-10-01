@@ -14,7 +14,8 @@ import { defineConfig, devices } from '@playwright/test';
  * review mock `/api/review` at the network layer instead.
  */
 const PORT = Number(process.env.E2E_PORT ?? 8790);
-const baseURL = `http://localhost:${PORT}`;
+/** Shared with tests/board.ts, which creates rooms against it outside any page. */
+export const baseURL = `http://localhost:${PORT}`;
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 /** Shared with tests/session.ts, which signs cookies the server will accept. */
 export const E2E_SESSION_SECRET = 'e2e-session-secret-at-least-32-characters';

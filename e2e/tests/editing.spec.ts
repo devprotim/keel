@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { Board, newRoomId } from './board.ts';
 
 test.beforeEach(async ({ page }) => {
-  await new Board(page).open(newRoomId());
+  await new Board(page).open(await newRoomId());
 });
 
 test('loading the example fills the canvas and surfaces rule findings', async ({ page }) => {

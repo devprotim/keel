@@ -268,6 +268,9 @@
       @if (deleted()) {
         <p class="empty-title">This diagram was deleted</p>
         <p class="empty-body">An owner of its workspace deleted it. Any copy this browser kept for offline use has been removed too.</p>
+      } @else if (missing()) {
+        <p class="empty-title">No diagram here</p>
+        <p class="empty-body">Nobody has made a diagram at this link. Check it was copied in full, or start a new one.</p>
       } @else {
         <p class="empty-title">This diagram is private</p>
         <p class="empty-body">
@@ -280,7 +283,7 @@
         </p>
       }
       <div class="empty-actions">
-        @if (!access()?.signedIn && !deleted()) {
+        @if (!access()?.signedIn && !deleted() && !missing()) {
           <button type="button" class="keel-btn keel-btn--primary" (click)="loginWithGithub()">Sign in with GitHub</button>
         }
         <a class="keel-btn" href="/">Start a new diagram</a>
