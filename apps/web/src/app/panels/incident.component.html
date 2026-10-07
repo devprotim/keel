@@ -1,21 +1,21 @@
-<section class="keel-panel keel-island incident" aria-label="Incident">
+<section class="keel-panel keel-island incident" aria-label="Incident" i18n-aria-label="Incident panel name">
   <header class="keel-panel__header">
     <span class="title">
       <span class="live-dot" [class.off]="view().noData" aria-hidden="true"></span>
-      Incident
+      <ng-container i18n="Incident panel title">Incident</ng-container>
     </span>
-    <button type="button" class="keel-btn keel-btn--ghost keel-btn--icon" aria-label="Leave incident mode" (click)="close()">
+    <button type="button" class="keel-btn keel-btn--ghost keel-btn--icon" aria-label="Leave incident mode" i18n-aria-label="Close button on the incident panel" (click)="close()">
       ✕
     </button>
   </header>
 
   <div class="sources">
     @if (sources().length === 0) {
-      <span class="note">No live data in this room.</span>
+      <span class="note" i18n="Incident panel, no observation sources">No live data in this room.</span>
     }
     @for (source of sources(); track source.name) {
       <span class="source" [class.stale]="source.stale">
-        <span class="source-name">{{ source.name }}</span> {{ source.age }}@if (source.stale) {, stale}
+        <span class="source-name">{{ source.name }}</span> {{ source.age }}@if (source.stale) {<ng-container i18n="Suffix after a source's age when its data is too old to use">, stale</ng-container>}
       </span>
     }
   </div>
@@ -23,26 +23,26 @@
   <div class="keel-panel__body">
     @if (view().noData) {
       <div class="empty">
-        <p>Incident mode reads health from what the running system reports, and nothing fresh has arrived.</p>
-        <p>
+        <p i18n="Incident panel with no fresh data">Incident mode reads health from what the running system reports, and nothing fresh has arrived.</p>
+        <p i18n="Incident panel with no fresh data; the code path stays as is">
           Run the Keel collector in the cluster, or push observations to
           <code>/api/rooms/&lt;room&gt;/observations</code>. The recent changes below still apply.
         </p>
       </div>
     } @else {
       <h3 class="section">
-        Look here first
+        <ng-container i18n="Incident panel section heading: what to check first">Look here first</ng-container>
         <span class="count">{{ hotspots().length }}</span>
       </h3>
       @if (hotspots().length === 0) {
-        <p class="all-clear">Everything that reports in looks healthy.</p>
+        <p class="all-clear" i18n="Incident panel when nothing is unhealthy">Everything that reports in looks healthy.</p>
       }
-      <ul class="rows" aria-label="Look here first">
+      <ul class="rows" aria-label="Look here first" i18n-aria-label="Incident panel section heading: what to check first">
         @for (row of hotspots(); track row.report.id) {
           <li>
             <button type="button" class="hotspot {{ row.report.health }}" (click)="reveal(row.report.id)">
               <span class="hotspot-head">
-                <span class="health {{ row.report.health }}">{{ row.report.health }}</span>
+                <span class="health {{ row.report.health }}">{{ healthLabels[row.report.health] }}</span>
                 <span class="hotspot-label">{{ row.report.label }}</span>
                 @if (row.traffic) {
                   <span class="traffic">{{ row.traffic }}</span>
@@ -50,7 +50,7 @@
               </span>
               <span class="reason">{{ row.reason }}</span>
               @if (row.affects) {
-                <span class="affects">Depends on it: {{ row.affects }}</span>
+                <span class="affects" i18n="Components that call this one synchronously">Depends on it: {{ row.affects }}</span>
               }
             </button>
           </li>
@@ -59,10 +59,10 @@
 
       @if (undiagrammed().length > 0) {
         <h3 class="section">
-          Not on the diagram
+          <ng-container i18n="Incident panel section: calls production makes that the diagram does not draw">Not on the diagram</ng-container>
           <span class="count">{{ undiagrammed().length }}</span>
         </h3>
-        <ul class="rows" aria-label="Calls not on the diagram">
+        <ul class="rows" aria-label="Calls not on the diagram" i18n-aria-label="Incident panel list name">
           @for (call of undiagrammed(); track call.key) {
             <li>
               <button type="button" class="undrawn" (click)="reveal(call.sourceId)">
@@ -78,13 +78,13 @@
     }
 
     <h3 class="section">
-      Recent changes
+      <ng-container i18n="Incident panel section heading: timeline">Recent changes</ng-container>
       <span class="count">{{ timeline().length }}</span>
     </h3>
     @if (timeline().length === 0) {
-      <p class="note">Nothing changed in the last 24 hours, in production or in the approved design.</p>
+      <p class="note" i18n="Incident panel, empty timeline">Nothing changed in the last 24 hours, in production or in the approved design.</p>
     }
-    <ol class="timeline" aria-label="Recent changes">
+    <ol class="timeline" aria-label="Recent changes" i18n-aria-label="Incident panel section heading: timeline">
       @for (row of timeline(); track $index) {
         <li class="event {{ row.entry.kind }}">
           <time class="when" [attr.datetime]="row.entry.at" [title]="row.entry.at">
@@ -98,7 +98,7 @@
             (click)="reveal(row.entry.elementId)"
           >
             <span class="text">{{ row.entry.text }}</span>
-            <span class="by">{{ row.entry.kind === 'approved' ? 'design' : row.entry.by }}</span>
+            <span class="by">{{ row.entry.kind === 'approved' ? designLabel : row.entry.by }}</span>
           </button>
         </li>
       }

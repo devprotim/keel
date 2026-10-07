@@ -23,6 +23,12 @@
   padding: var(--keel-space-4) var(--keel-space-6);
 }
 
+.nav-end {
+  display: flex;
+  align-items: center;
+  gap: var(--keel-space-2);
+}
+
 .brand {
   display: flex;
   align-items: center;

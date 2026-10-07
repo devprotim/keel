@@ -15,9 +15,12 @@ import { AccessService, type RoomAccess } from './access/access.service';
 import { AuthService } from './auth/auth.service';
 import { CanvasComponent, NODE_DRAG_MIME } from './canvas/canvas.component';
 import { CollabService } from './collab/collab.service';
+import { AvatarSizePipe } from './core/avatar';
 import { presenceColor } from './core/theme';
 import { readDiagramFile, takePickedFile } from './core/diagram-import';
 import { exampleGraph } from './core/example-graph';
+import { LanguageSwitchComponent } from './core/language-switch.component';
+import { EDGE_KIND_LABELS, NODE_KIND_LABELS } from './core/labels';
 import { AlertsMenuComponent } from './panels/alerts-menu.component';
 import { ExportMenuComponent } from './panels/export-menu.component';
 import { FindingsComponent } from './panels/findings.component';
@@ -44,6 +47,8 @@ import { ShareMenuComponent } from './panels/share-menu.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AlertsMenuComponent,
+    AvatarSizePipe,
+    LanguageSwitchComponent,
     CanvasComponent,
     ExportMenuComponent,
     FindingsComponent,
@@ -87,22 +92,24 @@ export class BoardComponent {
   readonly statusLabel = computed(() => {
     switch (this.collab.status()) {
       case 'connected':
-        return 'Live';
+        return $localize`:Connection status, socket connected:Live`;
       case 'connecting':
-        return 'Connecting';
+        return $localize`:Connection status, socket connecting:Connecting`;
       case 'offline':
         // Edits still work: IndexedDB holds them and the CRDT merges on
         // reconnect. Saying "offline" without that reassurance reads as failure.
-        return 'Offline · edits saved';
+        return $localize`:Connection status, offline, edits kept locally:Offline · edits saved`;
       case 'refused':
         // Edits are still kept locally, just not shared until this is resolved.
-        return this.collab.refusal() ?? 'Not syncing';
+        return this.collab.refusal() ?? $localize`:Connection status, the server refused to sync this room:Not syncing`;
     }
   });
 
   readonly peerLabel = computed(() => {
     const count = this.collab.peers().length;
-    return count === 0 ? 'You are the only person here' : `${count + 1} people editing`;
+    return count === 0
+      ? $localize`:Accessible label of the presence avatars when nobody else is in the room:You are the only person here`
+      : $localize`:Accessible label of the presence avatars, count includes you and is always 2 or more:${count + 1}:count: people editing`;
   });
 
   /** Why the last picked file could not be imported, one line per problem. */
@@ -110,6 +117,19 @@ export class BoardComponent {
 
   /** Brief "Copied" confirmation after the room chip is clicked. */
   readonly roomIdCopied = signal(false);
+  readonly roomChipTitle = computed(() =>
+    this.roomIdCopied()
+      ? $localize`:Tooltip on the room id chip right after the link was copied:Copied`
+      : $localize`:Tooltip on the room id chip:Copy the link to this room`,
+  );
+
+  readonly selfTitle = computed(() => $localize`:Tooltip on your own presence avatar:${this.collab.displayName()}:name: (you)`);
+
+  readonly themeToggleLabel = computed(() =>
+    this.theme() === 'dark'
+      ? $localize`:Accessible label of the theme toggle while the dark theme is on:Switch to light theme`
+      : $localize`:Accessible label of the theme toggle while the light theme is on:Switch to dark theme`,
+  );
   private copyResetHandle: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -223,6 +243,24 @@ export class BoardComponent {
     this.onboarding.mark('shared');
     if (this.copyResetHandle !== null) clearTimeout(this.copyResetHandle);
     this.copyResetHandle = setTimeout(() => this.roomIdCopied.set(false), 1500);
+  }
+
+  /** Tooltip on a kind rail tile. The kind stays an untranslated identifier. */
+  kindTitle(kind: NodeKind): string {
+    return $localize`:Tooltip on a component kind tile in the rail:${NODE_KIND_LABELS[kind]}:kind: — drag onto the canvas, or click then click the canvas`;
+  }
+
+  /** Accessible name of a connection kind button. The kind stays an untranslated identifier. */
+  edgeKindLabel(kind: EdgeKind): string {
+    return $localize`:Accessible name of a connection kind button; kind is sync, async or stream:${EDGE_KIND_LABELS[kind]}:kind: connection`;
+  }
+
+  edgeKindTitle(kind: EdgeKind): string {
+    return $localize`:Tooltip on a connection kind button; kind is sync, async or stream:Alt-drag from a component draws a new connection as ${EDGE_KIND_LABELS[kind]}:kind:`;
+  }
+
+  kindLabel(kind: NodeKind): string {
+    return NODE_KIND_LABELS[kind];
   }
 
   kindColor(kind: NodeKind): string {

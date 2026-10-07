@@ -600,8 +600,8 @@ export class CollabService {
  * route), in words. Anything else is an ordinary disconnect.
  */
 function describeRefusal(code: number | undefined): string | null {
-  if (code === 1009) return 'Not syncing · diagram too large';
-  if (code === 1008) return 'Not syncing · refused by server';
+  if (code === 1009) return $localize`:Connection status when the server closed the socket because the room is over its size limit:Not syncing · diagram too large`;
+  if (code === 1008) return $localize`:Connection status when the server closed the socket for sending too many messages:Not syncing · refused by server`;
   return null;
 }
 

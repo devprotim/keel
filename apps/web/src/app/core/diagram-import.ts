@@ -9,12 +9,12 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 /** Read and validate a diagram file the user picked. Never throws. */
 export async function readDiagramFile(file: File): Promise<ParseResult> {
   if (file.size > MAX_FILE_BYTES) {
-    return { ok: false, errors: [`${file.name} is larger than 5 MB, which is far beyond any diagram.`] };
+    return { ok: false, errors: [$localize`:Import error, the picked file is too big:${file.name}:fileName: is larger than 5 MB, which is far beyond any diagram.`] };
   }
   try {
     return parseDiagram(await file.text());
   } catch {
-    return { ok: false, errors: [`${file.name} could not be read.`] };
+    return { ok: false, errors: [$localize`:Import error, the picked file could not be read:${file.name}:fileName: could not be read.`] };
   }
 }
 

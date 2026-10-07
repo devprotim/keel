@@ -28,37 +28,64 @@ export const PITCHES: readonly Pitch[] = [
   {
     id: 'reality',
     angle: 'Truth: the diagram is checked against what is running, which no drawing tool and no dashboard does on its own.',
-    headline: 'The architecture diagram that checks itself against production',
+    headline: $localize`:Landing page headline:The architecture diagram that checks itself against production`,
     subhead:
-      'Keel reads what is really running from Kubernetes and your traces, and shows where the diagram, the approved design and production disagree, before the difference pages someone.',
+      $localize`:Landing page subheading under the headline:Keel reads what is really running from Kubernetes and your traces, and shows where the diagram, the approved design and production disagree, before the difference pages someone.`,
     steps: [
-      { title: 'Draw it together', body: 'Typed components and dependencies with real timeouts and retries, edited live by the whole team.' },
-      { title: 'Connect production', body: 'One collector in the cluster reports instances, traffic, latency and errors onto the diagram.' },
-      { title: 'Catch the gap', body: 'Drift, unapproved changes and risky designs are flagged as they happen, in the app, in CI and in Slack.' },
+      {
+        title: $localize`:Landing page step title:Draw it together`,
+        body: $localize`:Landing page step description:Typed components and dependencies with real timeouts and retries, edited live by the whole team.`,
+      },
+      {
+        title: $localize`:Landing page step title:Connect production`,
+        body: $localize`:Landing page step description:One collector in the cluster reports instances, traffic, latency and errors onto the diagram.`,
+      },
+      {
+        title: $localize`:Landing page step title:Catch the gap`,
+        body: $localize`:Landing page step description:Drift, unapproved changes and risky designs are flagged as they happen, in the app, in CI and in Slack.`,
+      },
     ],
   },
   {
     id: 'prevent',
     angle: 'Prevention: find outage-causing flaws while it is still a drawing. Easiest to understand, closest to what exists.',
-    headline: 'Find the outage in the design, before it ships',
+    headline: $localize`:Landing page headline:Find the outage in the design, before it ships`,
     subhead:
-      'Keel is a shared canvas for system architecture that knows what a timeout is. Draw your services together, and it flags the single points of failure, missing timeouts and retry storms that turn into incidents.',
+      $localize`:Landing page subheading under the headline:Keel is a shared canvas for system architecture that knows what a timeout is. Draw your services together, and it flags the single points of failure, missing timeouts and retry storms that turn into incidents.`,
     steps: [
-      { title: 'Draw it together', body: 'Components are typed and dependencies carry timeouts, retries and circuit breakers, so the diagram means something.' },
-      { title: 'Get told what breaks', body: 'Thirteen rules run on every edit, with an AI second opinion for the calls a rule cannot make.' },
-      { title: 'Keep it true', body: 'Connect production so a stale number can never hide a real risk.' },
+      {
+        title: $localize`:Landing page step title:Draw it together`,
+        body: $localize`:Landing page step description:Components are typed and dependencies carry timeouts, retries and circuit breakers, so the diagram means something.`,
+      },
+      {
+        title: $localize`:Landing page step title:Get told what breaks`,
+        body: $localize`:Landing page step description:Thirteen rules run on every edit, with an AI second opinion for the calls a rule cannot make.`,
+      },
+      {
+        title: $localize`:Landing page step title:Keep it true`,
+        body: $localize`:Landing page step description:Connect production so a stale number can never hide a real risk.`,
+      },
     ],
   },
   {
     id: 'incident',
     angle: 'Incident: lead with the 3am moment. Strongest pull for on-call, but asks for trust before a team has used it.',
-    headline: 'When it breaks, know where to look and what changed',
+    headline: $localize`:Landing page headline:When it breaks, know where to look and what changed`,
     subhead:
-      'Keel turns your architecture diagram into a live map of what is healthy, what is failing and what depends on it, next to everything that changed in production and in the design in the last day.',
+      $localize`:Landing page subheading under the headline:Keel turns your architecture diagram into a live map of what is healthy, what is failing and what depends on it, next to everything that changed in production and in the design in the last day.`,
     steps: [
-      { title: 'Map it once', body: 'Draw the system with the team, or start from the running cluster.' },
-      { title: 'Watch it live', body: 'Health, traffic and errors land on every box and every call.' },
-      { title: 'Start in the right place', body: 'What is broken, ranked by what depends on it, beside the change that probably caused it.' },
+      {
+        title: $localize`:Landing page step title:Map it once`,
+        body: $localize`:Landing page step description:Draw the system with the team, or start from the running cluster.`,
+      },
+      {
+        title: $localize`:Landing page step title:Watch it live`,
+        body: $localize`:Landing page step description:Health, traffic and errors land on every box and every call.`,
+      },
+      {
+        title: $localize`:Landing page step title:Start in the right place`,
+        body: $localize`:Landing page step description:What is broken, ranked by what depends on it, beside the change that probably caused it.`,
+      },
     ],
   },
 ];
@@ -73,33 +100,33 @@ export function pitchFor(id: string | null | undefined): Pitch {
 /** What Keel does, the same under every pitch. */
 export const FEATURES: readonly Feature[] = [
   {
-    title: 'Rules that know your runtime',
-    body: 'Single points of failure, calls without timeouts, retry storms, missing dead-letter queues. Checked on every edit.',
+    title: $localize`:Landing page feature title:Rules that know your runtime`,
+    body: $localize`:Landing page feature description:Single points of failure, calls without timeouts, retry storms, missing dead-letter queues. Checked on every edit.`,
     dot: '--keel-kind-service',
   },
   {
-    title: 'Checked against reality',
-    body: 'Observed instances, traffic and latency override what was typed, so a stale diagram cannot hide a real problem.',
+    title: $localize`:Landing page feature title:Checked against reality`,
+    body: $localize`:Landing page feature description:Observed instances, traffic and latency override what was typed, so a stale diagram cannot hide a real problem.`,
     dot: '--keel-kind-datastore',
   },
   {
-    title: 'Review changes like a pull request',
-    body: 'Every change since the design was approved, field by field, to approve or roll back.',
+    title: $localize`:Landing page feature title:Review changes like a pull request`,
+    body: $localize`:Landing page feature description:Every change since the design was approved, field by field, to approve or roll back.`,
     dot: '--keel-kind-gateway',
   },
   {
-    title: 'Incident mode',
-    body: 'Live health on the map, what to look at first, and a timeline of what changed.',
+    title: $localize`:Landing page feature title:Incident mode`,
+    body: $localize`:Landing page feature description:Live health on the map, what to look at first, and a timeline of what changed.`,
     dot: '--keel-kind-queue',
   },
   {
-    title: 'A check on every pull request',
-    body: 'A GitHub Action validates committed diagrams and comments with only the findings a change introduced.',
+    title: $localize`:Landing page feature title:A check on every pull request`,
+    body: $localize`:Landing page feature description:A GitHub Action validates committed diagrams and comments with only the findings a change introduced.`,
     dot: '--keel-kind-cache',
   },
   {
-    title: 'Alerts that stay quiet',
-    body: 'Slack or PagerDuty when production drifts, deduplicated, and never for a finding your team marked as noise.',
+    title: $localize`:Landing page feature title:Alerts that stay quiet`,
+    body: $localize`:Landing page feature description:Slack or PagerDuty when production drifts, deduplicated, and never for a finding your team marked as noise.`,
     dot: '--keel-kind-job',
   },
 ];

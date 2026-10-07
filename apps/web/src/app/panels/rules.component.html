@@ -1,36 +1,36 @@
 <div class="toolbar">
-  <p class="intro">Changes here apply to everyone in this room and to its alerts.</p>
-  <button type="button" class="keel-btn keel-btn--ghost small" [disabled]="labelCount() === 0" (click)="exportLabels()">
+  <p class="intro" i18n>Changes here apply to everyone in this room and to its alerts.</p>
+  <button type="button" class="keel-btn keel-btn--ghost small" [disabled]="labelCount() === 0" (click)="exportLabels()" i18n="Download this room's finding labels">
     Export labels
   </button>
 </div>
 
-<ul class="rules" aria-label="Rules">
+<ul class="rules" aria-label="Rules" i18n-aria-label="Rules tab list">
   @for (row of rows(); track row.stats.id) {
     <li class="rule" [class.muted]="row.stats.setting.muted" [class.noisy]="row.noisy">
       <div class="rule-head">
         <span class="rule-name" [title]="row.stats.rationale">{{ row.stats.name }}</span>
         @if (row.stats.firing > 0) {
-          <span class="firing">{{ row.stats.firing }} firing</span>
+          <span class="firing" i18n="Number of findings this rule raises right now">{{ row.stats.firing }} firing</span>
         }
       </div>
       <code class="rule-id">{{ row.stats.id }}</code>
       <p class="measured">{{ row.measured }}</p>
       @if (row.noisy) {
-        <p class="noisy-note">Mostly labelled noise here. Consider lowering or muting it.</p>
+        <p class="noisy-note" i18n>Mostly labelled noise here. Consider lowering or muting it.</p>
       }
       <div class="controls">
         <label class="keel-field severity">
-          <span class="keel-visually-hidden">Severity for {{ row.stats.name }}</span>
+          <span class="keel-visually-hidden" i18n="Accessible label of a rule's severity picker">Severity for {{ row.stats.name }}</span>
           <select
             class="keel-select"
             [disabled]="readOnly() || row.stats.setting.muted"
             [value]="row.stats.setting.severity ?? ''"
             (change)="setSeverity(row.stats, $event)"
           >
-            <option value="">Default severity</option>
+            <option value="" i18n="Rule severity option: use the rule's own severity">Default severity</option>
             @for (severity of severities; track severity) {
-              <option [value]="severity">Always {{ severity }}</option>
+              <option [value]="severity">{{ alwaysLabel(severity) }}</option>
             }
           </select>
         </label>
@@ -41,7 +41,7 @@
             [disabled]="readOnly()"
             (change)="setMuted(row.stats, $event)"
           />
-          <span>Mute<span class="keel-visually-hidden"> {{ row.stats.name }}</span></span>
+          <span i18n="Mute a rule checkbox; the rule name is for screen readers only">Mute<span class="keel-visually-hidden"> {{ row.stats.name }}</span></span>
         </label>
       </div>
     </li>

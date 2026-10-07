@@ -20,6 +20,7 @@
           "/index.csr.html",
           "/index.html",
           "/manifest.webmanifest",
+          "/i18n/*.json",
           "/*.css",
           "/*.js"
         ]

@@ -266,6 +266,10 @@
   left: 50%;
   bottom: var(--keel-space-4);
   transform: translateX(-50%);
+  // The transform makes this bar its own stacking context, so the export and
+  // alerts panels' z-index only counts inside it. Lifting the bar is what keeps
+  // those panels above later siblings like the empty-canvas card.
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -296,6 +300,10 @@
   position: absolute;
   left: 78px;
   bottom: var(--keel-space-4);
+  // Incident mode swaps the dock for its panel: the outgoing one shrinks into
+  // this corner while the incoming one grows out of it (styles/_motion.scss).
+  transform-origin: bottom left;
+  --keel-pop-shift: 4px;
 }
 
 .inspector-slot {

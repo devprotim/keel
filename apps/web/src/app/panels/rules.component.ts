@@ -43,6 +43,10 @@ export class RulesComponent {
 
   readonly labelCount = computed(() => Object.keys(this.collab.labels()).length);
 
+  alwaysLabel(severity: Severity): string {
+    return ALWAYS[severity];
+  }
+
   setSeverity(stats: RuleStats, event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     const next = { ...stats.setting };
@@ -84,12 +88,32 @@ export class RulesComponent {
   }
 }
 
+/** Severity override options, one whole phrase per severity. */
+const ALWAYS: Record<Severity, string> = {
+  error: $localize`:Rule severity override option:Always error`,
+  warning: $localize`:Rule severity override option:Always warning`,
+  info: $localize`:Rule severity override option:Always info`,
+};
+
 function describe(stats: RuleStats): string {
   const parts: string[] = [];
-  parts.push(stats.fired === 0 ? 'Not fired this week' : `Fired ${stats.fired} ${stats.fired === 1 ? 'time' : 'times'} this week`);
+  const fired = stats.fired;
+  parts.push(
+    fired === 0
+      ? $localize`:Rule stats, never fired:Not fired this week`
+      : fired === 1
+        ? $localize`:Rule stats, fired once:Fired 1 time this week`
+        : $localize`:Rule stats, fired several times:Fired ${fired}:count: times this week`,
+  );
   if (stats.real + stats.noise > 0) {
-    parts.push(`${stats.noise} noise, ${stats.real} real (${Math.round((stats.noiseRate ?? 0) * 100)}% noise)`);
+    const noise = stats.noise;
+    const real = stats.real;
+    const percent = Math.round((stats.noiseRate ?? 0) * 100);
+    parts.push($localize`:Rule stats, labels:${noise}:noise: noise, ${real}:real: real (${percent}:percent:% noise)`);
   }
-  if (stats.medianOpenMs !== undefined) parts.push(`typically resolved in ${formatAge(stats.medianOpenMs)}`);
+  if (stats.medianOpenMs !== undefined) {
+    const age = formatAge(stats.medianOpenMs);
+    parts.push($localize`:Rule stats, median time a finding stays open:typically resolved in ${age}:age:`);
+  }
   return parts.join(' · ');
 }

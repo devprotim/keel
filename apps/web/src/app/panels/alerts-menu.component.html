@@ -5,21 +5,22 @@
   aria-haspopup="dialog"
   [attr.aria-expanded]="open()"
   title="Alert Slack or PagerDuty when production drifts from this diagram"
+  i18n-title="Tooltip on the alerts button"
   (click)="toggle()"
 >
-  Alerts
+  <ng-container i18n="Alerts button label">Alerts</ng-container>
   @if (configured()) {
     <span class="on-dot" aria-hidden="true"></span>
   }
 </button>
 
 @if (open()) {
-  <div class="keel-island panel" role="dialog" aria-label="Drift alerts" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
+  <div class="keel-island panel" role="dialog" aria-label="Drift alerts" i18n-aria-label="Alerts dialog name" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
     <div class="head">
-      <h2 class="title">Drift alerts</h2>
+      <h2 class="title" i18n="Alerts dialog title">Drift alerts</h2>
       <span class="state" [class.on]="configured()">{{ summary() }}</span>
     </div>
-    <p class="lede">
+    <p class="lede" i18n="Alerts dialog introduction">
       Sent when the running system stops matching this diagram, reported by a collector or any
       push to the observations API. Anyone with this room's link can change these settings.
     </p>
@@ -34,15 +35,16 @@
           autocomplete="off"
           spellcheck="false"
           aria-label="Slack incoming webhook URL"
+          i18n-aria-label="Field name; Slack is a product name"
           [placeholder]="configured()?.slack?.webhookUrl ?? 'https://hooks.slack.com/services/…'"
           [value]="slackUrl()"
           (input)="slackUrl.set(value($event))"
         />
         <label class="threshold">
-          <span>Post</span>
+          <span i18n="Label before the Slack severity threshold: post findings of this severity">Post</span>
           <select class="keel-select" (change)="slackSeverity.set(asSeverity(value($event)))">
             @for (s of severities; track s) {
-              <option [value]="s" [selected]="s === slackSeverity()">{{ s }}{{ s === 'info' ? '' : ' and worse' }}</option>
+              <option [value]="s" [selected]="s === slackSeverity()">{{ thresholdLabels[s] }}</option>
             }
           </select>
         </label>
@@ -55,22 +57,23 @@
           type="password"
           autocomplete="off"
           aria-label="PagerDuty Events API v2 integration key"
-          [placeholder]="configured()?.pagerduty ? 'Stored (' + configured()?.pagerduty?.routingKey + ')' : 'Events API v2 integration key'"
+          i18n-aria-label="Field name; PagerDuty and Events API v2 are product names"
+          [placeholder]="pagerdutyPlaceholder()"
           [value]="pagerdutyKey()"
           (input)="pagerdutyKey.set(value($event))"
         />
         <label class="threshold">
-          <span>Page on</span>
+          <span i18n="Label before the PagerDuty severity threshold: page someone on findings of this severity">Page on</span>
           <select class="keel-select" (change)="pagerdutySeverity.set(asSeverity(value($event)))">
             @for (s of severities; track s) {
-              <option [value]="s" [selected]="s === pagerdutySeverity()">{{ s }}{{ s === 'info' ? '' : ' and worse' }}</option>
+              <option [value]="s" [selected]="s === pagerdutySeverity()">{{ thresholdLabels[s] }}</option>
             }
           </select>
         </label>
       </fieldset>
 
       @if (configured()) {
-        <p class="hint">Leave a key blank to keep the stored one.</p>
+        <p class="hint" i18n="Alerts dialog hint when a channel is already stored">Leave a key blank to keep the stored one.</p>
       }
 
       @if (message(); as m) {
@@ -79,13 +82,21 @@
 
       <div class="actions">
         <button type="submit" class="keel-btn keel-btn--primary" [disabled]="busy() !== null">
-          {{ busy() === 'save' ? 'Saving…' : 'Save' }}
+          @if (busy() === 'save') {
+            <ng-container i18n="Button state while saving">Saving…</ng-container>
+          } @else {
+            <ng-container i18n="Button: save the alert settings">Save</ng-container>
+          }
         </button>
         @if (configured()) {
           <button type="button" class="keel-btn" [disabled]="busy() !== null" (click)="sendTest()">
-            {{ busy() === 'test' ? 'Sending…' : 'Send test' }}
+            @if (busy() === 'test') {
+              <ng-container i18n="Button state while sending a test alert">Sending…</ng-container>
+            } @else {
+              <ng-container i18n="Button: send a test alert">Send test</ng-container>
+            }
           </button>
-          <button type="button" class="keel-btn keel-btn--ghost off" [disabled]="busy() !== null" (click)="turnOff()">
+          <button type="button" class="keel-btn keel-btn--ghost off" [disabled]="busy() !== null" (click)="turnOff()" i18n="Button: turn drift alerts off">
             Turn off
           </button>
         }
@@ -94,11 +105,11 @@
 
     @if (openCount() > 0) {
       <div class="open">
-        <p class="keel-field__label">Open now</p>
+        <p class="keel-field__label" i18n="Alerts dialog section: alerts currently firing">Open now</p>
         <ul>
           @for (alert of view()?.open; track alert.title) {
             <li>
-              <span class="keel-severity" [class]="'keel-severity keel-severity--' + alert.severity">{{ alert.severity }}</span>
+              <span class="keel-severity" [class]="'keel-severity keel-severity--' + alert.severity">{{ severityLabels[alert.severity] }}</span>
               <span class="open-title">{{ alert.title }}</span>
             </li>
           }

@@ -5,6 +5,7 @@
       type="button"
       class="keel-btn keel-btn--ghost keel-btn--icon close"
       aria-label="Close"
+      i18n-aria-label="Close button on the inspector card"
       (click)="closed.emit()"
     >
       ✕
@@ -13,10 +14,9 @@
 
   @if (selectionFindings().length > 0) {
     <div class="findings {{ worstFindingSeverity() }}">
-      <span class="keel-severity keel-severity--{{ worstFindingSeverity() }}">
-        {{ selectionFindings().length }}
-        {{ selectionFindings().length === 1 ? 'issue' : 'issues' }} here
-      </span>
+      <span class="keel-severity keel-severity--{{ worstFindingSeverity() }}" i18n="Count of rule findings on the selected element"
+        >{selectionFindings().length, plural, =1 {1 issue here} other {{{ selectionFindings().length }} issues here}}</span
+      >
       <ul class="findings-list">
         @for (finding of selectionFindings(); track finding.ruleId + finding.title) {
           <li>{{ finding.title }}</li>
@@ -29,19 +29,19 @@
     <div class="evidence">
       @if (traffic(); as t) {
         <div class="evidence-row">
-          <span class="evidence-label">Traffic</span>
+          <span class="evidence-label" i18n="Inspector evidence row label">Traffic</span>
           <span class="evidence-value" [class.dead]="t.dead">{{ t.label }}</span>
           @if (t.hot) {
-            <span class="evidence-tag">hot path</span>
+            <span class="evidence-tag" i18n="Tag on an element carrying a large share of observed traffic">hot path</span>
           }
         </div>
       }
       @if (approval(); as a) {
         <div class="evidence-row">
-          <span class="evidence-label">Intent</span>
+          <span class="evidence-label" i18n="Inspector evidence row label: approval state">Intent</span>
           <span class="evidence-value" [class.changed]="a.state !== 'approved'">{{ a.label }}</span>
           @if (a.state !== 'approved' && selectedId(); as id) {
-            <button type="button" class="keel-btn keel-btn--ghost evidence-action" (click)="approve(id)">
+            <button type="button" class="keel-btn keel-btn--ghost evidence-action" (click)="approve(id)" i18n="Button: approve the selected element">
               Approve
             </button>
           }
@@ -53,7 +53,7 @@
   @if (node(); as selected) {
     <fieldset class="keel-panel__body read-only-guard" [disabled]="readOnly()">
       <label class="keel-field">
-        <span class="keel-field__label">Name</span>
+        <span class="keel-field__label" i18n="Inspector field label: component name">Name</span>
         <input
           class="keel-input"
           type="text"
@@ -63,46 +63,48 @@
       </label>
 
       <label class="keel-field">
-        <span class="keel-field__label">Kind</span>
+        <span class="keel-field__label" i18n="Inspector field label: component kind">Kind</span>
         <select
           class="keel-select"
           (change)="patchNode(selected.id, { kind: asNodeKind(value($event)) })"
         >
           @for (kind of nodeKinds; track kind) {
-            <option [value]="kind" [selected]="kind === selected.kind">{{ kind }}</option>
+            <option [value]="kind" [selected]="kind === selected.kind">{{ nodeKindLabels[kind] }}</option>
           }
         </select>
       </label>
 
       <label class="keel-field">
-        <span class="keel-field__label">Technology</span>
+        <span class="keel-field__label" i18n="Inspector field label">Technology</span>
         <input
           class="keel-input"
           type="text"
           placeholder="e.g. Postgres 16"
+          i18n-placeholder="Example technology for a component"
           [value]="selected.tech ?? ''"
           (input)="patchNode(selected.id, { tech: value($event) || undefined })"
         />
       </label>
 
       <div class="keel-field">
-        <label class="keel-field__label" for="inspector-ref">Runtime name</label>
+        <label class="keel-field__label" for="inspector-ref" i18n="Inspector field label: the name telemetry uses">Runtime name</label>
         <input
           id="inspector-ref"
           aria-describedby="inspector-ref-hint"
           class="keel-input mono"
           type="text"
           placeholder="e.g. orders-svc"
+          i18n-placeholder="Example runtime name of a service"
           [value]="selected.ref ?? ''"
           (input)="patchNode(selected.id, { ref: value($event).trim() || undefined })"
         />
-        <span id="inspector-ref-hint" class="keel-field__hint">
+        <span id="inspector-ref-hint" class="keel-field__hint" i18n="Hint under the runtime name field">
           What telemetry calls it. Observations are matched to this component by it.
         </span>
       </div>
 
       <div class="keel-field">
-        <label class="keel-field__label" for="inspector-replicas">Instances</label>
+        <label class="keel-field__label" for="inspector-replicas" i18n="Inspector field label: replica count">Instances</label>
         <input
           id="inspector-replicas"
           aria-describedby="inspector-replicas-hint"
@@ -112,7 +114,7 @@
           [value]="selected.replicas"
           (input)="patchNode(selected.id, { replicas: numeric($event) ?? 1 })"
         />
-        <span id="inspector-replicas-hint" class="keel-field__hint">One instance is a single point of failure.</span>
+        <span id="inspector-replicas-hint" class="keel-field__hint" i18n="Hint under the instances field">One instance is a single point of failure.</span>
       </div>
       @if (runningNote('replicas', selected.replicas); as running) {
         <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'replicas', running }" />
@@ -126,9 +128,9 @@
           [checked]="selected.critical ?? false"
           (change)="patchNode(selected.id, { critical: checked($event) || undefined })"
         />
-        <span>On the critical path</span>
+        <span i18n="Inspector checkbox">On the critical path</span>
       </label>
-      <span class="keel-field__hint check-hint">
+      <span class="keel-field__hint check-hint" i18n="Hint under the critical path checkbox">
         Observed traffic marks hot paths on its own. Tick this for what traffic cannot show, such as a failover path.
       </span>
 
@@ -139,10 +141,10 @@
             [checked]="selected.hasReplica ?? false"
             (change)="patchNode(selected.id, { hasReplica: checked($event) || undefined })"
           />
-          <span>Has a replica or standby</span>
+          <span i18n="Inspector checkbox for a datastore">Has a replica or standby</span>
         </label>
         @if (runningFlag('hasReplica', selected.hasReplica) !== null) {
-          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasReplica', running: runningFlag('hasReplica', selected.hasReplica) ? 'yes' : 'no' }" />
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasReplica', running: runningFlag('hasReplica', selected.hasReplica) ? yesLabel : noLabel }" />
         }
         <label class="keel-check">
           <input
@@ -150,10 +152,10 @@
             [checked]="selected.hasBackup ?? false"
             (change)="patchNode(selected.id, { hasBackup: checked($event) || undefined })"
           />
-          <span>Has point-in-time backups</span>
+          <span i18n="Inspector checkbox for a datastore">Has point-in-time backups</span>
         </label>
         @if (runningFlag('hasBackup', selected.hasBackup) !== null) {
-          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasBackup', running: runningFlag('hasBackup', selected.hasBackup) ? 'yes' : 'no' }" />
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasBackup', running: runningFlag('hasBackup', selected.hasBackup) ? yesLabel : noLabel }" />
         }
       }
 
@@ -164,17 +166,17 @@
             [checked]="selected.hasDlq ?? false"
             (change)="patchNode(selected.id, { hasDlq: checked($event) || undefined })"
           />
-          <span>Has a dead-letter queue</span>
+          <span i18n="Inspector checkbox for a queue">Has a dead-letter queue</span>
         </label>
         @if (runningFlag('hasDlq', selected.hasDlq) !== null) {
-          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasDlq', running: runningFlag('hasDlq', selected.hasDlq) ? 'yes' : 'no' }" />
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'hasDlq', running: runningFlag('hasDlq', selected.hasDlq) ? yesLabel : noLabel }" />
         }
       }
 
       <hr class="keel-divider" />
 
       <label class="keel-field">
-        <span class="keel-field__label">Notes</span>
+        <span class="keel-field__label" i18n="Inspector field label: free-text notes">Notes</span>
         <textarea
           class="keel-input"
           rows="3"
@@ -186,18 +188,19 @@
   } @else if (edge(); as selected) {
     <fieldset class="keel-panel__body read-only-guard" [disabled]="readOnly()">
       <label class="keel-field">
-        <span class="keel-field__label">Label</span>
+        <span class="keel-field__label" i18n="Inspector field label: dependency label">Label</span>
         <input
           class="keel-input"
           type="text"
           placeholder="e.g. place order"
+          i18n-placeholder="Example label for a dependency"
           [value]="selected.label ?? ''"
           (input)="patchEdge(selected.id, { label: value($event) || undefined })"
         />
       </label>
 
       <div class="keel-field">
-        <label class="keel-field__label" for="inspector-call-style">Call style</label>
+        <label class="keel-field__label" for="inspector-call-style" i18n="Inspector field label: sync, async or stream">Call style</label>
         <select
           id="inspector-call-style"
           aria-describedby="inspector-call-style-hint"
@@ -205,7 +208,7 @@
           (change)="patchEdge(selected.id, { kind: asEdgeKind(value($event)) })"
         >
           @for (kind of edgeKinds; track kind) {
-            <option [value]="kind" [selected]="kind === selected.kind">{{ kind }}</option>
+            <option [value]="kind" [selected]="kind === selected.kind">{{ edgeKindLabels[kind] }}</option>
           }
         </select>
         <span id="inspector-call-style-hint" class="keel-field__hint">{{ edgeKindHint(selected.kind) }}</span>
@@ -213,7 +216,7 @@
 
       @if (selected.kind === 'sync') {
         <div class="keel-field">
-          <label class="keel-field__label" for="inspector-timeout">Timeout (ms)</label>
+          <label class="keel-field__label" for="inspector-timeout" i18n="Inspector field label">Timeout (ms)</label>
           <input
             id="inspector-timeout"
             aria-describedby="inspector-timeout-hint"
@@ -221,20 +224,21 @@
             type="number"
             min="0"
             placeholder="none"
+          i18n-placeholder="Placeholder for an empty timeout: no timeout"
             [value]="selected.timeoutMs ?? ''"
             (input)="patchEdge(selected.id, { timeoutMs: numeric($event) })"
           />
-          <span id="inspector-timeout-hint" class="keel-field__hint">Leave empty to model an unbounded wait.</span>
+          <span id="inspector-timeout-hint" class="keel-field__hint" i18n="Hint under the timeout field">Leave empty to model an unbounded wait.</span>
         </div>
         @if (runningNote('timeoutMs', selected.timeoutMs); as running) {
           <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'timeoutMs', running }" />
         }
         @if (observedEdge()?.p99Ms; as p99) {
-          <span class="keel-field__hint observed-latency">Observed p99 latency: {{ formatMs(p99) }}</span>
+          <span class="keel-field__hint observed-latency" i18n="Observed latency under the timeout field">Observed p99 latency: {{ formatMs(p99) }}</span>
         }
 
         <label class="keel-field">
-          <span class="keel-field__label">Retries</span>
+          <span class="keel-field__label" i18n="Inspector field label: retry count">Retries</span>
           <input
             class="keel-input"
             type="number"
@@ -254,10 +258,10 @@
             [checked]="selected.circuitBreaker ?? false"
             (change)="patchEdge(selected.id, { circuitBreaker: checked($event) || undefined })"
           />
-          <span>Protected by a circuit breaker</span>
+          <span i18n="Inspector checkbox for a sync dependency">Protected by a circuit breaker</span>
         </label>
         @if (runningFlag('circuitBreaker', selected.circuitBreaker) !== null) {
-          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'circuitBreaker', running: runningFlag('circuitBreaker', selected.circuitBreaker) ? 'yes' : 'no' }" />
+          <ng-container *ngTemplateOutlet="observedNote; context: { id: selected.id, field: 'circuitBreaker', running: runningFlag('circuitBreaker', selected.circuitBreaker) ? yesLabel : noLabel }" />
         }
       } @else {
         <label class="keel-check">
@@ -266,9 +270,9 @@
             [checked]="selected.idempotent ?? false"
             (change)="patchEdge(selected.id, { idempotent: checked($event) || undefined })"
           />
-          <span>Consumer is idempotent</span>
+          <span i18n="Inspector checkbox for an async dependency">Consumer is idempotent</span>
         </label>
-        <span class="keel-field__hint">
+        <span class="keel-field__hint" i18n="Hint under the idempotent checkbox">
           Brokers deliver at least once, so duplicates are normal operation.
         </span>
       }
@@ -283,8 +287,8 @@
 <!-- The running value under a field that disagrees with it, with the fix one click away. -->
 <ng-template #observedNote let-id="id" let-field="field" let-running="running">
   <div class="observed">
-    <span>Running: <strong>{{ running }}</strong></span>
-    <button type="button" class="keel-btn keel-btn--ghost observed-use" (click)="useObserved(id, field)">
+    <span i18n="Value the running system reports for a field">Running: <strong>{{ running }}</strong></span>
+    <button type="button" class="keel-btn keel-btn--ghost observed-use" (click)="useObserved(id, field)" i18n="Button: adopt the observed value">
       Use running value
     </button>
   </div>
