@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { formatAge, formatRps, type HealthReport, type TimelineEntry } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
+import { HEALTH_LABELS } from '../core/labels';
 import { IncidentModeService } from './incident-mode.service';
 
 interface HotspotRow {
@@ -15,6 +16,11 @@ interface TimelineRow {
   entry: TimelineEntry;
   ago: string;
   clock: string;
+}
+
+/** "12s ago", where age is a short duration from formatAge. */
+function agoLabel(age: string): string {
+  return $localize`:Time since an event; age is a short duration like 12s:${age}:age: ago`;
 }
 
 /**
@@ -40,6 +46,10 @@ export class IncidentComponent {
   /** Ages tick faster here than the app-wide clock: "12s ago" matters mid-incident. */
   private readonly now = signal(Date.now());
 
+  readonly healthLabels = HEALTH_LABELS;
+  /** Who made an approval, in the timeline: the approved design, not a person. */
+  readonly designLabel = $localize`:Timeline author of an approval:design`;
+
   readonly view = this.collab.incident;
   readonly graphEmpty = computed(() => this.collab.graph().nodes.length === 0);
 
@@ -49,7 +59,9 @@ export class IncidentComponent {
       return {
         name: source.source,
         stale: source.stale,
-        age: Number.isFinite(observed) ? `${formatAge(Math.max(0, this.now() - observed))} ago` : 'no valid time',
+        age: Number.isFinite(observed)
+          ? agoLabel(formatAge(Math.max(0, this.now() - observed)))
+          : $localize`:Observation source whose timestamp cannot be read:no valid time`,
       };
     }),
   );
@@ -57,7 +69,7 @@ export class IncidentComponent {
   readonly hotspots = computed<HotspotRow[]>(() =>
     this.view().lookFirst.map((report) => ({
       report,
-      kind: report.element === 'node' ? 'Component' : 'Dependency',
+      kind: report.element === 'node' ? $localize`:Element type:Component` : $localize`:Element type:Dependency`,
       reason: report.reasons.join(' · '),
       affects: report.affects.length === 0 ? null : summarizeNames(report.affects),
       traffic: report.rps === undefined ? null : formatRps(report.rps),
@@ -68,7 +80,9 @@ export class IncidentComponent {
     const labels = new Map(this.collab.graph().nodes.map((n) => [n.id, n.label]));
     return (this.collab.report().evidence?.undiagrammed ?? []).map((call) => ({
       key: `${call.sourceId}:${call.targetId}`,
-      label: `${labels.get(call.sourceId) ?? call.sourceId} to ${labels.get(call.targetId) ?? call.targetId}`,
+      label: $localize`:A call from one component to another:${labels.get(call.sourceId) ?? call.sourceId}:source: to ${
+        labels.get(call.targetId) ?? call.targetId
+      }:target:`,
       sourceId: call.sourceId,
       traffic: call.rps === undefined ? null : formatRps(call.rps),
     }));
@@ -79,7 +93,7 @@ export class IncidentComponent {
       const at = Date.parse(entry.at);
       return {
         entry,
-        ago: `${formatAge(Math.max(0, this.now() - at))} ago`,
+        ago: agoLabel(formatAge(Math.max(0, this.now() - at))),
         clock: new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
     }),
@@ -102,5 +116,5 @@ export class IncidentComponent {
 /** "A, B and 3 more": enough to judge the blast radius without a wall of names. */
 function summarizeNames(names: readonly string[]): string {
   if (names.length <= 3) return names.join(', ');
-  return `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`;
+  return $localize`:A list of names cut short:${names.slice(0, 3).join(', ')}:names: and ${names.length - 3}:count: more`;
 }

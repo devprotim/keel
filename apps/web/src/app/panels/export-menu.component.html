@@ -5,10 +5,10 @@
   aria-haspopup="menu"
   [attr.aria-expanded]="open()"
   [disabled]="empty()"
-  [title]="empty() ? 'Nothing to export yet' : 'Export the diagram'"
+  [title]="triggerTitle()"
   (click)="toggle()"
 >
-  Export
+  <ng-container i18n="Export button label">Export</ng-container>
 </button>
 
 @if (open()) {
@@ -17,22 +17,35 @@
     class="keel-island menu"
     role="menu"
     aria-label="Export"
+    i18n-aria-label="Export menu name"
     tabindex="-1"
     animate.enter="keel-pop-in"
     animate.leave="keel-pop-out"
     (keydown)="onMenuKeydown($event)"
   >
     <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('png')">
-      <span class="item-label">PNG image</span>
-      <span class="item-hint">{{ busy() === 'png' ? 'Rendering…' : 'For docs and slides' }}</span>
+      <span class="item-label" i18n="Export format; PNG is a file format">PNG image</span>
+      <span class="item-hint">
+        @if (busy() === 'png') {
+          <ng-container i18n="Export in progress">Rendering…</ng-container>
+        } @else {
+          <ng-container i18n="Hint for the PNG export">For docs and slides</ng-container>
+        }
+      </span>
     </button>
     <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('svg')">
-      <span class="item-label">SVG image</span>
-      <span class="item-hint">{{ busy() === 'svg' ? 'Rendering…' : 'Scales without blurring' }}</span>
+      <span class="item-label" i18n="Export format; SVG is a file format">SVG image</span>
+      <span class="item-hint">
+        @if (busy() === 'svg') {
+          <ng-container i18n="Export in progress">Rendering…</ng-container>
+        } @else {
+          <ng-container i18n="Hint for the SVG export">Scales without blurring</ng-container>
+        }
+      </span>
     </button>
     <button type="button" class="item" role="menuitem" [disabled]="busy() !== null" (click)="export('json')">
       <span class="item-label">JSON</span>
-      <span class="item-hint">Accepted as-is by <code>/api/validate</code></span>
+      <span class="item-hint" i18n="Hint for the JSON export; the code is an API path">Accepted as-is by <code>/api/validate</code></span>
     </button>
 
     <div class="separator" role="separator"></div>
@@ -45,7 +58,7 @@
       (click)="includeFindings.set(!includeFindings())"
     >
       <span class="box" [class.on]="includeFindings()" aria-hidden="true">{{ includeFindings() ? '✓' : '' }}</span>
-      <span class="item-label">Show findings on images</span>
+      <span class="item-label" i18n="Export menu checkbox">Show findings on images</span>
     </button>
 
     @if (error(); as message) {

@@ -152,7 +152,7 @@ function applyLive(scene: Scene, { incident, evidence }: SceneLive): void {
     if (!report) continue;
     sceneNode.health = report.health;
     if (report.ready && report.ready.observed < report.ready.declared) {
-      sceneNode.liveBadge = `${report.ready.observed}/${report.ready.declared} ready`;
+      sceneNode.liveBadge = $localize`:Incident mode badge on a node, ready instances out of declared, e.g. 0/3 ready:${report.ready.observed}:ready:/${report.ready.declared}:declared: ready`;
     } else if (report.errorRate !== undefined && report.errorRate > 0 && report.health !== 'healthy') {
       sceneNode.liveBadge = `${percent(report.errorRate)} err`;
     }
@@ -177,7 +177,10 @@ function applyLive(scene: Scene, { incident, evidence }: SceneLive): void {
     if (!sceneEdge) continue;
     sceneEdge.undiagrammed = true;
     sceneEdge.weight = weightOf(call.rps, busiest);
-    sceneEdge.liveLabel = call.rps !== undefined ? `not drawn · ${formatRps(call.rps)}` : 'not drawn';
+    sceneEdge.liveLabel =
+      call.rps !== undefined
+        ? $localize`:Incident mode label on a call production makes that the diagram does not draw, with its traffic:not drawn · ${formatRps(call.rps)}:rps:`
+        : $localize`:Incident mode label on a call production makes that the diagram does not draw:not drawn`;
     extra.push(sceneEdge);
   }
   if (extra.length > 0) scene.ghosts = { nodes: [], edges: extra };

@@ -1,43 +1,43 @@
 @if (!hasBaseline()) {
   <div class="empty">
-    <p>Nothing approved yet, so there is nothing to compare against.</p>
-    <p>Approve the design once, and every change after that shows up here to approve or reject.</p>
+    <p i18n>Nothing approved yet, so there is nothing to compare against.</p>
+    <p i18n>Approve the design once, and every change after that shows up here to approve or reject.</p>
     @if (!readOnly() && !graphEmpty()) {
-      <button type="button" class="keel-btn keel-btn--primary" (click)="approveAll()">Approve design</button>
+      <button type="button" class="keel-btn keel-btn--primary" (click)="approveAll()" i18n="Approve the diagram as the first baseline">Approve design</button>
     }
   </div>
 } @else if (rows().length === 0) {
   <div class="empty">
-    <p class="clean">Matches the approved design.</p>
-    <p>Changes to how components run or connect show up here. Moving or renaming a box does not count.</p>
+    <p class="clean" i18n="Baseline status">Matches the approved design.</p>
+    <p i18n>Changes to how components run or connect show up here. Moving or renaming a box does not count.</p>
   </div>
 } @else {
   <div class="toolbar">
-    <span class="legend" aria-label="Changes by type">
+    <span class="legend" aria-label="Changes by type" i18n-aria-label>
       @if (counts().removed > 0) {
-        <span class="legend-item"><span class="mark removed" aria-hidden="true">−</span>{{ counts().removed }} removed</span>
+        <span class="legend-item"><span class="mark removed" aria-hidden="true">−</span><ng-container i18n="Count of removed elements">{{ counts().removed }} removed</ng-container></span>
       }
       @if (counts().added > 0) {
-        <span class="legend-item"><span class="mark added" aria-hidden="true">+</span>{{ counts().added }} added</span>
+        <span class="legend-item"><span class="mark added" aria-hidden="true">+</span><ng-container i18n="Count of added elements">{{ counts().added }} added</ng-container></span>
       }
       @if (counts().changed > 0) {
-        <span class="legend-item"><span class="mark changed" aria-hidden="true">~</span>{{ counts().changed }} changed</span>
+        <span class="legend-item"><span class="mark changed" aria-hidden="true">~</span><ng-container i18n="Count of changed elements">{{ counts().changed }} changed</ng-container></span>
       }
     </span>
     @if (!readOnly()) {
-      <button type="button" class="keel-btn keel-btn--ghost small" (click)="rejectAll()">Reject all</button>
-      <button type="button" class="keel-btn small" (click)="approveAll()">Approve all</button>
+      <button type="button" class="keel-btn keel-btn--ghost small" (click)="rejectAll()" i18n="Reject every change since approval">Reject all</button>
+      <button type="button" class="keel-btn small" (click)="approveAll()" i18n="Approve every change since approval">Approve all</button>
     }
   </div>
 
-  <ul class="changes" aria-label="Changes since approval">
+  <ul class="changes" aria-label="Changes since approval" i18n-aria-label>
     @for (row of rows(); track row.change.id) {
       <li class="change {{ row.change.type }}">
         <button
           type="button"
           class="change-head"
           [disabled]="row.change.type === 'removed'"
-          [title]="row.change.type === 'removed' ? 'Shown faded on the canvas where it was' : 'Show on the canvas'"
+          [title]="revealTitle(row.change)"
           (click)="reveal(row.change)"
         >
           <span class="mark {{ row.change.type }}" aria-hidden="true">{{
@@ -57,9 +57,9 @@
               <li class="field">
                 <span class="field-name">{{ field.label }}</span>
                 <span class="field-diff">
-                  <del class="was" [attr.aria-label]="'approved ' + field.approved">{{ field.approved }}</del>
+                  <del class="was" [attr.aria-label]="approvedValueLabel(field)">{{ field.approved }}</del>
                   <span aria-hidden="true">→</span>
-                  <ins class="now" [attr.aria-label]="'now ' + field.current">{{ field.current }}</ins>
+                  <ins class="now" [attr.aria-label]="currentValueLabel(field)">{{ field.current }}</ins>
                 </span>
                 @if (!readOnly() && row.fields.length > 1) {
                   <span class="field-actions">
@@ -67,17 +67,19 @@
                       type="button"
                       class="keel-btn keel-btn--ghost tiny"
                       [disabled]="field.blocked !== null"
-                      [title]="field.blocked ?? 'Put ' + field.label + ' back to ' + field.approved"
-                      [attr.aria-label]="'Revert ' + field.label + ' on ' + row.change.label"
+                      [title]="field.blocked ?? revertFieldTitle(field)"
+                      [attr.aria-label]="revertFieldLabel(field, row.change)"
                       (click)="reject(row.change, field.field)"
+                      i18n="Revert one field to its approved value"
                     >
                       Revert
                     </button>
                     <button
                       type="button"
                       class="keel-btn keel-btn--ghost tiny approve"
-                      [attr.aria-label]="'Approve ' + field.label + ' on ' + row.change.label"
+                      [attr.aria-label]="approveFieldLabel(field, row.change)"
                       (click)="approve(row.change, field.field)"
+                      i18n="Approve one changed field"
                     >
                       Approve
                     </button>
@@ -101,7 +103,7 @@
               type="button"
               class="keel-btn small"
               [disabled]="!!row.change.blocked"
-              [attr.aria-label]="rejectLabel(row.change) + ' ' + row.change.label"
+              [attr.aria-label]="rejectAriaLabel(row.change)"
               (click)="reject(row.change)"
             >
               {{ rejectLabel(row.change) }}
@@ -109,7 +111,7 @@
             <button
               type="button"
               class="keel-btn small approve"
-              [attr.aria-label]="approveLabel(row.change) + ' ' + row.change.label"
+              [attr.aria-label]="approveAriaLabel(row.change)"
               (click)="approve(row.change)"
             >
               {{ approveLabel(row.change) }}

@@ -9,20 +9,20 @@
     <button
       type="button"
       class="room"
-      [title]="roomIdCopied() ? 'Copied' : 'Copy the link to this room'"
+      [title]="roomChipTitle()"
       (click)="copyRoomLink()"
     >
       {{ roomId() }}
       <span class="room-icon" aria-hidden="true">{{ roomIdCopied() ? '✓' : '⧉' }}</span>
       @if (roomIdCopied()) {
-        <span class="copy-toast" role="status" animate.enter="keel-toast-in" animate.leave="keel-toast-out">Link copied</span>
+        <span class="copy-toast" role="status" animate.enter="keel-toast-in" animate.leave="keel-toast-out" i18n="Toast after copying the room link">Link copied</span>
       }
     </button>
     @if (access()?.visibility === 'workspace' && !denied()) {
       <span class="room-name" [title]="access()?.workspace?.name ?? ''">{{ access()?.name }}</span>
     }
     @if (collab.readOnly()) {
-      <span class="view-only">View only</span>
+      <span class="view-only" i18n="Badge shown when you can only view this diagram">View only</span>
     }
     @if (!denied()) {
       <keel-share-menu [roomId]="roomId()" [access]="access()" (changed)="collab.recheckAccess()" />
@@ -42,7 +42,7 @@
       }
       <span
         class="peer self"
-        [title]="collab.displayName() + ' (you)'"
+        [title]="selfTitle()"
         >{{ initials(collab.displayName()) }}</span
       >
     </div>
@@ -56,9 +56,9 @@
     @if (auth.user(); as user) {
       <div class="identity" [title]="user.name">
         @if (user.avatarUrl) {
-          <img class="avatar" [src]="user.avatarUrl" [alt]="user.name" />
+          <img class="avatar" [src]="user.avatarUrl | avatarSize: 44" [alt]="user.name" />
         }
-        <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()">Sign out</button>
+        <button type="button" class="keel-btn keel-btn--ghost" (click)="logout()" i18n>Sign out</button>
       </div>
     } @else {
       <div class="identity">
@@ -79,11 +79,12 @@
     <button
       type="button"
       class="keel-btn keel-btn--ghost keel-btn--icon"
-      [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'"
+      [attr.aria-label]="themeToggleLabel()"
       (click)="toggleTheme()"
     >
       {{ theme() === 'dark' ? '☀' : '☾' }}
     </button>
+    <keel-language-switch />
   </div>
 
   <!--
@@ -94,15 +95,15 @@
     `placingKind` signal, so the tile shows armed either way.
   -->
   @if (!collab.readOnly() && !denied()) {
-    <div class="keel-island rail" role="toolbar" aria-label="Add a component">
+    <div class="keel-island rail" role="toolbar" aria-label="Add a component" i18n-aria-label="Accessible name of the component kind rail">
       @for (kind of nodeKinds; track kind) {
         <button
           type="button"
           class="tile"
           [class.active]="canvas().placingKind() === kind"
           [attr.aria-pressed]="canvas().placingKind() === kind"
-          [attr.aria-label]="kind"
-          [title]="kind + ' — drag onto the canvas, or click then click the canvas'"
+          [attr.aria-label]="kindLabel(kind)"
+          [title]="kindTitle(kind)"
           draggable="true"
           (dragstart)="onKindDragStart($event, kind)"
           (dragend)="onKindDragEnd()"
@@ -163,8 +164,8 @@
           class="tile edge"
           [class.active]="canvas().edgeKind() === kind"
           [attr.aria-pressed]="canvas().edgeKind() === kind"
-          [attr.aria-label]="kind + ' connection'"
-          [title]="'Alt-drag from a component draws a new connection as ' + kind"
+          [attr.aria-label]="edgeKindLabel(kind)"
+          [title]="edgeKindTitle(kind)"
           (click)="setEdgeKind(kind)"
         >
           {{ kind.charAt(0).toUpperCase() }}
@@ -181,6 +182,7 @@
       [disabled]="!collab.canUndo()"
       (click)="canvas().undoFromToolbar()"
       title="Undo (Cmd/Ctrl+Z)"
+      i18n-title="Tooltip on the undo button"
     >
       ↶
     </button>
@@ -190,6 +192,7 @@
       [disabled]="!collab.canRedo()"
       (click)="canvas().redoFromToolbar()"
       title="Redo (Shift+Cmd/Ctrl+Z)"
+      i18n-title="Tooltip on the redo button"
     >
       ↷
     </button>
@@ -201,6 +204,7 @@
       class="keel-btn keel-btn--ghost keel-btn--icon"
       (click)="canvas().zoomStep(0.8)"
       title="Zoom out"
+      i18n-title
     >
       −
     </button>
@@ -210,13 +214,14 @@
       class="keel-btn keel-btn--ghost keel-btn--icon"
       (click)="canvas().zoomStep(1.25)"
       title="Zoom in"
+      i18n-title
     >
       +
     </button>
 
     <span class="divider" aria-hidden="true"></span>
 
-    <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()">
+    <button type="button" class="keel-btn keel-btn--ghost" (click)="canvas().zoomToFit()" i18n="Toolbar button that zooms to fit the whole diagram">
       Fit
     </button>
 
@@ -228,7 +233,9 @@
       [class.on]="incidentMode.active()"
       [attr.aria-pressed]="incidentMode.active()"
       title="Incident mode: live health, traffic and recent changes"
+      i18n-title="Tooltip on the incident mode toggle"
       (click)="incidentMode.toggle()"
+      i18n="Toolbar toggle for incident mode"
     >
       Incident
     </button>
@@ -243,9 +250,9 @@
   <!-- Incident mode takes the dock's place: during an outage, what is broken
        right now matters more than what could break. -->
   @if (incidentMode.active()) {
-    <keel-incident class="findings-slot" (revealed)="canvas().revealNode($event)" />
+    <keel-incident class="findings-slot" animate.enter="keel-pop-in" animate.leave="keel-pop-out" (revealed)="canvas().revealNode($event)" />
   } @else {
-    <keel-findings class="findings-slot" (revealed)="canvas().revealNode($event)" />
+    <keel-findings class="findings-slot" animate.enter="keel-pop-in" animate.leave="keel-pop-out" (revealed)="canvas().revealNode($event)" />
   }
 
   <!-- The inspector: a floating card that exists only while something is
@@ -266,42 +273,42 @@
   @if (denied()) {
     <div class="keel-island empty denied" role="alert">
       @if (deleted()) {
-        <p class="empty-title">This diagram was deleted</p>
-        <p class="empty-body">An owner of its workspace deleted it. Any copy this browser kept for offline use has been removed too.</p>
+        <p class="empty-title" i18n>This diagram was deleted</p>
+        <p class="empty-body" i18n>An owner of its workspace deleted it. Any copy this browser kept for offline use has been removed too.</p>
       } @else if (missing()) {
-        <p class="empty-title">No diagram here</p>
-        <p class="empty-body">Nobody has made a diagram at this link. Check it was copied in full, or start a new one.</p>
+        <p class="empty-title" i18n="Shown when nobody has created a diagram at this link">No diagram here</p>
+        <p class="empty-body" i18n>Nobody has made a diagram at this link. Check it was copied in full, or start a new one.</p>
       } @else {
-        <p class="empty-title">This diagram is private</p>
+        <p class="empty-title" i18n>This diagram is private</p>
         <p class="empty-body">
-          It belongs to a workspace, and only its members can open it.
+          <!-- Whole sentences per branch, so a translation never has to be glued together. -->
           @if (access()?.signedIn) {
-            Ask one of its owners for an invite link.
+            <ng-container i18n>It belongs to a workspace, and only its members can open it. Ask one of its owners for an invite link.</ng-container>
           } @else {
-            If you are a member, sign in.
+            <ng-container i18n>It belongs to a workspace, and only its members can open it. If you are a member, sign in.</ng-container>
           }
         </p>
       }
       <div class="empty-actions">
         @if (!access()?.signedIn && !deleted() && !missing()) {
-          <button type="button" class="keel-btn keel-btn--primary" (click)="loginWithGithub()">Sign in with GitHub</button>
+          <button type="button" class="keel-btn keel-btn--primary" (click)="loginWithGithub()" i18n>Sign in with GitHub</button>
         }
-        <a class="keel-btn" href="/">Start a new diagram</a>
+        <a class="keel-btn" href="/" i18n>Start a new diagram</a>
       </div>
     </div>
   } @else if (isEmpty() && !collab.readOnly()) {
     <div class="keel-island empty">
-      <p class="empty-title">Nothing on the canvas yet</p>
-      <p class="empty-body">
+      <p class="empty-title" i18n>Nothing on the canvas yet</p>
+      <p class="empty-body" i18n>
         Drag a component from the rail, start from a worked example, or open a diagram
         exported from Keel.
       </p>
       <div class="empty-actions">
-        <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()">
+        <button type="button" class="keel-btn keel-btn--primary" (click)="loadExample()" i18n="Button that fills an empty canvas with a worked example diagram">
           Load example
         </button>
         <label class="keel-btn keel-file-button">
-          Import JSON
+          <ng-container i18n="Button that opens a diagram file exported from Keel">Import JSON</ng-container>
           <input
             class="keel-visually-hidden"
             type="file"

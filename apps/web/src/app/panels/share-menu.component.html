@@ -5,29 +5,33 @@
   aria-haspopup="dialog"
   [attr.aria-expanded]="open()"
   [disabled]="access() === null"
-  [title]="access() === null ? 'Sharing needs a connection' : 'Who can open this diagram'"
+  [title]="triggerTitle()"
   (click)="toggle()"
 >
-  {{ isPrivate() ? 'Private' : 'Share' }}
+  @if (isPrivate()) {
+    <ng-container i18n="Share button label when the diagram is private">Private</ng-container>
+  } @else {
+    <ng-container i18n="Share button label">Share</ng-container>
+  }
 </button>
 
 @if (open() && access(); as a) {
-  <div class="keel-island panel" role="dialog" aria-label="Sharing" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
+  <div class="keel-island panel" role="dialog" aria-label="Sharing" i18n-aria-label="Sharing dialog name" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
     @if (a.visibility === 'link') {
-      <h2 class="title">Anyone with the link</h2>
-      <p class="lede">Anyone who has this link can open and edit the diagram. No sign-in needed.</p>
+      <h2 class="title" i18n="Sharing dialog title for a link room">Anyone with the link</h2>
+      <p class="lede" i18n="Sharing dialog for a link room">Anyone who has this link can open and edit the diagram. No sign-in needed.</p>
 
       @if (auth.user()) {
         <div class="section">
-          <p class="keel-field__label">Make it private</p>
-          <p class="hint">Only members of the workspace will be able to open it. Everyone else with the link loses access.</p>
+          <p class="keel-field__label" i18n="Sharing dialog section heading">Make it private</p>
+          <p class="hint" i18n="Sharing dialog, what making a diagram private does">Only members of the workspace will be able to open it. Everyone else with the link loses access.</p>
           <label class="row">
-            <span>Workspace</span>
-            <select class="keel-select" aria-label="Workspace" (change)="targetWorkspace.set(value($event))">
+            <span i18n="Sharing dialog field label">Workspace</span>
+            <select class="keel-select" aria-label="Workspace" i18n-aria-label="Sharing dialog field label" (change)="targetWorkspace.set(value($event))">
               @for (w of editableWorkspaces(); track w.id) {
                 <option [value]="w.id" [selected]="w.id === targetWorkspace()">{{ w.name }}</option>
               }
-              <option [value]="NEW_WORKSPACE" [selected]="targetWorkspace() === NEW_WORKSPACE">New workspace…</option>
+              <option [value]="NEW_WORKSPACE" [selected]="targetWorkspace() === NEW_WORKSPACE" i18n="Workspace picker option: create a new one">New workspace…</option>
             </select>
           </label>
           @if (targetWorkspace() === NEW_WORKSPACE) {
@@ -36,7 +40,9 @@
               type="text"
               maxlength="80"
               placeholder="Workspace name, e.g. Payments team"
+              i18n-placeholder="Placeholder for a new workspace's name"
               aria-label="New workspace name"
+              i18n-aria-label="Field name for a new workspace's name"
               [value]="newWorkspaceName()"
               (input)="newWorkspaceName.set(value($event))"
             />
@@ -46,23 +52,37 @@
             type="text"
             maxlength="80"
             placeholder="Diagram name, e.g. Checkout"
+            i18n-placeholder="Placeholder for the diagram's name"
             aria-label="Diagram name"
+            i18n-aria-label="Field name for the diagram's name"
             [value]="roomName()"
             (input)="roomName.set(value($event))"
           />
-          <button type="button" class="keel-btn keel-btn--primary" [disabled]="busy()" (click)="makePrivate()">
+          <button type="button" class="keel-btn keel-btn--primary" [disabled]="busy()" (click)="makePrivate()" i18n="Button: move the diagram into a workspace">
             Make private
           </button>
         </div>
       } @else {
         <div class="section">
-          <p class="hint">Sign in to make this diagram private to a workspace.</p>
-          <button type="button" class="keel-btn" (click)="signIn()">Sign in with GitHub</button>
+          <p class="hint" i18n="Sharing dialog when signed out">Sign in to make this diagram private to a workspace.</p>
+          <button type="button" class="keel-btn" (click)="signIn()" i18n="Sign-in button">Sign in with GitHub</button>
         </div>
       }
     } @else {
       <h2 class="title">{{ a.workspace?.name }}</h2>
-      <p class="lede">Only members of this workspace can open the diagram. You are {{ a.role === 'owner' ? 'an owner' : 'a' + ' ' + a.role }}.</p>
+      <p class="lede">
+        @switch (a.role) {
+          @case ('owner') {
+            <ng-container i18n="Sharing dialog for a workspace room, your role">Only members of this workspace can open the diagram. You are an owner.</ng-container>
+          }
+          @case ('editor') {
+            <ng-container i18n="Sharing dialog for a workspace room, your role">Only members of this workspace can open the diagram. You are an editor.</ng-container>
+          }
+          @default {
+            <ng-container i18n="Sharing dialog for a workspace room, your role">Only members of this workspace can open the diagram. You are a viewer.</ng-container>
+          }
+        }
+      </p>
 
       @if (a.canEdit) {
         <div class="section inline">
@@ -71,39 +91,40 @@
             type="text"
             maxlength="80"
             aria-label="Diagram name"
+            i18n-aria-label="Field name for the diagram's name"
             [value]="roomName()"
             (input)="roomName.set(value($event))"
           />
-          <button type="button" class="keel-btn" [disabled]="busy() || !roomName().trim()" (click)="renameRoom()">Rename</button>
+          <button type="button" class="keel-btn" [disabled]="busy() || !roomName().trim()" (click)="renameRoom()" i18n="Button: rename the diagram">Rename</button>
         </div>
       }
 
       @if (detail(); as d) {
         <div class="section">
-          <p class="keel-field__label">Members</p>
+          <p class="keel-field__label" i18n="Sharing dialog section heading">Members</p>
           <ul class="members">
             @for (m of d.members; track m.id) {
               <li>
-                <span class="member-name">{{ m.name }}{{ m.id === me() ? ' (you)' : '' }}</span>
+                <span class="member-name">{{ m.name }}@if (m.id === me()) {<ng-container i18n="Suffix after your own name in the member list"> (you)</ng-container>}</span>
                 @if (a.canManage) {
                   <select
                     class="keel-select role"
-                    [attr.aria-label]="'Role for ' + m.name"
+                    [attr.aria-label]="roleFor(m.name)"
                     [disabled]="busy()"
                     (change)="setRole(m.id, asRole(value($event)))"
                   >
                     @for (r of roles; track r) {
-                      <option [value]="r" [selected]="r === m.role">{{ r }}</option>
+                      <option [value]="r" [selected]="r === m.role">{{ roleLabels[r] }}</option>
                     }
                   </select>
                 } @else {
-                  <span class="role-label">{{ m.role }}</span>
+                  <span class="role-label">{{ roleLabels[m.role] }}</span>
                 }
                 @if (a.canManage || m.id === me()) {
                   <button
                     type="button"
                     class="keel-btn keel-btn--ghost keel-btn--icon"
-                    [attr.aria-label]="m.id === me() ? 'Leave the workspace' : 'Remove ' + m.name"
+                    [attr.aria-label]="m.id === me() ? leaveLabel : removeLabel(m.name)"
                     [disabled]="busy()"
                     (click)="removeMember(m.id)"
                   >
@@ -118,28 +139,34 @@
 
       @if (a.canManage) {
         <div class="section">
-          <p class="keel-field__label">Invite</p>
+          <p class="keel-field__label" i18n="Sharing dialog section heading">Invite</p>
           <div class="inline">
-            <select class="keel-select" aria-label="Invite as" (change)="inviteRole.set(asInviteRole(value($event)))">
-              <option value="editor" [selected]="inviteRole() === 'editor'">Can edit</option>
-              <option value="viewer" [selected]="inviteRole() === 'viewer'">Can view</option>
+            <select class="keel-select" aria-label="Invite as" i18n-aria-label="Role picker for an invite link" (change)="inviteRole.set(asInviteRole(value($event)))">
+              <option value="editor" [selected]="inviteRole() === 'editor'" i18n="Invite role option">Can edit</option>
+              <option value="viewer" [selected]="inviteRole() === 'viewer'" i18n="Invite role option">Can view</option>
             </select>
-            <button type="button" class="keel-btn" [disabled]="busy()" (click)="createInvite()">Create link</button>
+            <button type="button" class="keel-btn" [disabled]="busy()" (click)="createInvite()" i18n="Button: create an invite link">Create link</button>
           </div>
           @if (inviteUrl(); as url) {
             <div class="inline secret">
-              <input class="keel-input mono" type="text" readonly aria-label="Invite link" [value]="url" />
-              <button type="button" class="keel-btn" (click)="copy(url, 'invite')">{{ copied() === 'invite' ? 'Copied' : 'Copy' }}</button>
+              <input class="keel-input mono" type="text" readonly aria-label="Invite link" i18n-aria-label="Field holding the invite link" [value]="url" />
+              <button type="button" class="keel-btn" (click)="copy(url, 'invite')">
+                @if (copied() === 'invite') {
+                  <ng-container i18n="Button state after copying">Copied</ng-container>
+                } @else {
+                  <ng-container i18n="Button: copy to the clipboard">Copy</ng-container>
+                }
+              </button>
             </div>
-            <p class="hint">Works for anyone signed in, for 7 days. Joining gives access to every diagram in the workspace.</p>
+            <p class="hint" i18n="Sharing dialog, about invite links">Works for anyone signed in, for 7 days. Joining gives access to every diagram in the workspace.</p>
           }
         </div>
       }
 
       @if (a.canEdit) {
         <div class="section">
-          <p class="keel-field__label">Collector tokens</p>
-          <p class="hint">A private diagram takes live data only from a collector holding one of these.</p>
+          <p class="keel-field__label" i18n="Sharing dialog section heading">Collector tokens</p>
+          <p class="hint" i18n="Sharing dialog, about collector tokens">A private diagram takes live data only from a collector holding one of these.</p>
           @for (t of tokens(); track t.id) {
             <div class="token">
               <span class="token-name">{{ t.name }}</span>
@@ -147,7 +174,7 @@
               <button
                 type="button"
                 class="keel-btn keel-btn--ghost keel-btn--icon"
-                [attr.aria-label]="'Revoke ' + t.name"
+                [attr.aria-label]="revokeLabel(t.name)"
                 [disabled]="busy()"
                 (click)="revokeToken(t.id)"
               >
@@ -161,28 +188,36 @@
               type="text"
               maxlength="80"
               placeholder="Name, e.g. prod cluster"
+              i18n-placeholder="Placeholder for a collector token's name"
               aria-label="Token name"
+              i18n-aria-label="Field name for a collector token's name"
               [value]="tokenName()"
               (input)="tokenName.set(value($event))"
             />
-            <button type="button" class="keel-btn" [disabled]="busy()" (click)="createToken()">New token</button>
+            <button type="button" class="keel-btn" [disabled]="busy()" (click)="createToken()" i18n="Button: create a collector token">New token</button>
           </div>
           @if (newSecret(); as secret) {
             <div class="inline secret">
-              <input class="keel-input mono" type="text" readonly aria-label="New token" [value]="secret" />
-              <button type="button" class="keel-btn" (click)="copy(secret, 'token')">{{ copied() === 'token' ? 'Copied' : 'Copy' }}</button>
+              <input class="keel-input mono" type="text" readonly aria-label="New token" i18n-aria-label="Field holding a newly created token" [value]="secret" />
+              <button type="button" class="keel-btn" (click)="copy(secret, 'token')">
+                @if (copied() === 'token') {
+                  <ng-container i18n="Button state after copying">Copied</ng-container>
+                } @else {
+                  <ng-container i18n="Button: copy to the clipboard">Copy</ng-container>
+                }
+              </button>
             </div>
-            <p class="hint">Shown once. Set it as <code>KEEL_INGEST_TOKEN</code> on the collector.</p>
+            <p class="hint" i18n="Sharing dialog, after creating a token; KEEL_INGEST_TOKEN is an environment variable">Shown once. Set it as <code>KEEL_INGEST_TOKEN</code> on the collector.</p>
           }
         </div>
       }
 
       @if (a.canManage) {
         <div class="section">
-          <button type="button" class="keel-btn keel-btn--ghost danger" [disabled]="busy()" (click)="makeLinkShareable()">
+          <button type="button" class="keel-btn keel-btn--ghost danger" [disabled]="busy()" (click)="makeLinkShareable()" i18n="Button: turn a private diagram back into a link room">
             Make it open to anyone with the link
           </button>
-          <button type="button" class="keel-btn keel-btn--ghost danger" [disabled]="busy()" (click)="deleteRoom()">
+          <button type="button" class="keel-btn keel-btn--ghost danger" [disabled]="busy()" (click)="deleteRoom()" i18n="Button: delete the diagram">
             Delete diagram
           </button>
         </div>

@@ -6,24 +6,28 @@
     </div>
 
     @if (invite(); as i) {
-      <h1 class="title">Join {{ i.workspace.name }}</h1>
+      <h1 class="title" i18n="Invite page title; the placeholder is a workspace name">Join {{ i.workspace.name }}</h1>
       <p class="body">
-        You have been invited to {{ i.role === 'viewer' ? 'view' : 'view and edit' }} the diagrams in this workspace.
+        @if (i.role === 'viewer') {
+          <ng-container i18n>You have been invited to view the diagrams in this workspace.</ng-container>
+        } @else {
+          <ng-container i18n>You have been invited to view and edit the diagrams in this workspace.</ng-container>
+        }
       </p>
       @if (auth.user(); as user) {
-        <button type="button" class="keel-btn keel-btn--primary" [disabled]="busy()" (click)="accept()">
+        <button type="button" class="keel-btn keel-btn--primary" [disabled]="busy()" (click)="accept()" i18n="Accept invite button; the placeholder is the signed-in user's name">
           Join as {{ user.name }}
         </button>
       } @else {
-        <button type="button" class="keel-btn keel-btn--primary" (click)="signIn()">Sign in with GitHub to join</button>
+        <button type="button" class="keel-btn keel-btn--primary" (click)="signIn()" i18n>Sign in with GitHub to join</button>
       }
     } @else if (!error()) {
-      <p class="body">Checking the invite…</p>
+      <p class="body" i18n>Checking the invite…</p>
     }
 
     @if (error(); as message) {
       <p class="error" role="alert">{{ message }}</p>
-      <a class="keel-btn" href="/">Go to Keel</a>
+      <a class="keel-btn" href="/" i18n="Link back to the landing page">Go to Keel</a>
     }
   </div>
 </main>

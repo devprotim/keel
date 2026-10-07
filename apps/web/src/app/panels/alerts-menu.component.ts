@@ -14,6 +14,14 @@ import {
 import type { Severity } from '@keel/shared';
 import { firstValueFrom } from 'rxjs';
 import { KEEL_CONFIG } from '../core/app-config';
+import { SEVERITY_LABELS } from '../core/labels';
+
+/** Threshold options: a channel gets findings of this severity and anything more severe. */
+const THRESHOLD_LABELS: Record<Severity, string> = {
+  error: $localize`:Alert threshold option:error and worse`,
+  warning: $localize`:Alert threshold option:warning and worse`,
+  info: $localize`:Alert threshold option, the lowest severity:info`,
+};
 
 /** The server's masked view: destinations are recognisable, never usable. */
 interface AlertsView {
@@ -57,6 +65,8 @@ export class AlertsMenuComponent {
   private readonly firstField = viewChild<ElementRef<HTMLInputElement>>('firstField');
 
   readonly severities: readonly Severity[] = ['error', 'warning', 'info'];
+  readonly severityLabels = SEVERITY_LABELS;
+  readonly thresholdLabels = THRESHOLD_LABELS;
 
   readonly open = signal(false);
   readonly view = signal<AlertsView | null>(null);
@@ -72,8 +82,16 @@ export class AlertsMenuComponent {
   readonly openCount = computed(() => this.view()?.open.length ?? 0);
   readonly summary = computed(() => {
     const config = this.configured();
-    if (!config) return 'Off';
+    if (!config) return $localize`:Alerts state when no channel is configured:Off`;
     return [config.slack ? 'Slack' : null, config.pagerduty ? 'PagerDuty' : null].filter(Boolean).join(' · ');
+  });
+
+  /** A stored key shows only its masked form; an empty field keeps it. */
+  readonly pagerdutyPlaceholder = computed(() => {
+    const stored = this.configured()?.pagerduty;
+    return stored
+      ? $localize`:Placeholder when a PagerDuty key is stored; key is masked:Stored (${stored.routingKey}:key:)`
+      : $localize`:Placeholder; Events API v2 is a PagerDuty product name:Events API v2 integration key`;
   });
 
   private get url(): string {
@@ -106,7 +124,7 @@ export class AlertsMenuComponent {
       if (view.config?.slack) this.slackSeverity.set(view.config.slack.minSeverity);
       if (view.config?.pagerduty) this.pagerdutySeverity.set(view.config.pagerduty.minSeverity);
     } catch (error) {
-      this.fail(error, 'Could not load alert settings.');
+      this.fail(error, $localize`:Alerts error:Could not load alert settings.`);
     } finally {
       this.busy.set(null);
     }
@@ -125,7 +143,7 @@ export class AlertsMenuComponent {
       body['pagerduty'] = { ...(pagerdutyKey ? { routingKey: pagerdutyKey } : {}), minSeverity: this.pagerdutySeverity() };
     }
     if (Object.keys(body).length === 0) {
-      this.message.set({ tone: 'error', text: 'Add a Slack webhook or a PagerDuty integration key.' });
+      this.message.set({ tone: 'error', text: $localize`:Alerts error when nothing is filled in:Add a Slack webhook or a PagerDuty integration key.` });
       return;
     }
 
@@ -135,9 +153,9 @@ export class AlertsMenuComponent {
       this.slackUrl.set('');
       this.pagerdutyKey.set('');
       await this.load();
-      this.message.set({ tone: 'ok', text: 'Saved. Anything already drifting is sent now.' });
+      this.message.set({ tone: 'ok', text: $localize`:Alerts saved:Saved. Anything already drifting is sent now.` });
     } catch (error) {
-      this.fail(error, 'Could not save.');
+      this.fail(error, $localize`:Alerts error:Could not save.`);
     } finally {
       this.busy.set(null);
     }
@@ -152,11 +170,11 @@ export class AlertsMenuComponent {
       const failed = Object.entries(results).filter(([, r]) => !r.ok);
       this.message.set(
         failed.length === 0
-          ? { tone: 'ok', text: 'Test sent. Check the channel.' }
-          : { tone: 'error', text: failed.map(([channel, r]) => `${channel}: ${r.error ?? 'failed'}`).join('; ') },
+          ? { tone: 'ok', text: $localize`:Test alert sent:Test sent. Check the channel.` }
+          : { tone: 'error', text: failed.map(([channel, r]) => `${channel}: ${r.error ?? $localize`:A test alert to one channel failed with no reason given:failed`}`).join('; ') },
       );
     } catch (error) {
-      this.fail(error, 'Could not send a test.');
+      this.fail(error, $localize`:Alerts error:Could not send a test.`);
     } finally {
       this.busy.set(null);
     }
@@ -167,9 +185,9 @@ export class AlertsMenuComponent {
     try {
       await firstValueFrom(this.http.delete(this.url));
       this.view.set({ config: null, open: [] });
-      this.message.set({ tone: 'ok', text: 'Alerts are off for this diagram.' });
+      this.message.set({ tone: 'ok', text: $localize`:Alerts turned off:Alerts are off for this diagram.` });
     } catch (error) {
-      this.fail(error, 'Could not turn alerts off.');
+      this.fail(error, $localize`:Alerts error:Could not turn alerts off.`);
     } finally {
       this.busy.set(null);
     }
@@ -200,7 +218,7 @@ export class AlertsMenuComponent {
     if (error instanceof HttpErrorResponse) {
       const body = error.error as { issues?: { message?: string }[]; error?: string } | null;
       text = body?.issues?.[0]?.message ?? body?.error ?? fallback;
-      if (error.status === 429) text = 'Too many changes. Wait a minute and try again.';
+      if (error.status === 429) text = $localize`:Alerts error when rate limited:Too many changes. Wait a minute and try again.`;
     }
     this.message.set({ tone: 'error', text });
   }

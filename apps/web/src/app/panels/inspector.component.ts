@@ -19,6 +19,7 @@ import {
   type ObservedNode,
 } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
+import { EDGE_KIND_LABELS, NODE_KIND_LABELS } from '../core/labels';
 
 /**
  * Property editor for the current selection.
@@ -45,6 +46,11 @@ export class InspectorComponent {
   readonly closed = output<void>();
 
   readonly nodeKinds = NODE_KINDS;
+  readonly nodeKindLabels = NODE_KIND_LABELS;
+  readonly edgeKindLabels = EDGE_KIND_LABELS;
+  /** Running value of a yes/no field, shown under its checkbox. */
+  readonly yesLabel = $localize`:Running value of a yes/no field:yes`;
+  readonly noLabel = $localize`:Running value of a yes/no field:no`;
   readonly formatMs = formatMs;
   readonly edgeKinds = EDGE_KINDS;
 
@@ -64,9 +70,9 @@ export class InspectorComponent {
   });
 
   readonly title = computed(() => {
-    if (this.node()) return 'Component';
-    if (this.edge()) return 'Dependency';
-    return 'Inspector';
+    if (this.node()) return $localize`:Inspector title when a component is selected:Component`;
+    if (this.edge()) return $localize`:Inspector title when a dependency is selected:Dependency`;
+    return $localize`:Inspector title with nothing selected:Inspector`;
   });
 
   /**
@@ -115,7 +121,7 @@ export class InspectorComponent {
     const rps = id ? evidence?.traffic[id] : undefined;
     if (!id || rps === undefined) return null;
     return {
-      label: rps === 0 ? 'No traffic observed' : formatRps(rps),
+      label: rps === 0 ? $localize`:Inspector traffic value:No traffic observed` : formatRps(rps),
       hot: evidence?.hotNodeIds.includes(id) ?? false,
       dead: rps === 0,
     };
@@ -128,26 +134,33 @@ export class InspectorComponent {
 
     const intent = this.collab.intent()[id];
     if (!intent) {
-      return { state: 'none' as const, label: this.collab.hasBaseline() ? 'Not in the approved design' : 'Not approved' };
+      return {
+        state: 'none' as const,
+        label: this.collab.hasBaseline()
+          ? $localize`:Approval state of the selected element:Not in the approved design`
+          : $localize`:Approval state of the selected element:Not approved`,
+      };
     }
     if (unapprovedFields(element, intent).length > 0) {
-      return { state: 'changed' as const, label: 'Changed since approval' };
+      return { state: 'changed' as const, label: $localize`:Approval state of the selected element:Changed since approval` };
     }
 
     const latest = Object.values(intent.fields).sort((a, b) => b.at.localeCompare(a.at))[0];
     const age = latest ? Date.now() - Date.parse(latest.at) : Number.NaN;
     return {
       state: 'approved' as const,
-      label: latest
-        ? `Approved by ${latest.by}${Number.isFinite(age) ? `, ${formatAge(age)} ago` : ''}`
-        : 'Approved',
+      label: !latest
+        ? $localize`:Approval state of the selected element:Approved`
+        : Number.isFinite(age)
+          ? $localize`:Approval state; age is a short duration like 3h:Approved by ${latest.by}:name:, ${formatAge(age)}:age: ago`
+          : $localize`:Approval state:Approved by ${latest.by}:name:`,
     };
   });
 
   readonly emptyMessage = computed(() =>
     this.selection().size > 1
-      ? `${this.selection().size} items selected. Select a single item to edit it.`
-      : 'Select a component or dependency to edit its properties.',
+      ? $localize`:Inspector with several items selected:${this.selection().size}:count: items selected. Select a single item to edit it.`
+      : $localize`:Inspector with nothing selected:Select a component or dependency to edit its properties.`,
   );
 
   patchNode(id: string, patch: Partial<ArchNode>): void {
@@ -175,7 +188,7 @@ export class InspectorComponent {
     if (observed === undefined) return null;
     const drawn = field === 'retries' ? (declared ?? 0) : (declared ?? null);
     if (observed === drawn) return null;
-    if (observed === null) return 'none';
+    if (observed === null) return $localize`:Running value of a field that has none, e.g. no timeout:none`;
     return field === 'timeoutMs' ? formatMs(observed) : String(observed);
   }
 
@@ -193,11 +206,11 @@ export class InspectorComponent {
   edgeKindHint(kind: EdgeKind): string {
     switch (kind) {
       case 'sync':
-        return 'The caller blocks, so failures propagate upstream.';
+        return $localize`:Hint for the sync call style:The caller blocks, so failures propagate upstream.`;
       case 'async':
-        return 'Fire and forget through a broker. Delivery is at least once.';
+        return $localize`:Hint for the async call style:Fire and forget through a broker. Delivery is at least once.`;
       case 'stream':
-        return 'A continuous subscription. Ordering and replay matter.';
+        return $localize`:Hint for the stream call style:A continuous subscription. Ordering and replay matter.`;
     }
   }
 

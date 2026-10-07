@@ -10,6 +10,7 @@ import {
   type Verdict,
 } from '@keel/shared';
 import { CollabService } from '../collab/collab.service';
+import { SEVERITY_LABELS } from '../core/labels';
 import { ChangeReviewService } from './change-review.service';
 import { ChangesComponent } from './changes.component';
 import { RulesComponent } from './rules.component';
@@ -66,7 +67,9 @@ export class FindingsComponent {
   readonly sources = computed(() =>
     (this.report().evidence?.sources ?? []).map((source) => ({
       ...source,
-      age: Number.isFinite(source.ageMs) ? `${formatAge(source.ageMs)} ago` : 'no valid time',
+      age: Number.isFinite(source.ageMs)
+        ? $localize`:Observation source age:${formatAge(source.ageMs)}:age: ago`
+        : $localize`:Observation source with an unreadable time:no valid time`,
       matched: source.matchedNodeIds.length + source.matchedEdgeIds.length,
     })),
   );
@@ -86,8 +89,20 @@ export class FindingsComponent {
       .map((severity) => ({
         severity,
         count: counts[severity],
-        label: counts[severity] === 1 ? LABELS[severity].one : LABELS[severity].many,
+        text: counts[severity] === 1 ? LABELS[severity].one() : LABELS[severity].many(counts[severity]),
       }));
+  });
+
+  /** The collapsed pill's accessible name: whole sentences, so each can be translated in its own word order. */
+  readonly pillLabel = computed(() => {
+    const score = this.report().score;
+    const total = this.totalCount();
+    const changes = this.changeCount();
+    const summary =
+      total === 0
+        ? $localize`:Collapsed review pill label:Review: ${score}:score: out of 100. No issues found.`
+        : $localize`:Collapsed review pill label:Review: ${score}:score: out of 100. ${total}:count: issues. Expand to see them.`;
+    return changes > 0 ? `${summary} ${$localize`:Collapsed review pill label, appended:${changes}:count: changes since approval.`}` : summary;
   });
 
   readonly scoreClass = computed(() => {
@@ -132,9 +147,9 @@ export class FindingsComponent {
   fixLabel(finding: Finding): string | null {
     switch (finding.fix) {
       case 'accept-observed':
-        return 'Match running system';
+        return $localize`:Finding fix button:Match running system`;
       case 'approve':
-        return 'Approve';
+        return $localize`:Finding fix button:Approve`;
       default:
         return null;
     }
@@ -148,7 +163,19 @@ export class FindingsComponent {
 
   trafficLabel(finding: Finding): string | null {
     if (finding.trafficRps === undefined) return null;
-    return finding.trafficRps === 0 ? 'no traffic' : formatRps(finding.trafficRps);
+    return finding.trafficRps === 0 ? $localize`:Finding traffic badge:no traffic` : formatRps(finding.trafficRps);
+  }
+
+  severityLabel(severity: Severity): string {
+    return SEVERITY_LABELS[severity];
+  }
+
+  verdictLabel(finding: Finding): string {
+    return $localize`:Verdict button group label, followed by the finding title:Is this a real problem? ${finding.title}:title:`;
+  }
+
+  removeSourceLabel(source: string): string {
+    return $localize`:Remove observation source button:Remove observations from ${source}:source:`;
   }
 
   approveAll(): void {
@@ -203,17 +230,17 @@ export class FindingsComponent {
       const sets = (Array.isArray(parsed) ? parsed : [parsed]).map(toObservationSet);
       for (const set of sets) this.collab.importObservations(set);
     } catch (error) {
-      this.importError.set(error instanceof Error ? error.message : 'Could not read that file.');
+      this.importError.set(error instanceof Error ? error.message : $localize`:Observation import error:Could not read that file.`);
     }
   }
 }
 
 function toObservationSet(value: unknown): ObservationSet {
-  if (typeof value !== 'object' || value === null) throw new Error('Expected an object with source and observedAt.');
+  if (typeof value !== 'object' || value === null) throw new Error($localize`:Observation import error:Expected an object with source and observedAt.`);
   const set = value as Partial<ObservationSet>;
-  if (typeof set.source !== 'string' || set.source.trim() === '') throw new Error('Each set needs a "source".');
+  if (typeof set.source !== 'string' || set.source.trim() === '') throw new Error($localize`:Observation import error:Each set needs a "source".`);
   if (typeof set.observedAt !== 'string' || Number.isNaN(Date.parse(set.observedAt))) {
-    throw new Error(`"${set.source}" needs an ISO "observedAt" time.`);
+    throw new Error($localize`:Observation import error:"${set.source}:source:" needs an ISO "observedAt" time.`);
   }
   return {
     source: set.source.trim(),
@@ -231,8 +258,19 @@ function toRow(finding: Finding): FindingRow {
   return { finding, targetId: finding.edgeIds[0] ?? finding.nodeIds[0] ?? null };
 }
 
-const LABELS: Record<Severity, { one: string; many: string }> = {
-  error: { one: 'error', many: 'errors' },
-  warning: { one: 'warning', many: 'warnings' },
-  info: { one: 'note', many: 'notes' },
+/** Severity counts as whole phrases, so the number can sit wherever a language puts it. */
+const LABELS: Record<Severity, { one: () => string; many: (count: number) => string }> = {
+  error: {
+    one: () => $localize`:Finding count, one error:1 error`,
+    many: (count) => $localize`:Finding count, several errors:${count}:count: errors`,
+  },
+  warning: {
+    one: () => $localize`:Finding count, one warning:1 warning`,
+    many: (count) => $localize`:Finding count, several warnings:${count}:count: warnings`,
+  },
+  info: {
+    one: () => $localize`:Finding count, one note (info severity):1 note`,
+    many: (count) => $localize`:Finding count, several notes (info severity):${count}:count: notes`,
+  },
 };
+

@@ -20,6 +20,7 @@ import {
 } from '../access/access.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { ROLE_LABELS } from '../core/labels';
 import { OnboardingService } from './onboarding.service';
 
 const NEW_WORKSPACE = '__new__';
@@ -76,6 +77,13 @@ export class ShareMenuComponent {
 
   readonly NEW_WORKSPACE = NEW_WORKSPACE;
   readonly roles: readonly Role[] = ['owner', 'editor', 'viewer'];
+  readonly roleLabels = ROLE_LABELS;
+  readonly leaveLabel = $localize`:Button name, leave the workspace yourself:Leave the workspace`;
+  readonly triggerTitle = computed(() =>
+    this.access() === null
+      ? $localize`:Tooltip on the share button while offline:Sharing needs a connection`
+      : $localize`:Tooltip on the share button:Who can open this diagram`,
+  );
   readonly isPrivate = computed(() => this.access()?.visibility === 'workspace');
   readonly editableWorkspaces = computed(() => this.workspaces().filter((w) => w.role !== 'viewer'));
   readonly me = computed(() => this.auth.user()?.id ?? null);
@@ -113,7 +121,7 @@ export class ShareMenuComponent {
         this.targetWorkspace.set(firstEditable?.id ?? NEW_WORKSPACE);
       }
     } catch (error) {
-      this.error.set(describeError(error, 'Could not load sharing settings.'));
+      this.error.set(describeError(error, $localize`:Sharing error:Could not load sharing settings.`));
     }
   }
 
@@ -122,20 +130,20 @@ export class ShareMenuComponent {
       let workspaceId = this.targetWorkspace();
       if (workspaceId === NEW_WORKSPACE) {
         const name = this.newWorkspaceName().trim();
-        if (!name) throw new Error('Name the new workspace.');
+        if (!name) throw new Error($localize`:Sharing error when the new workspace has no name:Name the new workspace.`);
         workspaceId = (await this.api.createWorkspace(name)).id;
       }
       await this.api.moveRoom(this.roomId(), workspaceId, this.roomName().trim() || 'Untitled diagram');
       this.changed.emit();
       this.close(false);
-    }, 'Could not move the room.');
+    }, $localize`:Sharing error:Could not move the room.`);
   }
 
   async renameRoom(): Promise<void> {
     await this.run(async () => {
       await this.api.renameRoom(this.roomId(), this.roomName().trim());
       this.changed.emit();
-    }, 'Could not rename.');
+    }, $localize`:Sharing error:Could not rename.`);
   }
 
   async makeLinkShareable(): Promise<void> {
@@ -143,16 +151,16 @@ export class ShareMenuComponent {
       await this.api.releaseRoom(this.roomId());
       this.changed.emit();
       this.close(false);
-    }, 'Could not change sharing.');
+    }, $localize`:Sharing error:Could not change sharing.`);
   }
 
   async deleteRoom(): Promise<void> {
-    if (!globalThis.confirm('Delete this diagram for everyone? This cannot be undone.')) return;
+    if (!globalThis.confirm($localize`:Confirmation before deleting a diagram:Delete this diagram for everyone? This cannot be undone.`)) return;
     await this.run(async () => {
       await this.api.deleteRoom(this.roomId());
       this.close(false);
       void this.router.navigate(['/']);
-    }, 'Could not delete the diagram.');
+    }, $localize`:Sharing error:Could not delete the diagram.`);
   }
 
   async createInvite(): Promise<void> {
@@ -160,7 +168,7 @@ export class ShareMenuComponent {
     if (!workspace) return;
     await this.run(async () => {
       this.inviteUrl.set((await this.api.createInvite(workspace.id, this.inviteRole())).url);
-    }, 'Could not create an invite.');
+    }, $localize`:Sharing error:Could not create an invite.`);
   }
 
   async setRole(userId: string, role: Role): Promise<void> {
@@ -169,7 +177,7 @@ export class ShareMenuComponent {
     await this.run(async () => {
       await this.api.setRole(workspace.id, userId, role);
       this.detail.set(await this.api.workspace(workspace.id));
-    }, 'Could not change the role.');
+    }, $localize`:Sharing error:Could not change the role.`);
   }
 
   async removeMember(userId: string): Promise<void> {
@@ -183,7 +191,7 @@ export class ShareMenuComponent {
         return;
       }
       this.detail.set(await this.api.workspace(workspace.id));
-    }, 'Could not remove the member.');
+    }, $localize`:Sharing error:Could not remove the member.`);
   }
 
   async createToken(): Promise<void> {
@@ -193,14 +201,14 @@ export class ShareMenuComponent {
       this.newSecret.set(secret);
       this.tokenName.set('');
       this.tokens.set(await this.api.ingestTokens(this.roomId()));
-    }, 'Could not create a token.');
+    }, $localize`:Sharing error:Could not create a token.`);
   }
 
   async revokeToken(tokenId: string): Promise<void> {
     await this.run(async () => {
       await this.api.revokeIngestToken(this.roomId(), tokenId);
       this.tokens.set(await this.api.ingestTokens(this.roomId()));
-    }, 'Could not revoke the token.');
+    }, $localize`:Sharing error:Could not revoke the token.`);
   }
 
   async copy(text: string, what: string): Promise<void> {
@@ -230,7 +238,21 @@ export class ShareMenuComponent {
   }
 
   describeLastUsed(token: IngestToken): string {
-    return token.lastUsedAt ? `last used ${new Date(token.lastUsedAt).toLocaleString()}` : 'never used';
+    return token.lastUsedAt
+      ? $localize`:When a collector token was last used:last used ${new Date(token.lastUsedAt).toLocaleString()}:time:`
+      : $localize`:A collector token that has not been used:never used`;
+  }
+
+  roleFor(name: string): string {
+    return $localize`:Name of a member's role picker:Role for ${name}:name:`;
+  }
+
+  removeLabel(name: string): string {
+    return $localize`:Button name, remove a member from the workspace:Remove ${name}:name:`;
+  }
+
+  revokeLabel(name: string): string {
+    return $localize`:Button name, revoke a collector token:Revoke ${name}:name:`;
   }
 
   onEscape(event: Event): void {

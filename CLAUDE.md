@@ -156,6 +156,14 @@ apps/collector    In-cluster process: Kubernetes workloads + OTLP traces -> obse
 - Room ids are capabilities, so request logs carry a SHA-256 tag instead (`redactRoomIds`/`roomTag` in `app.ts`); don't log a raw `roomId`.
 - `docs/data-handling.md` is the draft inventory of what is stored and where; keep it in step when adding a stored or transmitted field.
 
+### Internationalization (English, German)
+
+- Angular's own i18n (`@angular/localize`): `i18n` attributes in templates, `$localize` in TS. Translations load at runtime, not one build per language, so a room's link is the same in every language. `main.ts` picks the locale (`core/locale.ts`: saved choice, else browser language, else English), fetches `public/i18n/de.json`, then imports the app, because module-level `$localize` strings resolve on import. Switching (`core/language-switch.component.ts`) saves `keel:locale` and reloads.
+- After adding or rewording UI text: `cd apps/web && npx ng extract-i18n` (writes `src/locale/messages.json`), then add the German for each new id to `public/i18n/de.json`. `core/translations.spec.ts` fails on a missing translation, a dropped placeholder or a stale id.
+- Mark whole sentences, never concatenated fragments (German word order differs), and put `i18n` on the innermost element, not on one containing `@if`/`@for`. In `$localize`, the description ends at the first colon, so a description must not contain one.
+- Identifiers (kinds, roles, severities, health) stay English in data and CSS; their display names are in `core/labels.ts`. Not translated yet: rule finding titles from `packages/shared`, server error messages, AI review output.
+- e2e specs run in Playwright's default `en-US` and locate by English text; `e2e/tests/i18n.spec.ts` covers German.
+
 ### Landing and onboarding
 
 - The landing page's words live in `apps/web/src/app/landing/pitches.ts`: three message directions, `CHOSEN_PITCH` picks the live one (a human decision, see `docs/marketing/landing.md`), and `?pitch=<id>` previews any of them.

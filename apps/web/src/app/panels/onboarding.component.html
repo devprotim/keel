@@ -1,11 +1,11 @@
 @if (visible()) {
-  <section class="keel-island onboarding" aria-label="Get started">
+  <section class="keel-island onboarding" aria-label="Get started" i18n-aria-label="First-run checklist name">
     <header class="head">
       <button type="button" class="toggle" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
-        <span class="title">Get started</span>
-        <span class="progress">{{ doneCount() }} of {{ steps().length }}</span>
+        <span class="title" i18n="First-run checklist title">Get started</span>
+        <span class="progress" i18n="Checklist progress, e.g. 2 of 6">{{ doneCount() }} of {{ steps().length }}</span>
       </button>
-      <button type="button" class="keel-btn keel-btn--ghost keel-btn--icon" aria-label="Hide the checklist" (click)="dismiss()">✕</button>
+      <button type="button" class="keel-btn keel-btn--ghost keel-btn--icon" aria-label="Hide the checklist" i18n-aria-label="Close button on the first-run checklist" (click)="dismiss()">✕</button>
     </header>
 
     @if (expanded()) {
@@ -14,13 +14,17 @@
           <li class="step" [class.done]="step.done" [class.next]="step === next()">
             <span class="check" aria-hidden="true">{{ step.done ? '✓' : '' }}</span>
             <div>
-              <span class="step-title">{{ step.title }}<span class="keel-visually-hidden">{{ step.done ? ', done' : '' }}</span></span>
+              <span class="step-title">{{ step.title }}<span class="keel-visually-hidden">@if (step.done) {<ng-container i18n="Screen reader suffix on a finished checklist step">, done</ng-container>}</span></span>
               @if (step === next()) {
                 <p class="hint">{{ step.hint }}</p>
                 @if (step.id === 'live') {
                   <pre class="command"><code>{{ pushCommand() }}</code></pre>
                   <button type="button" class="keel-btn keel-btn--ghost copy" (click)="copyCommand()">
-                    {{ copied() ? 'Copied' : 'Copy command' }}
+                    @if (copied()) {
+                      <ng-container i18n="Button state after copying the command">Copied</ng-container>
+                    } @else {
+                      <ng-container i18n="Button: copy the shell command">Copy command</ng-container>
+                    }
                   </button>
                 }
               }
