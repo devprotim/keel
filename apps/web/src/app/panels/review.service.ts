@@ -124,9 +124,9 @@ function describe(error: unknown): string {
     const status = (error as { status: number }).status;
     // 503 is the specific, actionable case: the server is running but has no
     // API key, which is a configuration problem rather than a failure.
-    if (status === 503) return 'Review is not configured on the server.';
-    if (status === 0) return 'Could not reach the server.';
-    if (status === 400) return 'The diagram could not be reviewed.';
+    if (status === 503) return $localize`:AI review error:Review is not configured on the server.`;
+    if (status === 0) return $localize`:AI review error:Could not reach the server.`;
+    if (status === 400) return $localize`:AI review error:The diagram could not be reviewed.`;
   }
-  return 'The review failed. Try again in a moment.';
+  return $localize`:AI review error:The review failed. Try again in a moment.`;
 }

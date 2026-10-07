@@ -76,3 +76,13 @@ test('the example opens with production reporting in, telling one story end to e
   await expect(page.getByRole('list', { name: 'Calls not on the diagram' })).toContainText('Checkout to Catalog');
   await page.screenshot({ path: test.info().outputPath('demo.png') });
 });
+
+test('navigating moves focus to the new page instead of leaving it behind', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start a new diagram' }).click();
+  await expect(page).toHaveURL(/\/[0-9a-f]{12}$/);
+  await expect(page.getByRole('application')).toBeFocused();
+
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+});

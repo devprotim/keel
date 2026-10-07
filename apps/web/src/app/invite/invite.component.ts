@@ -37,7 +37,7 @@ export class InviteComponent {
     try {
       this.invite.set(await this.api.invite(this.token()));
     } catch (error) {
-      this.error.set(describeError(error, 'This invite link does not work.'));
+      this.error.set(describeError(error, $localize`:Error when an invite link is invalid or expired:This invite link does not work.`));
     }
   }
 
@@ -52,7 +52,7 @@ export class InviteComponent {
       await this.api.acceptInvite(this.token());
       void this.router.navigate(['/']);
     } catch (error) {
-      this.error.set(describeError(error, 'Could not join.'));
+      this.error.set(describeError(error, $localize`:Error when accepting a workspace invite fails:Could not join.`));
     } finally {
       this.busy.set(false);
     }

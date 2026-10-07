@@ -1,7 +1,7 @@
 @if (expanded()) {
-  <section class="keel-panel keel-island findings expanded">
+  <section class="keel-panel keel-island findings expanded" animate.enter="keel-pop-in" animate.leave="keel-pop-out">
     <header class="keel-panel__header">
-      <span>Review</span>
+      <span i18n="Review dock title">Review</span>
       <div class="header-actions">
         @if (tab() === 'findings') {
           <span class="score" [class]="scoreClass()">{{ report().score }}</span>
@@ -10,6 +10,7 @@
           type="button"
           class="keel-btn keel-btn--ghost keel-btn--icon"
           aria-label="Collapse review"
+          i18n-aria-label
           (click)="toggleExpanded()"
         >
           ▾
@@ -17,7 +18,7 @@
       </div>
     </header>
 
-    <div class="tabs" role="tablist" aria-label="Review">
+    <div class="tabs" role="tablist" aria-label="Review" i18n-aria-label="Review dock tab list">
       <button
         type="button"
         role="tab"
@@ -26,7 +27,7 @@
         [attr.aria-selected]="tab() === 'findings'"
         (click)="tab.set('findings')"
       >
-        Findings
+        <ng-container i18n="Review dock tab label">Findings</ng-container>
         @if (totalCount() > 0) {
           <span class="count">{{ totalCount() }}</span>
         }
@@ -39,7 +40,7 @@
         [attr.aria-selected]="tab() === 'changes'"
         (click)="tab.set('changes')"
       >
-        Changes
+        <ng-container i18n="Review dock tab label">Changes</ng-container>
         @if (changeCount() > 0) {
           <span class="count">{{ changeCount() }}</span>
         }
@@ -51,17 +52,18 @@
         [class.active]="tab() === 'rules'"
         [attr.aria-selected]="tab() === 'rules'"
         (click)="tab.set('rules')"
+        i18n="Review dock tab label"
       >
         Rules
       </button>
     </div>
 
     @if (tab() === 'changes') {
-      <div class="keel-panel__body" role="tabpanel" aria-label="Changes since approval">
+      <div class="keel-panel__body" role="tabpanel" aria-label="Changes since approval" i18n-aria-label>
         <keel-changes (revealed)="revealed.emit($event)" />
       </div>
     } @else if (tab() === 'rules') {
-      <div class="keel-panel__body" role="tabpanel" aria-label="Rules">
+      <div class="keel-panel__body" role="tabpanel" aria-label="Rules" i18n-aria-label="Review dock tab panel">
         <keel-rules />
       </div>
     } @else {
@@ -69,11 +71,11 @@
     <div class="summary">
       @for (bucket of buckets(); track bucket.severity) {
         <span class="keel-severity keel-severity--{{ bucket.severity }}">
-          {{ bucket.count }} {{ bucket.label }}
+          {{ bucket.text }}
         </span>
       }
       @if (totalCount() === 0 && !review.loading()) {
-        <span class="clean">No issues found.</span>
+        <span class="clean" i18n>No issues found.</span>
       }
     </div>
 
@@ -84,13 +86,13 @@
     -->
     <div class="reality">
       <div class="reality-row">
-        <span class="reality-label">Live data</span>
+        <span class="reality-label" i18n="Findings panel row label">Live data</span>
         @if (sources().length === 0) {
-          <span class="reality-note">None. Values are taken as typed.</span>
+          <span class="reality-note" i18n="Live data row, no observation sources">None. Values are taken as typed.</span>
         }
         @if (!readOnly()) {
           <label class="keel-btn keel-btn--ghost keel-file-button reality-action">
-            Import
+            <ng-container i18n="Import observations file button">Import</ng-container>
             <input class="keel-visually-hidden" type="file" accept="application/json,.json" (change)="importFile($event)" />
           </label>
         }
@@ -99,23 +101,24 @@
         <div class="source" [class.stale]="source.stale">
           <span class="source-name">{{ source.source }}</span>
           <span class="source-meta">
-            {{ source.age }} · {{ source.matched }} matched
             @if (source.stale) {
-              · stale
+              <ng-container i18n="Observation source summary: age, matched element count, stale">{{ source.age }} · {{ source.matched }} matched · stale</ng-container>
+            } @else {
+              <ng-container i18n="Observation source summary: age, matched element count">{{ source.age }} · {{ source.matched }} matched</ng-container>
             }
           </span>
           @if (!readOnly()) {
             <button
               type="button"
               class="keel-btn keel-btn--ghost keel-btn--icon source-remove"
-              [attr.aria-label]="'Remove observations from ' + source.source"
+              [attr.aria-label]="removeSourceLabel(source.source)"
               (click)="removeSource(source.source)"
             >
               ✕
             </button>
           }
           @if (source.unmatchedRefs.length > 0) {
-            <span class="source-unmatched">
+            <span class="source-unmatched" i18n="Observed refs with no node; followed by a list of names">
               Not on the diagram: {{ source.unmatchedRefs.join(', ') }}
             </span>
           }
@@ -124,11 +127,11 @@
               <div class="suggestion">
                 <code>{{ suggestion.ref }}</code>
                 @if (suggestion.type === 'link') {
-                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)">
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)" i18n="Suggestion: link observed ref to an existing box">
                     Link to {{ suggestion.nodeLabel }}
                   </button>
                 } @else {
-                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)">
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="applySuggestion(suggestion)" i18n="Suggestion: add observed ref as a new box of this kind">
                     Add as {{ suggestion.kind }}
                   </button>
                 }
@@ -143,23 +146,27 @@
 
       @if (!graphEmpty()) {
         <div class="reality-row">
-          <span class="reality-label">Baseline</span>
+          <span class="reality-label" i18n="Findings panel row label">Baseline</span>
           <span class="reality-note">
             @if (!hasBaseline()) {
-              Nothing approved yet.
+              <ng-container i18n="Baseline status">Nothing approved yet.</ng-container>
             } @else if (hasUnapprovedChanges()) {
-              Changed since approval.
+              <ng-container i18n="Baseline status">Changed since approval.</ng-container>
             } @else {
-              Matches the approved design.
+              <ng-container i18n="Baseline status">Matches the approved design.</ng-container>
             }
           </span>
           @if (hasBaseline() && changeCount() > 0) {
-            <button type="button" class="keel-btn keel-btn--ghost reality-action" (click)="showChanges()">
+            <button type="button" class="keel-btn keel-btn--ghost reality-action" (click)="showChanges()" i18n="Button opening the Changes tab, with the change count">
               Review {{ changeCount() }}
             </button>
           } @else if (hasUnapprovedChanges() && !readOnly()) {
             <button type="button" class="keel-btn keel-btn--ghost reality-action" (click)="approveAll()">
-              {{ hasBaseline() ? 'Approve all' : 'Approve design' }}
+              @if (hasBaseline()) {
+                <ng-container i18n="Approve every change since the last approval">Approve all</ng-container>
+              } @else {
+                <ng-container i18n="Approve the diagram as the first baseline">Approve design</ng-container>
+              }
             </button>
           }
         </div>
@@ -173,7 +180,7 @@
         scrolling panel, so clicking "Run AI review" appeared to do nothing.
       -->
       @if (aiRows().length > 0) {
-        <h3 class="section">
+        <h3 class="section" i18n="Findings section heading, with a count">
           AI review
           <span class="count">{{ aiRows().length }}</span>
         </h3>
@@ -181,9 +188,9 @@
           <button type="button" class="finding model" (click)="reveal(row)">
             <span class="finding-head">
               <span class="keel-severity keel-severity--{{ row.finding.severity }}">
-                {{ row.finding.severity }}
+                {{ severityLabel(row.finding.severity) }}
               </span>
-              <span class="finding-badge">AI</span>
+              <span class="finding-badge" i18n="Badge on a finding from the AI review">AI</span>
             </span>
             <span class="finding-title">{{ row.finding.title }}</span>
             <span class="finding-detail">{{ row.finding.detail }}</span>
@@ -192,7 +199,7 @@
       }
 
       @if (ruleRows().length > 0) {
-        <h3 class="section">
+        <h3 class="section" i18n="Findings section heading, with a count">
           Rules
           <span class="count">{{ ruleRows().length }}</span>
         </h3>
@@ -201,13 +208,23 @@
             <button type="button" class="finding" [class.has-fix]="fixLabel(row.finding)" (click)="reveal(row)">
               <span class="finding-head">
                 <span class="keel-severity keel-severity--{{ row.finding.severity }}">
-                  {{ row.finding.severity }}
+                  {{ severityLabel(row.finding.severity) }}
                 </span>
                 @if (row.finding.observed) {
-                  <span class="finding-badge" title="Raised by observed values, not by what the diagram declares">LIVE</span>
+                  <span
+                    class="finding-badge"
+                    title="Raised by observed values, not by what the diagram declares"
+                    i18n-title
+                    i18n="Badge on a finding raised by observed values"
+                  >LIVE</span>
                 }
                 @if (row.finding.verdict === 'real') {
-                  <span class="finding-badge confirmed" title="Someone in this room confirmed it is a real problem">CONFIRMED</span>
+                  <span
+                    class="finding-badge confirmed"
+                    title="Someone in this room confirmed it is a real problem"
+                    i18n-title
+                    i18n="Badge on a finding labelled real"
+                  >CONFIRMED</span>
                 }
                 @if (trafficLabel(row.finding); as traffic) {
                   <span class="finding-traffic">{{ traffic }}</span>
@@ -222,14 +239,16 @@
               </button>
             }
             @if (!readOnly()) {
-              <div class="verdict" role="group" [attr.aria-label]="'Is this a real problem? ' + row.finding.title">
+              <div class="verdict" role="group" [attr.aria-label]="verdictLabel(row.finding)">
                 <button
                   type="button"
                   class="verdict-btn"
                   [class.on]="row.finding.verdict === 'real'"
                   [attr.aria-pressed]="row.finding.verdict === 'real'"
                   title="Confirm this is a real problem"
+                  i18n-title
                   (click)="label(row.finding, 'real')"
+                  i18n="Verdict button: the finding is a real problem"
                 >
                   Real
                 </button>
@@ -237,7 +256,9 @@
                   type="button"
                   class="verdict-btn"
                   title="Not a real problem here: dismiss it and count it against the rule"
+                  i18n-title
                   (click)="label(row.finding, 'noise')"
+                  i18n="Verdict button: the finding is noise"
                 >
                   Noise
                 </button>
@@ -248,17 +269,17 @@
       }
 
       @if (dismissed().length > 0) {
-        <button type="button" class="dismissed-toggle" [attr.aria-expanded]="showDismissed()" (click)="showDismissed.set(!showDismissed())">
+        <button type="button" class="dismissed-toggle" [attr.aria-expanded]="showDismissed()" (click)="showDismissed.set(!showDismissed())" i18n="Toggle for findings dismissed as noise, with a count">
           {{ showDismissed() ? '▾' : '▸' }} Dismissed as noise
           <span class="count">{{ dismissed().length }}</span>
         </button>
         @if (showDismissed()) {
-          <ul class="dismissed" aria-label="Dismissed as noise">
+          <ul class="dismissed" aria-label="Dismissed as noise" i18n-aria-label>
             @for (finding of dismissed(); track finding.ruleId + finding.title) {
               <li>
                 <span class="dismissed-title">{{ finding.title }}</span>
                 @if (!readOnly()) {
-                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="restore(finding)">Restore</button>
+                  <button type="button" class="keel-btn keel-btn--ghost suggestion-action" (click)="restore(finding)" i18n="Restore a dismissed finding">Restore</button>
                 }
               </li>
             }
@@ -267,7 +288,7 @@
       }
 
       @if (totalCount() === 0) {
-        <p class="keel-panel__empty">
+        <p class="keel-panel__empty" i18n>
           Rules run continuously as you edit. Run an AI review for the judgement calls a
           rule cannot express.
         </p>
@@ -279,17 +300,17 @@
         <p class="error">{{ message }}</p>
       }
       @if (staleReview()) {
-        <p class="stale">The diagram changed since this review.</p>
+        <p class="stale" i18n>The diagram changed since this review.</p>
       }
       @if (review.hasRun() && aiRows().length === 0 && !review.loading()) {
-        <p class="stale">
+        <p class="stale" i18n>
           The reviewer found nothing beyond the rules above.
         </p>
       }
 
       @if (review.models().length > 0) {
         <label class="keel-field model-select">
-          <span class="keel-field__label">Model</span>
+          <span class="keel-field__label" i18n="AI model picker label">Model</span>
           <select
             class="keel-select"
             [value]="review.selectedModel() ?? ''"
@@ -309,7 +330,11 @@
         [disabled]="review.loading() || graphEmpty()"
         (click)="runReview()"
       >
-        {{ review.loading() ? 'Reviewing…' : 'Run AI review' }}
+        @if (review.loading()) {
+          <ng-container i18n="Run AI review button while a review is in progress">Reviewing…</ng-container>
+        } @else {
+          <ng-container i18n>Run AI review</ng-container>
+        }
       </button>
     </footer>
     }
@@ -319,10 +344,10 @@
     type="button"
     class="keel-island pill"
     (click)="toggleExpanded()"
-    [attr.aria-label]="'Review: ' + report().score + ' out of 100. ' + (totalCount() === 0 ? 'No issues found.' : totalCount() + ' issues. Expand to see them.') + (changeCount() > 0 ? ' ' + changeCount() + ' changes since approval.' : '')"
+    [attr.aria-label]="pillLabel()"
   >
     @if (totalCount() === 0) {
-      <span class="pill-clean">
+      <span class="pill-clean" i18n="Collapsed review pill when there are no findings">
         <span class="pill-dot ok" aria-hidden="true"></span>
         Nothing to review
       </span>
@@ -334,14 +359,14 @@
             [class]="bucket.severity"
             aria-hidden="true"
           ></span>
-          {{ bucket.count }} {{ bucket.label }}
+          {{ bucket.text }}
         </span>
       }
     }
     @if (changeCount() > 0) {
       <span class="pill-bucket">
         <span class="pill-dot changed" aria-hidden="true"></span>
-        {{ changeCount() }} {{ changeCount() === 1 ? 'change' : 'changes' }}
+        <ng-container i18n="Count of changes since approval">{changeCount(), plural, =1 {1 change} other {{{ changeCount() }} changes}}</ng-container>
       </span>
     }
     <span class="pill-divider" aria-hidden="true"></span>

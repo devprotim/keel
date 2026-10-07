@@ -25,6 +25,7 @@ import {
 } from '../core/geometry';
 import { EDGE_HIT_TOLERANCE, hitTest, nodesInRect } from '../core/hit-test';
 import { buildScene } from '../core/scene';
+import { HEALTH_LABELS } from '../core/labels';
 import { FALLBACK_THEME, readTheme, type CanvasTheme } from '../core/theme';
 import { ChangeReviewService } from '../panels/change-review.service';
 import { IncidentModeService } from '../panels/incident-mode.service';
@@ -111,9 +112,19 @@ export class CanvasComponent {
       return {
         id: node.id,
         description:
-          `${node.label}, ${node.kind}, ${node.replicas} ${node.replicas === 1 ? 'instance' : 'instances'}` +
-          (diff === 'added' ? ', added since approval' : diff === 'changed' ? ', changed since approval' : '') +
-          (live ? `, ${live.health === 'unknown' ? 'no live data' : live.health}` : ''),
+          (node.replicas === 1
+            ? $localize`:Screen reader description of one node with one instance; kind is an untranslated identifier:${node.label}:label:, ${node.kind}:kind:, ${node.replicas}:count: instance`
+            : $localize`:Screen reader description of one node with several instances; kind is an untranslated identifier:${node.label}:label:, ${node.kind}:kind:, ${node.replicas}:count: instances`) +
+          (diff === 'added'
+            ? $localize`:Appended to a node's screen reader description in review mode:, added since approval`
+            : diff === 'changed'
+              ? $localize`:Appended to a node's screen reader description in review mode:, changed since approval`
+              : '') +
+          (live
+            ? live.health === 'unknown'
+              ? $localize`:Appended to a node's screen reader description in incident mode when nothing reports on it:, no live data`
+              : `, ${HEALTH_LABELS[live.health]}`
+            : ''),
       };
     });
   });
@@ -123,7 +134,7 @@ export class CanvasComponent {
 
   readonly ariaLabel = computed(() => {
     const graph = this.collab.graph();
-    return `Architecture canvas with ${graph.nodes.length} components and ${graph.edges.length} dependencies. Use arrow keys to move the selection, Delete to remove it.`;
+    return $localize`:Accessible name of the diagram canvas; Delete is a key name:Architecture canvas with ${graph.nodes.length}:nodeCount: components and ${graph.edges.length}:edgeCount: dependencies. Use arrow keys to move the selection, Delete to remove it.`;
   });
 
   constructor() {

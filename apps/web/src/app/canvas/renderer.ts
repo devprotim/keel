@@ -6,6 +6,7 @@ import {
   type Rect,
   type Viewport,
 } from '../core/geometry';
+import { NODE_KIND_LABELS } from '../core/labels';
 import type { Scene, SceneEdge, SceneNode } from '../core/scene';
 import { presenceColor, type CanvasTheme } from '../core/theme';
 
@@ -422,7 +423,7 @@ function drawNodeContent(
 
   ctx.fillStyle = accent;
   ctx.font = '600 9px Geist, ui-sans-serif, system-ui, sans-serif';
-  ctx.fillText(node.kind.toUpperCase(), chipX + CHIP_SIZE + 7, chipY + 14.5);
+  ctx.fillText(NODE_KIND_LABELS[node.kind].toUpperCase(), chipX + CHIP_SIZE + 7, chipY + 14.5);
 
   ctx.fillStyle = theme.nodeText;
   ctx.font = '600 14px Geist, ui-sans-serif, system-ui, sans-serif';

@@ -6,6 +6,9 @@
 // host is an absolutely-positioned, auto-height island, so it has no definite
 // height of its own for a percentage on this child to resolve against.
 .findings.expanded {
+  // Grows out of the pill it replaces (styles/_motion.scss); the upward shift
+  // comes from the board's .findings-slot.
+  transform-origin: bottom left;
   display: flex;
   flex-direction: column;
   width: 360px;

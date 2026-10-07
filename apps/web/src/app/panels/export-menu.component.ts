@@ -60,6 +60,11 @@ export class ExportMenuComponent {
    */
   readonly includeFindings = signal(false);
   readonly empty = computed(() => this.collab.graph().nodes.length === 0);
+  readonly triggerTitle = computed(() =>
+    this.empty()
+      ? $localize`:Tooltip on the export button with an empty canvas:Nothing to export yet`
+      : $localize`:Tooltip on the export button:Export the diagram`,
+  );
 
   toggle(): void {
     if (this.open()) {
@@ -94,7 +99,7 @@ export class ExportMenuComponent {
       downloadBlob(blob, exportFilename(this.roomId(), format));
       this.close();
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'Export failed.');
+      this.error.set(error instanceof Error ? error.message : $localize`:Export error:Export failed.`);
     } finally {
       this.busy.set(null);
     }

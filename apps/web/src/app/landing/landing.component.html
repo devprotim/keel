@@ -5,26 +5,29 @@
       <strong>Keel</strong>
     </div>
 
-    @if (auth.user(); as user) {
-      <div class="identity" [title]="user.name">
-        @if (user.avatarUrl) {
-          <img class="avatar" [src]="user.avatarUrl" [alt]="user.name" />
-        }
-        <span class="identity-name">{{ user.name }}</span>
-      </div>
-    } @else {
-      <div class="identity">
-        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()">
-          Sign in with GitHub
-        </button>
-        <!-- Hidden until the Google OAuth app is registered. -->
-        <!--
-        <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()">
-          Sign in with Google
-        </button>
-        -->
-      </div>
-    }
+    <div class="nav-end">
+      @if (auth.user(); as user) {
+        <div class="identity" [title]="user.name">
+          @if (user.avatarUrl) {
+            <img class="avatar" [src]="user.avatarUrl | avatarSize: 44" [alt]="user.name" />
+          }
+          <span class="identity-name">{{ user.name }}</span>
+        </div>
+      } @else {
+        <div class="identity">
+          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGithub()" i18n="Landing page sign-in button">
+            Sign in with GitHub
+          </button>
+          <!-- Hidden until the Google OAuth app is registered. -->
+          <!--
+          <button type="button" class="keel-btn keel-btn--ghost" (click)="loginWithGoogle()" i18n="Landing page sign-in button">
+            Sign in with Google
+          </button>
+          -->
+        </div>
+      }
+      <keel-language-switch />
+    </div>
   </header>
 
   <main class="hero">
@@ -33,14 +36,14 @@
 
     <div class="cta-row">
       <div class="cta-buttons">
-        <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" [disabled]="creating()" (click)="startDiagram()">
+        <button type="button" class="keel-btn keel-btn--primary keel-btn--lg" [disabled]="creating()" (click)="startDiagram()" i18n="Landing page primary call to action">
           Start a new diagram
         </button>
-        <button type="button" class="keel-btn keel-btn--lg" [disabled]="creating()" (click)="openDemo()">
+        <button type="button" class="keel-btn keel-btn--lg" [disabled]="creating()" (click)="openDemo()" i18n="Landing page button that opens a worked example diagram">
           See it on an example
         </button>
         <label class="keel-btn keel-btn--ghost keel-btn--lg keel-file-button">
-          Open a file
+          <ng-container i18n="Landing page button that imports a diagram file">Open a file</ng-container>
           <input
             class="keel-visually-hidden"
             type="file"
@@ -50,7 +53,7 @@
           />
         </label>
       </div>
-      <span class="cta-hint">No account needed. The link is the invite.</span>
+      <span class="cta-hint" i18n="Hint under the landing page call to action">No account needed. The link is the invite.</span>
     </div>
     @if (createError(); as message) {
       <p class="import-errors create-error" role="alert">{{ message }}</p>
@@ -64,7 +67,7 @@
     }
   </main>
 
-  <section class="steps" aria-label="How it works">
+  <section class="steps" aria-label="How it works" i18n-aria-label="Landing page section of three steps">
     @for (step of pitch().steps; track step.title; let i = $index) {
       <div class="step">
         <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
@@ -76,37 +79,37 @@
 
   @if (workspaces().length > 0) {
     @if (billingReturn() === 'success') {
-      <p class="billing-note" role="status">Thanks. Your plan updates as soon as Stripe confirms the payment, usually within a few seconds.</p>
+      <p class="billing-note" role="status" i18n="Shown after returning from Stripe Checkout">Thanks. Your plan updates as soon as Stripe confirms the payment, usually within a few seconds.</p>
     }
     @if (billingError(); as message) {
       <p class="billing-note error" role="alert">{{ message }}</p>
     }
-    <section class="workspaces" aria-label="Your workspaces">
+    <section class="workspaces" aria-label="Your workspaces" i18n-aria-label>
       @for (w of workspaces(); track w.workspace.id) {
         <div class="keel-island workspace">
           <div class="workspace-head">
             <h2>{{ w.workspace.name }}</h2>
-            <span class="workspace-meta">{{ w.members.length }} {{ w.members.length === 1 ? 'member' : 'members' }} · {{ w.role }}</span>
+            <span class="workspace-meta" i18n="Workspace card: member count and your role in the workspace">{w.members.length, plural, =1 {1 member} other {{{ w.members.length }} members}} · {{ roleLabels[w.role] }}</span>
           </div>
           @if (w.billing; as billing) {
             @if (billing.enabled) {
-              <div class="plan" [attr.aria-label]="billing.plan.name + ' plan'">
-                <span class="plan-name">{{ billing.plan.name }} plan</span>
+              <div class="plan" [attr.aria-label]="planLabel(billing.plan.name)">
+                <span class="plan-name" i18n="Workspace plan name, e.g. Free plan">{{ billing.plan.name }} plan</span>
                 @if (billing.status === 'past_due') {
-                  <span class="plan-warning">Payment failed. Update the card to keep this plan.</span>
+                  <span class="plan-warning" i18n>Payment failed. Update the card to keep this plan.</span>
                 }
                 <span class="plan-usage">{{ usageLine(billing) }}</span>
                 @if (billing.canManage) {
                   <span class="plan-actions">
                     @if (billing.plan.id === 'free') {
                       @for (option of billing.purchasable; track option.id) {
-                        <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="upgrade(w.workspace.id, option.id)">
+                        <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="upgrade(w.workspace.id, option.id)" i18n="Button to upgrade a workspace to a paid plan">
                           Upgrade to {{ option.name }}
                         </button>
                       }
                     }
                     @if (billing.hasCustomer) {
-                      <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="manageBilling(w.workspace.id)">
+                      <button type="button" class="keel-btn keel-btn--ghost plan-button" (click)="manageBilling(w.workspace.id)" i18n>
                         Manage billing
                       </button>
                     }
@@ -116,7 +119,7 @@
             }
           }
           @if (w.rooms.length === 0) {
-            <p class="workspace-empty">No diagrams yet. Open one and use Share → Make private to add it here.</p>
+            <p class="workspace-empty" i18n="Empty workspace card; Share and Make private are menu labels">No diagrams yet. Open one and use Share → Make private to add it here.</p>
           } @else {
             <ul>
               @for (room of w.rooms; track room.roomId) {
@@ -129,7 +132,7 @@
     </section>
   }
 
-  <section class="features" aria-label="What Keel does">
+  <section class="features" aria-label="What Keel does" i18n-aria-label="Landing page features section">
     @for (feature of features; track feature.title) {
       <div class="feature">
         <span class="keel-kind-dot" [style.background]="'var(' + feature.dot + ')'"></span>
@@ -140,11 +143,11 @@
   </section>
 
   <footer class="footer">
-    <span>Keel checks designs; it does not replace your monitoring.</span>
+    <span i18n="Landing page footer disclaimer">Keel checks designs; it does not replace your monitoring.</span>
     <span class="footer-links">
-      <a href="https://github.com/devprotim/keel/blob/main/docs/getting-started.md">Getting started</a>
-      <a href="https://github.com/devprotim/keel/tree/main/apps/collector">Collector</a>
-      <a href="https://github.com/devprotim/keel/tree/main/packages/action">GitHub Action</a>
+      <a href="https://github.com/devprotim/keel/blob/main/docs/getting-started.md" i18n="Footer link to the user guide">Getting started</a>
+      <a href="https://github.com/devprotim/keel/tree/main/apps/collector" i18n="Footer link to the observation collector">Collector</a>
+      <a href="https://github.com/devprotim/keel/tree/main/packages/action" i18n="Footer link to the CI GitHub Action">GitHub Action</a>
     </span>
   </footer>
 </div>

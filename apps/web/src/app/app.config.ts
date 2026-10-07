@@ -3,6 +3,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners, isDevMode } from
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { KEEL_CONFIG, defaultConfig } from './core/app-config';
 import { credentialsInterceptor } from './core/credentials.interceptor';
+import { provideRouteFocus } from './core/route-focus';
 import { onViewTransitionCreated } from './core/view-transitions';
 import { routes } from './app.routes';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -20,6 +21,7 @@ export const appConfig: ApplicationConfig = {
       withComponentInputBinding(),
       withViewTransitions({ skipInitialTransition: true, onViewTransitionCreated }),
     ),
+    provideRouteFocus(),
     provideHttpClient(withFetch(), withInterceptors([credentialsInterceptor])),
     { provide: KEEL_CONFIG, useFactory: defaultConfig },
     provideServiceWorker('ngsw-worker.js', {

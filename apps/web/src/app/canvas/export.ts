@@ -104,21 +104,21 @@ export async function exportPng(
   options: ImageExportOptions,
 ): Promise<Blob> {
   const layout = exportLayout(graph, PNG_SCALE);
-  if (!layout) throw new Error('The diagram is empty.');
+  if (!layout) throw new Error($localize`:Export error shown when there is nothing to export:The diagram is empty.`);
   await fontsReady();
 
   const canvas = document.createElement('canvas');
   canvas.width = layout.width;
   canvas.height = layout.height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('This browser could not create an image of that size.');
+  if (!ctx) throw new Error($localize`:Export error shown when the browser cannot allocate the image canvas:This browser could not create an image of that size.`);
 
   drawContent(ctx, exportFrame(graph, report, theme, layout, options));
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
-      else reject(new Error('This browser could not encode the image.'));
+      else reject(new Error($localize`:Export error shown when the browser fails to encode the PNG:This browser could not encode the image.`));
     }, 'image/png');
   });
 }
@@ -131,7 +131,7 @@ export async function exportSvg(
 ): Promise<Blob> {
   // SVG is vector, so there is no density to choose: one world unit, one user unit.
   const layout = exportLayout(graph, 1);
-  if (!layout) throw new Error('The diagram is empty.');
+  if (!layout) throw new Error($localize`:Export error shown when there is nothing to export:The diagram is empty.`);
   await fontsReady();
 
   // Loaded on demand: most sessions never export an SVG, so it stays out of

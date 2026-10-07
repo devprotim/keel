@@ -179,7 +179,7 @@ export class AccessService {
 /** The server's reason, when it gave one, for showing next to the control that failed. */
 export function describeError(error: unknown, fallback: string): string {
   if (error instanceof HttpErrorResponse) {
-    if (error.status === 429) return 'Too many changes. Wait a minute and try again.';
+    if (error.status === 429) return $localize`:Error shown when the server rate-limits requests:Too many changes. Wait a minute and try again.`;
     const body = error.error as { error?: string; issues?: { message?: string }[] } | null;
     const reason = body?.issues?.[0]?.message ?? body?.error;
     if (reason) return reason.charAt(0).toUpperCase() + reason.slice(1) + (/[.!?]$/.test(reason) ? '' : '.');
