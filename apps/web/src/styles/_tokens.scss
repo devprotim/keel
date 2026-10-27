@@ -52,8 +52,14 @@
   --keel-kind-queue: #e8890c;
   --keel-kind-cache: #0ea5e9;
   --keel-kind-gateway: #0d9488;
-  --keel-kind-job: #64748b;
-  --keel-kind-external: #94a3b8;
+  --keel-kind-job: #65a30d;
+  --keel-kind-external: #2563eb;
+
+  // Connection styles reuse identity hues: blue for sync, orange for async,
+  // cyan for stream. Selection remains visible through the tile border.
+  --keel-connection-sync: var(--keel-accent);
+  --keel-connection-async: var(--keel-kind-queue);
+  --keel-connection-stream: var(--keel-kind-cache);
 
   // Canvas-specific tokens, read by the renderer.
   --keel-canvas-bg: var(--keel-n-25);
@@ -141,8 +147,8 @@
   --keel-kind-queue: #fb923c;
   --keel-kind-cache: #38bdf8;
   --keel-kind-gateway: #2dd4bf;
-  --keel-kind-job: #94a3b8;
-  --keel-kind-external: #64748b;
+  --keel-kind-job: #a3e635;
+  --keel-kind-external: #60a5fa;
 
   --keel-node-shadow: rgba(0, 0, 0, 0.45);
   --keel-edge: #6b7484;

@@ -242,9 +242,10 @@
     width: 30px;
     height: 30px;
     color: var(--keel-text-muted);
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
+
+    .edge-icon {
+      display: block;
+    }
 
     &.active {
       color: var(--keel-accent);
@@ -310,6 +311,9 @@
   position: absolute;
   top: 76px;
   right: var(--keel-space-4);
+  // The checklist shares the canvas with the empty-state card on a fresh
+  // room. Keep it above that card so the first-run steps remain readable.
+  z-index: 2;
 }
 
 // --- Empty state ---------------------------------------------------------
@@ -319,6 +323,7 @@
   left: 50%;
   top: 45%;
   transform: translate(-50%, -50%);
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -330,6 +335,13 @@
   // a touch more elevation is what tells the eye it is a surface, not a card
   // pretending to be part of the toolbar layer.
   box-shadow: var(--keel-shadow);
+}
+
+// When the first-run checklist is expanded, center the empty-state card in
+// the canvas area left open by that checklist instead of letting the two
+// islands cover each other.
+.board:has(keel-onboarding .onboarding) .empty {
+  left: calc(50% - 120px);
 }
 
 .empty-title {
@@ -396,5 +408,10 @@
     left: var(--keel-space-2);
     right: var(--keel-space-2);
     width: auto;
+  }
+
+  .board:has(keel-onboarding .onboarding) .empty {
+    left: 50%;
+    top: 68%;
   }
 }

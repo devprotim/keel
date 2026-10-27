@@ -171,6 +171,11 @@ export class InspectorComponent {
     this.collab.updateEdge(id, patch);
   }
 
+  removeEdge(id: string): void {
+    this.collab.remove([id]);
+    this.closed.emit();
+  }
+
   approve(id: string): void {
     this.collab.approve([id]);
   }

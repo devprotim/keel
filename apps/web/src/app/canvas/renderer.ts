@@ -209,6 +209,7 @@ const EDGE_DASH: Record<EdgeKind, number[]> = {
 function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: ContentFrame): void {
   const { theme } = frame;
   const selected = frame.selection.has(edge.edge.id);
+  const hovered = frame.hoveredId === edge.edge.id;
   const flagged = edge.diff ?? edge.severity;
   const color = edge.undiagrammed
     ? theme.severity.info
@@ -218,16 +219,16 @@ function drawEdge(ctx: CanvasRenderingContext2D, edge: SceneEdge, frame: Content
         ? theme.diff[edge.diff]
         : edge.severity
           ? theme.severity[edge.severity]
-          : selected
+          : selected || hovered
             ? theme.selection
             : theme.edge;
-  const lineWidth = edge.weight ?? (selected ? 2.5 : flagged ? 2 : 1.5);
+  const lineWidth = edge.weight ?? (selected || hovered ? 2.5 : flagged ? 2 : 1.5);
 
   ctx.save();
   // Incident mode fades what nothing reports on, so the observed paths stand out.
   if (edge.health === 'unknown') ctx.globalAlpha *= 0.5;
   ctx.strokeStyle = color;
-  ctx.lineWidth = selected && edge.weight ? edge.weight + 1 : lineWidth;
+  ctx.lineWidth = (selected || hovered) && edge.weight ? edge.weight + 1 : lineWidth;
   // A removed or undrawn edge is always dashed; its own kind no longer matters.
   ctx.setLineDash(edge.diff === 'removed' || edge.undiagrammed ? [4, 4] : EDGE_DASH[edge.edge.kind]);
 

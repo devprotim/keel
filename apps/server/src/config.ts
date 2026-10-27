@@ -11,7 +11,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
   /** Comma-separated list of allowed browser origins. */
-  CORS_ORIGINS: z.string().default('http://localhost:4200'),
+  CORS_ORIGINS: z.string().default('http://localhost:4200,http://127.0.0.1:4200'),
 
   /**
    * Absent means the in-memory store, which is fine for dev and tests but

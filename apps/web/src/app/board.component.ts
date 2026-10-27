@@ -256,7 +256,18 @@ export class BoardComponent {
   }
 
   edgeKindTitle(kind: EdgeKind): string {
-    return $localize`:Tooltip on a connection kind button; kind is sync, async or stream:Alt-drag from a component draws a new connection as ${EDGE_KIND_LABELS[kind]}:kind:`;
+    switch (kind) {
+      case 'sync':
+        return $localize`:Tooltip on the sync connection icon:Sync — the caller waits for a response. Alt-drag between components to draw this connection.`;
+      case 'async':
+        return $localize`:Tooltip on the async connection icon:Async — the caller sends work and continues. Alt-drag between components to draw this connection.`;
+      case 'stream':
+        return $localize`:Tooltip on the stream connection icon:Stream — a continuous flow of events. Alt-drag between components to draw this connection.`;
+    }
+  }
+
+  edgeKindColor(kind: EdgeKind): string {
+    return `var(--keel-connection-${kind})`;
   }
 
   kindLabel(kind: NodeKind): string {

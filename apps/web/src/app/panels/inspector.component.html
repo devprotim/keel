@@ -276,6 +276,20 @@
           Brokers deliver at least once, so duplicates are normal operation.
         </span>
       }
+
+      <hr class="keel-divider" />
+      <div class="delete-edge-section">
+        <button
+          type="button"
+          class="keel-btn keel-btn--ghost delete-edge"
+          [disabled]="readOnly()"
+          (click)="removeEdge(selected.id)"
+          i18n="Button to delete a selected dependency"
+        >
+          Delete dependency
+        </button>
+        <span class="keel-field__hint delete-edge-hint" i18n="Hint under the delete dependency button">Undo with Cmd/Ctrl+Z.</span>
+      </div>
     </fieldset>
   } @else {
     <p class="keel-panel__empty">
